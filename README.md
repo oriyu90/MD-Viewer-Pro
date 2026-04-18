@@ -124,24 +124,6 @@ To open the app:
 
 ---
 
-## For Developers
-
-### Setup
-
-```bash
-git clone https://github.com/oriyu90/MD-Viewer-Pro.git
-cd MD-Viewer-Pro
-python3 -m pip install -r requirements.txt
-```
-
-### Run
-
-```bash
-python main.py
-```
-
----
-
 ## Author
 
 Yuki Orita
