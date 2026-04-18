@@ -68,7 +68,7 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 
 ### Overview
 
-MD Viewer Pro is a lightweight Markdown viewer built with Python and PyQt6.
+MD Viewer Pro is a lightweight Markdown viewer built with Python.
 It provides fast rendering, editing, and exporting with a clean interface.
 
 ---
