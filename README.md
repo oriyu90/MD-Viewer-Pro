@@ -8,7 +8,7 @@ A simple and fast Markdown viewer built with Python and PyQt6.
 
 ### 概要
 
-MD Viewer Pro は、Python と PyQt6 で開発された軽量な Markdown ビューアです。
+MD Viewer Pro は、Python で開発された軽量な Markdown ビューアです。
 シンプルで直感的なUIにより、Markdownの閲覧・編集・書き出しを快適に行えます。
 
 ---
