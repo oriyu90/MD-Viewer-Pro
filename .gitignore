@@ -1,0 +1,28 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# --- Virtual Environment (venv) ---
+# venvをGitHubに上げたい場合は、下の行の先頭に # をつけてコメントアウトしてください。
+# ただし、容量が大きいため通常は除外が推奨されます。
+venv/
+venv_new/
+
+# --- Build & Output ---
+# 中間ファイル（buildフォルダ）は基本的に不要です。
+build/
+
+# distフォルダやdmgファイルをGitHubに上げたいとのことですので、
+# あえて除外設定には含めない（またはコメントアウトする）形にします。
+dist/
+*.dmg
+
+# --- IDE & OS ---
+.DS_Store
+.vscode/
+.idea/
+
+# --- Others ---
+# 「資料箱」フォルダを上げたい場合は、ここに書かないことで管理対象になります。

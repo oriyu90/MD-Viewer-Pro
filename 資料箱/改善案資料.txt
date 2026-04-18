@@ -1,0 +1,321 @@
+MD Viewer Pro — 設計レビュー & 改善案
+バージョン対象: main.py (v6) レビュー日: 2025年
+
+目次
+	1	確認済みバグ（印刷系）
+	2	懸念設計：クラッシュ・データロスリスク
+	3	懸念設計：パフォーマンス・UX
+	4	懸念設計：コード構造・保守性
+	5	軽微な不具合・改善余地
+	6	改善優先度まとめ
+
+1. 確認済みバグ（印刷系）
+🔴 Bug-01：印刷クラッシュ（GC競合）
+場所: _print() メソッド (L1166～)
+問題:
+def _on_print_done(ok):
+    self._active_printer = None   # ← コールバック内で即解放
+self._preview_web.page().print(printer, _on_print_done)
+QWebEnginePage.print() は非同期。コールバックが呼ばれるまでの間、ローカル変数 printer がスコープを抜けた後も Chromium 内部スレッドが参照し続ける。 self._active_printer で保持しているが、Pythonの GC タイミングによっては コールバック発火前に破棄されうる（特に低スペック環境・大きなドキュメントで再現しやすい）。
+修正案:
+def _print(self):
+    printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+    # ... ページレイアウト設定 ...
+    dlg = QPrintDialog(printer, self)
+    if dlg.exec():
+        self._active_printer = printer
+        def _on_print_done(ok, _p=printer):   # デフォルト引数でバインド
+            if not ok:
+                QMessageBox.warning(self, "印刷エラー", "印刷に失敗しました。")
+            self._active_printer = None
+        self._preview_web.page().print(printer, _on_print_done)
+
+🟠 Bug-02：印刷時にページ設定が反映されない
+場所: _print() + _build_md_html() / _build_txt_html()
+問題の構造:
+	•	QPrinter.setPageLayout() で余白を設定しているが、 QWebEnginePage.print() は内部で Chromium を使うため QPrinter のマージン設定を無視し、HTML の @page CSS を優先する
+	•	page_mode == "free" のとき print_css = "" で @page ルールがなく、 ブラウザデフォルト余白が適用される（ユーザー設定が無効）
+	•	A4/B5 モード時、.wrap の padding と @page margin が二重にかかる場合がある
+修正案:
+# _print() 内のマージン設定は不要（Chromiumが無視するため）
+# ページサイズのみ設定する
+if self.page_mode in ("a4", "free"):
+    printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
+elif self.page_mode == "b5":
+    printer.setPageSize(QPageSize(QSizeF(182, 257), QPageSize.Unit.Millimeter, "JIS B5"))
+
+# _build_md_html() の free モード分岐に追加
+print_css = "@media print{@page{margin:15mm;}}"
+
+2. 懸念設計：クラッシュ・データロスリスク
+🟠 Risk-01：未保存チェックが file_save の失敗を無視する
+場所: _maybe_save() (L1149～) + file_save() (L1121～)
+問題:
+def _maybe_save(self):
+    ...
+    if r == QMessageBox.StandardButton.Save:
+        self.file_save()
+        return True      # ← 保存に失敗してもTrueを返す
+file_save() → _write() が例外でも _maybe_save() は True を返すため、 ファイル書き込み失敗後にアプリが終了し、変更が失われる。
+修正案:
+def file_save(self) -> bool:
+    if self.current_file_path:
+        return self._write(self.current_file_path)
+    else:
+        return self.file_save_as()
+
+def _write(self, path) -> bool:
+    ...
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(self._content_text)
+        self.is_modified = False
+        self._update_title()
+        return True
+    except Exception as e:
+        QMessageBox.warning(...)
+        return False   # 失敗を呼び出し元に伝える
+
+def _maybe_save(self):
+    ...
+    if r == QMessageBox.StandardButton.Save:
+        ok = self.file_save()
+        return ok       # 保存失敗なら閉じさせない
+
+🟠 Risk-02：setHtml() の 2MB 制限を無対策で使用
+場所: SafeWebLoader.load_html() (L153～)
+問題: 設計書の v6 更新理由（SafeWebLoader を一時ファイル方式からセットHTMLに変更）は macOS の file:// ブロック回避のためだが、setHtml() には 2MB の文字数上限があり、 それを超えるとHTMLが無音で切り捨てられてコンテンツが消える（エラーも出ない）。 大きな Markdown ファイルを開いたときにプレビューが途中で途切れるリスクがある。
+修正案:
+def load_html(self, html, base_path=None):
+    import tempfile, os
+    MAX_BYTES = 1_900_000  # 1.9MB を閾値に
+    if len(html.encode("utf-8")) > MAX_BYTES:
+        # 大きい場合は一時ファイル経由でロード
+        if not hasattr(self, "_tmpdir") or not os.path.isdir(self._tmpdir):
+            self._tmpdir = tempfile.mkdtemp(prefix="mdvp_")
+        self._counter = getattr(self, "_counter", 0) + 1
+        path = os.path.join(self._tmpdir, f"page_{self._counter}.html")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(html)
+        self._web.load(QUrl.fromLocalFile(path))
+    else:
+        base_url = QUrl.fromLocalFile(base_path) if base_path else QUrl()
+        self._web.setHtml(html, base_url)
+
+def cleanup(self):
+    import shutil, os
+    if hasattr(self, "_tmpdir") and os.path.isdir(self._tmpdir):
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+🟡 Risk-03：closeEvent でタイマー残留による Use-After-Free
+場所: closeEvent() (L1242～)
+問題: _maybe_save() がダイアログを開いている間に _timer が発火すると、 クローズ途中の UI コンポーネントに _refresh_view() がアクセスしうる。 現状 _timer.stop() は _maybe_save() の 後に呼ばれているため、 ダイアログ応答待ちの間のタイマー発火がガードされていない。
+修正案:
+def closeEvent(self, event):
+    self._timer.stop()          # 先にタイマーを止める
+    if self._maybe_save():
+        self._loader.cleanup()
+        event.accept()
+    else:
+        # キャンセルされた場合はタイマーを再開
+        # （編集中のデバウンスが必要な場合）
+        event.ignore()
+
+3. 懸念設計：パフォーマンス・UX
+🟡 Perf-01：_apply_theme() が _refresh_view() を呼ぶ → 二重更新
+場所: _on_scale_slider() (L985～) → _apply_theme(refresh=True) → _refresh_view()
+問題: スライダーをドラッグすると valueChanged が連続発火し、 毎回 _apply_theme() → _refresh_view() → markdown.markdown() の変換が走る。 _timer のデバウンスが効いていない（タイマーを経由しない直接呼び出し）ため、 大きなファイルでは UI がガクつく。
+修正案:
+def _on_scale_slider(self, v):
+    self.scale_idx = v
+    self._scale_lbl.setText(SCALE_LABELS[v])
+    self._apply_theme(refresh=False)    # StyleSheet のみ更新
+    self._timer.start()                 # デバウンス経由でプレビュー更新
+
+🟡 Perf-02：モード切替のたびに setPlainText() を呼ぶ
+場所: _set_mode() (L944～951)
+問題: MD↔TXT モードを切り替えるたびに setPlainText(self._content_text) を呼んでいる。 エディタのアンドゥ履歴がリセットされるうえ、大きなファイルでは再レンダリングコストが高い。 _content_text が既にエディタと同期済みなら不要な更新。
+修正案:
+if mode == "md" and self._md_editor.toPlainText() != self._content_text:
+    self._md_editor.blockSignals(True)
+    self._md_editor.setPlainText(self._content_text)
+    self._md_editor.blockSignals(False)
+
+🟡 UX-01：フリーモードで印刷ボタンを押したときのページ設定が不明瞭
+問題: page_mode == "free" のまま印刷ダイアログを開くと、 QPrinter にはデフォルトの A4 が設定されるが、 HTML 側に @page ルールがないためブラウザデフォルト余白になる。 ユーザーには「余白設定」ボタンが無効（グレーアウト）のまま印刷結果が変わるという 混乱した UX になる。
+改善案: フリーモードでの印刷時に @page { margin: 15mm; } を付与するか、 または印刷時に「A4文書モードに切り替えますか？」の確認を出す。
+
+🟡 UX-02：_go_back() と 「閲覧」ボタンが同じ動作
+場所: _go_back() (L956) と _mode_btns["view"]
+問題: 「戻る」ボタンは _go_back() → _set_mode("view") を呼ぶが、 「閲覧」ボタンも同じく _set_mode("view") を呼ぶ。 機能が完全に重複しており、「戻る」ボタンの存在理由がない。 設計書には「編集モード時のみ有効」と書かれているが、 閲覧ボタン自体がアクティブ状態（グレー）になるため視認性が十分。
+改善案: 「戻る」ボタンは削除 or 将来の「ファイル履歴に戻る」機能のために保留とする。 現状は無駄なボタンが UI スペースを消費している。
+
+4. 懸念設計：コード構造・保守性
+🟡 Code-01：MDViewerPro クラスが肥大化（単一責任原則違反）
+問題: MDViewerPro クラスは約 1000 行、以下の責務をすべて持っている:
+	•	UI 構築 (_build_ui, _make_main_tb, _make_fmt_tb, _build_menu)
+	•	HTML 生成 (_build_md_html, _build_txt_html, _css, _page_break_js)
+	•	ファイル I/O (_load_file, _write, _maybe_save)
+	•	印刷 (_print)
+	•	テーマ管理 (_apply_theme, _sync_tb_labels)
+	•	編集ヘルパー (_md_wrap, _md_prefix, _md_insert)
+テストも拡張も困難な構造になっている。
+改善案（段階的リファクタリング）:
+MDViewerPro          → 状態管理 + イベント配線のみ
+HtmlBuilder          → _build_md_html / _build_txt_html / _css
+FileManager          → _load_file / _write / _maybe_save
+PrintManager         → _print / ページレイアウト管理
+ThemeManager         → _apply_theme / _sync_tb_labels
+EditorHelpers        → _md_wrap / _md_prefix / _md_insert
+
+🟡 Code-02：_css() がすべてのスタイルを単一文字列として生成
+場所: _css() (L538～577)
+問題: CSS を Python の f-string で一行ずつ連結しており、デバッグ・変更・テストが困難。 特にテーマ切替とスケール変更が絡む箇所は変更箇所の特定が難しい。
+改善案: CSS をテンプレート文字列 or 辞書ベースで管理し、変数部分のみ差し込む形式にする。 最低限でも変数化すべき箇所をまとめておく:
+CSS_TEMPLATE = """
+  html, body {{ background: {bg}; color: {text}; font-size: {fs}px; }}
+  h1 {{ color: {heading}; border-bottom: 2px solid {border}; }}
+  ...
+"""
+
+def _css(self, fs):
+    p = self._palette
+    return CSS_TEMPLATE.format(fs=fs, **p)
+
+🟡 Code-03：I18N 辞書の重複とメンテナンス性
+場所: I18N 定数 (L78～141)
+問題: ja と en の辞書は同じキーを持ち、追加時に両方に書かないと KeyError や不完全な翻訳が起きる。現状でも fmt_* 系のキーが 英語側に全部コピーされておらず（英語でも日本語のラベルが使われる箇所がある） バグになりうる。
+改善案: フォールバック機構を追加する:
+def _t(self, key):
+    return (I18N[self.lang].get(key)
+            or I18N["ja"].get(key)   # フォールバック
+            or key)                  # 最終フォールバック
+または en 辞書は差分のみ定義し、ja をベースにマージする方式にする。
+
+🟡 Code-04：page_mode の文字列比較が散在
+場所: _build_md_html(), _build_txt_html(), _print(), _open_margin_dialog() 他
+問題: if self.page_mode == "a4": のような文字列比較が 10 箇所以上に散在。 タイポが混入しても実行時まで気づかない。
+改善案:
+from enum import Enum
+
+class PageMode(Enum):
+    FREE = "free"
+    A4   = "a4"
+    B5   = "b5"
+
+# 比較が型安全になる
+if self.page_mode == PageMode.A4:
+同様に edit_mode も EditMode(Enum) にする。
+
+5. 軽微な不具合・改善余地
+🔵 Minor-01：_render_checklist() の正規表現が大文字 X を見落とす可能性
+場所: L628～634
+re.sub(r'<li>\s*\[x\]\s*', ..., flags=re.IGNORECASE)
+re.IGNORECASE は付いているので問題なし。ただし markdown ライブラリが <li> の前後に余計な \n や空白を入れる場合、\s* では足りない可能性がある。 実際のレンダリング後の HTML を確認してパターンを調整することを推奨。
+
+🔵 Minor-02：_page_break_js() のページ高さ計算が DPI 固定
+場所: L580～617
+var mm2px = 96/25.4;   # 96dpi 固定
+Retina/HiDPI 環境では window.devicePixelRatio が 2.0 以上になるため、 ページ区切り線の位置がずれる。
+修正案:
+var mm2px = (96 * window.devicePixelRatio) / 25.4;
+// または CSS px (論理ピクセル) ベースで計算する場合は devicePixelRatio 不要
+// ブラウザの CSS px は論理ピクセルなので 96dpi 固定で通常は正しい
+// → ただし zoom レベルが変わると狂うため、実機確認を推奨
+（ブラウザ CSS px は論理ピクセルなので通常は 96dpi で合っているが、 WebEngine の zoom 設定が変わると影響が出る。）
+
+🔵 Minor-03：起動時の QTimer.singleShot(400, ...) が環境依存
+場所: L315
+QTimer.singleShot(400, self._startup_open)
+400ms は「WebEngine 初期化を待つため」とコメントにあるが、 低スペック環境では WebEngine の初期化が 400ms を超えることがある。
+改善案: QWebEngineView.loadFinished または QWebEnginePage.loadStarted を センチネルとして使い、準備完了を検知してからダイアログを開く方式にする。
+
+🔵 Minor-04：_upload_gdrive() / _upload_onedrive() が未保存ファイルをアップロードできない
+場所: L1010～1030
+問題: self.current_file_path が None のとき（未保存）、ファイル名だけ表示して ブラウザを開くが、実際にアップロードするファイルが存在しない。 ユーザーを混乱させる。
+改善案: 未保存の場合は先に「保存してください」と案内するか、 または一時ファイルに書き出してからパスを示す。
+
+🔵 Minor-05：ダークモードの background: #000000 がWebEngineで「黒フラッシュ」を起こす
+場所: DARK_PALETTE (L38) + SafeWebLoader.load_html()
+問題: setHtml() でページをロードする際、WebEngine の背景色がデフォルト（白）のため コンテンツが描画される前の一瞬に白→黒のフラッシュが起きることがある。
+修正案:
+# SafeWebLoader.__init__() で背景色を設定
+from PyQt6.QtGui import QColor
+web.page().setBackgroundColor(QColor("#000000"))   # ダーク時
+テーマ切替時には _apply_theme() 内で更新する。
+
+6. 改善優先度まとめ
+ID
+重要度
+カテゴリ
+概要
+Bug-01
+🔴 高
+クラッシュ
+印刷中のGC競合クラッシュ
+Bug-02
+🟠 中高
+印刷不具合
+QPrinter の余白設定が無視される
+Risk-01
+🟠 中高
+データロス
+保存失敗でも閉じてしまう
+Risk-02
+🟠 中高
+サイレント破損
+2MB超でHTMLが無音切り捨て
+Risk-03
+🟡 中
+クラッシュ
+closeEvent のタイマー順序
+Perf-01
+🟡 中
+パフォーマンス
+スライダー連続発火で markdown 変換連打
+Perf-02
+🟡 中
+UX
+モード切替のたびにアンドゥ履歴消去
+UX-01
+🟡 中
+UX
+フリーモード印刷の余白が不定
+Code-01
+🟡 中
+保守性
+1クラス1000行の肥大化
+Code-04
+🟡 中
+保守性
+page_mode 文字列比較の散在
+UX-02
+🔵 低
+UX
+「戻る」ボタンの重複機能
+Code-02
+🔵 低
+保守性
+CSS 文字列生成の可読性
+Code-03
+🔵 低
+保守性
+I18N フォールバックなし
+Minor-02
+🔵 低
+表示
+ページ区切り線の DPI 計算
+Minor-03
+🔵 低
+起動
+400ms 固定待機
+Minor-04
+🔵 低
+UX
+未保存ファイルのクラウドアップロード
+Minor-05
+🔵 低
+表示
+ダークモード白フラッシュ
+
+レビュー対象: main.py, MDViewerPro_Design_Doc.md, setup.py, fix_webengine.sh
