@@ -38,7 +38,7 @@ ln -s /Applications dmg_tmp/Applications
 hdiutil create \
     -volname "MD Viewer Pro" \
     -srcfolder dmg_tmp \
-    -ov -format UDRW -size 600m \
+    -ov -format UDRW \
     "dist/${DMG_NAME}-rw.dmg" >/dev/null
 
 hdiutil convert \

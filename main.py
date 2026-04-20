@@ -47,7 +47,7 @@ LANGS = {"日本語": "ja", "English": "en", "Deutsch": "de", "Français": "fr"}
 PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
-APP_VERSION   = "1.0.0"
+APP_VERSION   = "1.00"
 
 DARK_PALETTE = {
     "bg":            "#000000",
@@ -629,7 +629,7 @@ class SafeWebLoader:
                     f.write(html)
                 self._web.load(QUrl.fromLocalFile(path))
             except Exception:
-                self._web.setHtml(html[:self._MAX_BYTES].decode("utf-8", errors="replace"), QUrl())
+                self._web.setHtml(encoded[:self._MAX_BYTES].decode("utf-8", errors="replace"), QUrl())
         else:
             base_url = QUrl.fromLocalFile(base_path) if base_path else QUrl()
             self._web.setHtml(html, base_url)
@@ -693,7 +693,7 @@ class SettingsDialog(QDialog):
         root.addWidget(fg)
 
         # 言語
-        lg = QGroupBox(t["lang_label"])
+        lg = QGroupBox("Languages")
         ll = QVBoxLayout(lg)
         self._lang_cb = QComboBox()
         self._lang_cb.addItems(list(LANGS.keys()))
@@ -781,48 +781,60 @@ class StartupDialog(QDialog):
         root.setSpacing(16)
         root.setContentsMargins(32, 28, 32, 28)
 
-        title_lbl = QLabel(t["startup_title"])
-        title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        tf = title_lbl.font()
+        self._title_lbl = QLabel(t["startup_title"])
+        self._title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        tf = self._title_lbl.font()
         tf.setPointSize(20)
         tf.setBold(True)
-        title_lbl.setFont(tf)
-        root.addWidget(title_lbl)
+        self._title_lbl.setFont(tf)
+        root.addWidget(self._title_lbl)
 
-        hint_lbl = QLabel(t["startup_hint"])
-        hint_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        root.addWidget(hint_lbl)
+        self._hint_lbl = QLabel(t["startup_hint"])
+        self._hint_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self._hint_lbl)
 
         root.addSpacing(8)
 
-        open_btn = QPushButton(t["startup_open"])
-        open_btn.setFixedHeight(44)
-        open_btn.clicked.connect(self._on_open)
-        root.addWidget(open_btn)
+        self._open_btn = QPushButton(t["startup_open"])
+        self._open_btn.setFixedHeight(44)
+        self._open_btn.clicked.connect(self._on_open)
+        root.addWidget(self._open_btn)
 
-        new_btn = QPushButton(t["startup_new"])
-        new_btn.setFixedHeight(44)
-        new_btn.clicked.connect(self._on_new)
-        root.addWidget(new_btn)
+        self._new_btn = QPushButton(t["startup_new"])
+        self._new_btn.setFixedHeight(44)
+        self._new_btn.clicked.connect(self._on_new)
+        root.addWidget(self._new_btn)
 
         # Language selector row
         lang_row = QWidget()
         lang_lay = QHBoxLayout(lang_row)
         lang_lay.setContentsMargins(0, 0, 0, 0)
-        lang_lbl = QLabel(t.get("startup_language", "言語"))
+        lang_lbl = QLabel("Languages")
         lang_lay.addWidget(lang_lbl)
         self._lang_cb = QComboBox()
         self._lang_cb.addItems(list(LANGS.keys()))
         cur_key = [k for k, v in LANGS.items() if v == current_lang]
         if cur_key:
             self._lang_cb.setCurrentText(cur_key[0])
+        self._lang_cb.currentIndexChanged.connect(self._on_lang_changed)
         lang_lay.addWidget(self._lang_cb)
         root.addWidget(lang_row)
 
-        guide_btn = QPushButton(t.get("startup_guide", "説明を開く"))
-        guide_btn.setFixedHeight(44)
-        guide_btn.clicked.connect(self._on_guide)
-        root.addWidget(guide_btn)
+        self._guide_btn = QPushButton(t.get("startup_guide", "説明を開く"))
+        self._guide_btn.setFixedHeight(44)
+        self._guide_btn.clicked.connect(self._on_guide)
+        root.addWidget(self._guide_btn)
+
+    def _on_lang_changed(self, _idx: int):
+        lang = LANGS.get(self._lang_cb.currentText(), "ja")
+        self.selected_lang = lang
+        t = I18N[lang]
+        self.setWindowTitle(t["startup_title"])
+        self._title_lbl.setText(t["startup_title"])
+        self._hint_lbl.setText(t["startup_hint"])
+        self._open_btn.setText(t["startup_open"])
+        self._new_btn.setText(t["startup_new"])
+        self._guide_btn.setText(t.get("startup_guide", "説明を開く"))
 
     def _current_selected_lang(self) -> str:
         return LANGS.get(self._lang_cb.currentText(), "ja")
@@ -923,6 +935,7 @@ class PianoBtn(QPushButton):
         super().__init__(label, parent)
         sp = self.sizePolicy()
         sp.setVerticalPolicy(QSizePolicy.Policy.Expanding)
+        sp.setHorizontalPolicy(QSizePolicy.Policy.Expanding)
         self.setSizePolicy(sp)
         self.setProperty("active", False)
 
@@ -1113,6 +1126,7 @@ class MDViewerPro(QMainWindow):
         self._scale_lbl = QLabel(self._t("scale"))
         self._scale_lbl.setObjectName("tbLabel")
         self._scale_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._scale_lbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         lay.addWidget(self._scale_lbl)
 
         self._scale_slider = QSlider(Qt.Orientation.Horizontal)
@@ -1144,7 +1158,6 @@ class MDViewerPro(QMainWindow):
         self._pdf_btn.clicked.connect(self._export_pdf)
         lay.addWidget(self._pdf_btn)
 
-        lay.addStretch(1)
         return tb
 
     # ─── 書式ツールバー ──────────────────────────
@@ -1231,7 +1244,6 @@ class MDViewerPro(QMainWindow):
         tbl_btn.clicked.connect(on_table)
         lay.addWidget(tbl_btn)
 
-        lay.addStretch(1)
         return tb
 
     def _rebuild_fmt_tb(self):
@@ -1301,14 +1313,14 @@ class MDViewerPro(QMainWindow):
     def _ui_sizes(self):
         cat = self._get_ui_scale_cat()
         if cat == "large":
-            return {"tb_fs": 17, "btn_pad": "0 20px", "fmt_fs": 16,
-                    "fmt_pad": "0 13px", "lbl_fs": 15, "min_w": 68}
+            return {"tb_fs": 13, "btn_pad": "0 10px", "fmt_fs": 14,
+                    "fmt_pad": "0 11px", "lbl_fs": 13, "min_w": 52}
         elif cat == "medium":
-            return {"tb_fs": 14, "btn_pad": "0 12px", "fmt_fs": 13,
-                    "fmt_pad": "0 8px",  "lbl_fs": 12, "min_w": 50}
+            return {"tb_fs": 12, "btn_pad": "0 8px",  "fmt_fs": 12,
+                    "fmt_pad": "0 7px",  "lbl_fs": 11, "min_w": 42}
         else:
-            return {"tb_fs": 12, "btn_pad": "0 7px",  "fmt_fs": 11,
-                    "fmt_pad": "0 5px",  "lbl_fs": 10, "min_w": 36}
+            return {"tb_fs": 11, "btn_pad": "0 5px",  "fmt_fs": 10,
+                    "fmt_pad": "0 4px",  "lbl_fs": 10, "min_w": 32}
 
     # ════════════════════════════════════════════
     #  HTML ビルダー
@@ -1389,9 +1401,9 @@ class MDViewerPro(QMainWindow):
             f"html,body{{background:{p['bg']};color:{p['text']};"
             f"font-family:{ff};font-size:{fs}px;line-height:1.8;font-weight:{fw};}}"
             f"h1{{font-size:{int(fs*1.85)}px;color:{p['heading']};"
-            f"border-bottom:2px solid {p['border']};padding-bottom:8px;margin:28px 0 16px}}"
+            f"margin:28px 0 16px}}"
             f"h2{{font-size:{int(fs*1.4)}px;color:{p['heading']};"
-            f"border-bottom:1px solid {p['border']};padding-bottom:5px;margin:22px 0 12px}}"
+            f"margin:22px 0 12px}}"
             f"h3{{font-size:{int(fs*1.15)}px;color:{p['heading']};margin:18px 0 10px}}"
             f"h4,h5,h6{{color:{p['heading']};margin:14px 0 8px}}"
             "p{margin:10px 0}"
@@ -2030,11 +2042,14 @@ class MDViewerPro(QMainWindow):
             QPageLayout.Unit.Millimeter,
         )
 
+        self._pdf_layout_ref = layout  # prevent GC while Chromium processes
+
         def _on_pdf_done(pdf_path, ok):
             try:
                 self._preview_web.page().pdfPrintingFinished.disconnect(_on_pdf_done)
             except Exception:
                 pass
+            self._pdf_layout_ref = None
             if ok:
                 QMessageBox.information(self, "PDF", self._t("pdf_success"))
             else:
@@ -2125,8 +2140,8 @@ class MDViewerPro(QMainWindow):
         elif result and dlg.action == StartupDialog.ACTION_GUIDE:
             self._open_guide()
         else:
-            self._set_sample()
-            self._refresh_view()
+            # × で閉じた場合: 最新の sample_*.md ファイルを読み取り専用で表示
+            self._open_guide()
 
     # ════════════════════════════════════════════
     #  ファイル操作
@@ -2241,35 +2256,116 @@ class MDViewerPro(QMainWindow):
                 if self.current_file_path else self._t("untitled"))
         mark = " ●" if self.is_modified else ""
         ro = f" [{self._t('readonly_notice')}]" if self._readonly_file else ""
-        self.setWindowTitle(f"{name}{mark}{ro} — MD Viewer Pro")
+        self.setWindowTitle(f"{name}{mark}{ro} — MD Viewer Pro v{APP_VERSION}")
 
     def _set_sample(self):
-        s = (
-            "# MD Viewer Pro へようこそ\n\n"
-            "上部バーでモード・レイアウト・スケールを切り替えられます。\n\n"
-            "## 機能一覧\n\n"
-            "| 機能 | 説明 |\n"
-            "| :--- | :--- |\n"
-            "| 閲覧モード | Markdown をきれいにレンダリング |\n"
-            "| MD編集 | レンダリングフォーマットのままテキストを直接編集 |\n"
-            "| TXT編集 | 左エディタ + 右リアルタイムプレビュー |\n"
-            "| A4文書 | 印刷向けA4レイアウト・余白設定 |\n"
-            "| 詳細設定 | フォント・言語・テーマ・太字変更 |\n"
-            "| プラグインテーマ | ~/.mdviewer/themes/ にJSONを置いて配色追加 |\n\n"
-            "## チェックリスト\n\n"
-            "- [x] Markdown 表示\n"
-            "- [x] リアルタイムプレビュー\n"
-            "- [x] コードブロックのコピーボタン\n"
-            "- [x] PDF/HTML書き出し\n"
-            "- [x] プラグインテーマ\n"
-            "- [ ] クラウド同期（予定）\n\n"
-            "## コードブロック\n\n"
-            "```python\n"
-            "def hello():\n"
-            "    print('Hello, MD Viewer Pro!')\n"
-            "```\n\n"
-            "> TXT編集またはMD編集モードに切り替えると書式ツールバーが表示されます。\n"
-        )
+        _samples = {
+            "ja": (
+                "# MD Viewer Pro へようこそ\n\n"
+                "上部バーでモード・レイアウト・スケールを切り替えられます。\n\n"
+                "## 機能一覧\n\n"
+                "| 機能 | 説明 |\n"
+                "| :--- | :--- |\n"
+                "| 閲覧モード | Markdown をきれいにレンダリング |\n"
+                "| MD編集 | レンダリングフォーマットのままテキストを直接編集 |\n"
+                "| TXT編集 | 左エディタ + 右リアルタイムプレビュー |\n"
+                "| A4文書 | 印刷向けA4レイアウト・余白設定 |\n"
+                "| 詳細設定 | フォント・言語・テーマ・太字変更 |\n"
+                "| プラグインテーマ | ~/.mdviewer/themes/ にJSONを置いて配色追加 |\n\n"
+                "## チェックリスト\n\n"
+                "- [x] Markdown 表示\n"
+                "- [x] リアルタイムプレビュー\n"
+                "- [x] コードブロックのコピーボタン\n"
+                "- [x] PDF/HTML書き出し\n"
+                "- [x] プラグインテーマ\n"
+                "- [ ] クラウド同期（予定）\n\n"
+                "## コードブロック\n\n"
+                "```python\n"
+                "def hello():\n"
+                "    print('Hello, MD Viewer Pro!')\n"
+                "```\n\n"
+                "> TXT編集またはMD編集モードに切り替えると書式ツールバーが表示されます。\n"
+            ),
+            "en": (
+                "# Welcome to MD Viewer Pro\n\n"
+                "Use the top bar to switch mode, layout, and scale.\n\n"
+                "## Features\n\n"
+                "| Feature | Description |\n"
+                "| :--- | :--- |\n"
+                "| View | Renders Markdown beautifully |\n"
+                "| MD Edit | Edit text directly in rendered format |\n"
+                "| TXT Edit | Left editor + right live preview |\n"
+                "| A4 Doc | Print-ready A4 layout with margin settings |\n"
+                "| Settings | Font, language, theme, bold toggle |\n"
+                "| Plugin Themes | Add palettes via JSON in ~/.mdviewer/themes/ |\n\n"
+                "## Checklist\n\n"
+                "- [x] Markdown rendering\n"
+                "- [x] Live preview\n"
+                "- [x] Code block copy button\n"
+                "- [x] PDF/HTML export\n"
+                "- [x] Plugin themes\n"
+                "- [ ] Cloud sync (planned)\n\n"
+                "## Code Block\n\n"
+                "```python\n"
+                "def hello():\n"
+                "    print('Hello, MD Viewer Pro!')\n"
+                "```\n\n"
+                "> Switch to TXT Edit or MD Edit mode to show the format toolbar.\n"
+            ),
+            "de": (
+                "# Willkommen bei MD Viewer Pro\n\n"
+                "Verwenden Sie die obere Leiste, um Modus, Layout und Skalierung zu wechseln.\n\n"
+                "## Funktionen\n\n"
+                "| Funktion | Beschreibung |\n"
+                "| :--- | :--- |\n"
+                "| Ansicht | Rendert Markdown übersichtlich |\n"
+                "| MD Bearbeiten | Text direkt im gerenderten Format bearbeiten |\n"
+                "| TXT Bearbeiten | Linker Editor + rechte Live-Vorschau |\n"
+                "| A4 Dok. | Druckfertiges A4-Layout mit Randeinstellungen |\n"
+                "| Einstellungen | Schrift, Sprache, Thema, Fettdruck |\n"
+                "| Plugin-Themen | Paletten als JSON in ~/.mdviewer/themes/ hinzufügen |\n\n"
+                "## Checkliste\n\n"
+                "- [x] Markdown-Rendering\n"
+                "- [x] Live-Vorschau\n"
+                "- [x] Kopier-Schaltfläche für Codeblöcke\n"
+                "- [x] PDF/HTML-Export\n"
+                "- [x] Plugin-Themen\n"
+                "- [ ] Cloud-Synchronisierung (geplant)\n\n"
+                "## Codeblock\n\n"
+                "```python\n"
+                "def hello():\n"
+                "    print('Hello, MD Viewer Pro!')\n"
+                "```\n\n"
+                "> Wechseln Sie in den TXT- oder MD-Bearbeitungsmodus, um die Formatierungsleiste anzuzeigen.\n"
+            ),
+            "fr": (
+                "# Bienvenue dans MD Viewer Pro\n\n"
+                "Utilisez la barre supérieure pour changer le mode, la mise en page et l'échelle.\n\n"
+                "## Fonctionnalités\n\n"
+                "| Fonctionnalité | Description |\n"
+                "| :--- | :--- |\n"
+                "| Vue | Rendu Markdown élégant |\n"
+                "| Édition MD | Modifier le texte directement au format rendu |\n"
+                "| Édition TXT | Éditeur gauche + aperçu en direct à droite |\n"
+                "| Doc A4 | Mise en page A4 pour impression avec réglage des marges |\n"
+                "| Paramètres | Police, langue, thème, gras |\n"
+                "| Thèmes plugin | Ajouter des palettes JSON dans ~/.mdviewer/themes/ |\n\n"
+                "## Liste de contrôle\n\n"
+                "- [x] Rendu Markdown\n"
+                "- [x] Aperçu en direct\n"
+                "- [x] Bouton copier pour les blocs de code\n"
+                "- [x] Export PDF/HTML\n"
+                "- [x] Thèmes plugin\n"
+                "- [ ] Synchronisation cloud (prévu)\n\n"
+                "## Bloc de code\n\n"
+                "```python\n"
+                "def hello():\n"
+                "    print('Hello, MD Viewer Pro!')\n"
+                "```\n\n"
+                "> Passez en mode Édition TXT ou MD pour afficher la barre de formatage.\n"
+            ),
+        }
+        s = _samples.get(self.lang, _samples["en"])
         self._content_text = s
         self._md_editor.blockSignals(True)
         self._md_editor.setPlainText(s)
@@ -2314,6 +2410,7 @@ class MDViewerPro(QMainWindow):
     def closeEvent(self, event):
         self._timer.stop()
         self._resize_timer.stop()
+        self._startup_fallback.stop()
         if self._maybe_save():
             self._save_app_settings()
             self._loader.cleanup()
