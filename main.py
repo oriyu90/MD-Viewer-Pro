@@ -41,13 +41,13 @@ from PySide6.QtWebChannel import QWebChannel
 SCALE_STEPS  = [0.5, 0.75, 1.0, 1.25, 1.5]
 SCALE_LABELS = ["50%", "75%", "100%", "125%", "150%"]
 DEFAULT_SCALE_IDX = 2  # 100%
-TB_H  = 64
-FMT_H = 48
+TB_H  = 72
+FMT_H = 52
 LANGS = {"日本語": "ja", "English": "en", "Deutsch": "de", "Français": "fr"}
 PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
-APP_VERSION   = "1.00"
+APP_VERSION   = "1.01"
 
 DARK_PALETTE = {
     "bg":            "#000000",
@@ -151,6 +151,9 @@ I18N = {
         "startup_guide": "説明を開く",
         "readonly_notice": "読み取り専用",
         "plugin_invalid": "テーマファイルが無効です: {name}",
+        "toc": "目次",
+        "pdf_embed_images": "画像を含める",
+        "pdf_embed_images_label": "PDFに画像を埋め込む",
     },
     "en": {
         "back": "Back", "view": "View", "md_edit": "MD Edit", "txt_edit": "TXT Edit",
@@ -207,6 +210,9 @@ I18N = {
         "startup_guide": "Open Guide",
         "readonly_notice": "Read Only",
         "plugin_invalid": "Invalid theme file: {name}",
+        "toc": "TOC",
+        "pdf_embed_images": "Include images",
+        "pdf_embed_images_label": "Embed images in PDF",
     },
     "de": {
         "back": "Zurück", "view": "Ansicht", "md_edit": "MD Bearbeiten", "txt_edit": "TXT Bearbeiten",
@@ -263,6 +269,9 @@ I18N = {
         "startup_guide": "Anleitung öffnen",
         "readonly_notice": "Schreibgeschützt",
         "plugin_invalid": "Ungültige Thema-Datei: {name}",
+        "toc": "Inhalt",
+        "pdf_embed_images": "Bilder einbetten",
+        "pdf_embed_images_label": "Bilder in PDF einbetten",
     },
     "fr": {
         "back": "Retour", "view": "Vue", "md_edit": "Édition MD", "txt_edit": "Édition TXT",
@@ -319,6 +328,9 @@ I18N = {
         "startup_guide": "Ouvrir le guide",
         "readonly_notice": "Lecture seule",
         "plugin_invalid": "Fichier de thème invalide: {name}",
+        "toc": "Sommaire",
+        "pdf_embed_images": "Inclure les images",
+        "pdf_embed_images_label": "Intégrer les images dans le PDF",
     },
 }
 
@@ -327,12 +339,13 @@ I18N = {
 #  設定の読み書き
 # ════════════════════════════════════════════════
 _SETTINGS_DEFAULTS: dict = {
-    "lang":        "ja",
-    "theme":       "dark",
-    "font_family": "Helvetica Neue",
-    "bold_mode":   False,
-    "scale_idx":   DEFAULT_SCALE_IDX,
-    "last_pdf_dir": "",
+    "lang":             "ja",
+    "theme":            "dark",
+    "font_family":      "Helvetica Neue",
+    "bold_mode":        False,
+    "scale_idx":        DEFAULT_SCALE_IDX,
+    "last_pdf_dir":     "",
+    "pdf_embed_images": True,
 }
 
 def load_settings() -> dict:
@@ -495,6 +508,8 @@ class _HTML2MD(HTMLParser):
         self._pending_href: Optional[str] = None
         self._list_depth = 0
         self._ol_counters: List[int] = []
+        self._in_thead = False
+        self._th_count = 0
 
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
@@ -541,9 +556,14 @@ class _HTML2MD(HTMLParser):
             self.parts.append('\n\n> ')
         elif tag == 'hr':
             self.parts.append('\n\n---\n\n')
+        elif tag == 'thead':
+            self._in_thead = True
+            self._th_count = 0
         elif tag == 'tr':
             self.parts.append('\n|')
         elif tag in ('th', 'td'):
+            if self._in_thead and tag == 'th':
+                self._th_count += 1
             self.parts.append(' ')
 
     def handle_endtag(self, tag):
@@ -571,6 +591,10 @@ class _HTML2MD(HTMLParser):
             self._pending_href = None
         elif tag in ('th', 'td'):
             self.parts.append(' |')
+        elif tag == 'thead':
+            self._in_thead = False
+            if self._th_count > 0:
+                self.parts.append('\n|' + ' --- |' * self._th_count)
         elif tag == 'ul':
             self._list_depth = max(0, self._list_depth - 1)
             self.parts.append('\n')
@@ -859,7 +883,7 @@ class StartupDialog(QDialog):
 #  PDF書き出し設定ダイアログ
 # ════════════════════════════════════════════════
 class PdfExportDialog(QDialog):
-    def __init__(self, parent, page_mode, a4_margins, b5_margins, t):
+    def __init__(self, parent, page_mode, a4_margins, b5_margins, t, embed_images=True):
         super().__init__(parent)
         self.setWindowTitle(t.get("pdf_settings_title", "PDF書き出し設定"))
         self.setMinimumWidth(320)
@@ -905,6 +929,13 @@ class PdfExportDialog(QDialog):
         mg.setLayout(ml)
         root.addWidget(mg)
 
+        ig = QGroupBox(t.get("pdf_embed_images", "画像を含める"))
+        il = QVBoxLayout(ig)
+        self._embed_images_cb = QCheckBox(t.get("pdf_embed_images_label", "PDFに画像を埋め込む"))
+        self._embed_images_cb.setChecked(embed_images)
+        il.addWidget(self._embed_images_cb)
+        root.addWidget(ig)
+
         self._page_cb.currentTextChanged.connect(self._on_page_changed)
 
         bb = QDialogButtonBox(
@@ -924,7 +955,8 @@ class PdfExportDialog(QDialog):
         page = self._page_cb.currentText()
         landscape = self._orient_cb.currentIndex() == 1
         margins = tuple(self._margin_spins[k].value() for k in ["top", "right", "bottom", "left"])
-        return page, landscape, margins
+        embed_images = self._embed_images_cb.isChecked()
+        return page, landscape, margins, embed_images
 
 
 # ════════════════════════════════════════════════
@@ -980,9 +1012,11 @@ class MDViewerPro(QMainWindow):
         self._saved_scroll_y   = 0
         self._restore_scroll_pending = False
         self._initial_file: Optional[str] = None
+        self._show_toc         = False
+        self._pdf_embed_images = _s.get("pdf_embed_images", True)
 
-        # UI スケール管理
-        self._last_ui_scale_cat = "large"
+        # UI スケール管理 (空文字で初回強制適用)
+        self._last_ui_scale_cat = ""
 
         # プラグインテーマ読み込み
         self._plugin_themes = load_plugin_themes()
@@ -1153,6 +1187,12 @@ class MDViewerPro(QMainWindow):
         lay.addWidget(self._settings_btn)
         sep()
 
+        self._toc_btn = PianoBtn(self._t("toc"))
+        self._toc_btn.setObjectName("mainBtn")
+        self._toc_btn.clicked.connect(self._toggle_toc)
+        lay.addWidget(self._toc_btn)
+        sep()
+
         self._pdf_btn = PianoBtn(self._t("pdf_export"))
         self._pdf_btn.setObjectName("mainBtn")
         self._pdf_btn.clicked.connect(self._export_pdf)
@@ -1301,9 +1341,9 @@ class MDViewerPro(QMainWindow):
         if cat == "large":
             tb_h, fmt_h = TB_H, FMT_H
         elif cat == "medium":
-            tb_h, fmt_h = 50, 38
+            tb_h, fmt_h = 58, 44
         else:
-            tb_h, fmt_h = 40, 32
+            tb_h, fmt_h = 46, 36
 
         self._main_tb.setFixedHeight(tb_h)
         self._fmt_tb.setFixedHeight(fmt_h)
@@ -1313,18 +1353,63 @@ class MDViewerPro(QMainWindow):
     def _ui_sizes(self):
         cat = self._get_ui_scale_cat()
         if cat == "large":
-            return {"tb_fs": 13, "btn_pad": "0 10px", "fmt_fs": 14,
-                    "fmt_pad": "0 11px", "lbl_fs": 13, "min_w": 52}
+            return {"tb_fs": 17, "btn_pad": "0 16px", "fmt_fs": 15,
+                    "fmt_pad": "0 13px", "lbl_fs": 15, "min_w": 60}
         elif cat == "medium":
-            return {"tb_fs": 12, "btn_pad": "0 8px",  "fmt_fs": 12,
-                    "fmt_pad": "0 7px",  "lbl_fs": 11, "min_w": 42}
+            return {"tb_fs": 14, "btn_pad": "0 11px",  "fmt_fs": 13,
+                    "fmt_pad": "0 9px",  "lbl_fs": 13, "min_w": 48}
         else:
-            return {"tb_fs": 11, "btn_pad": "0 5px",  "fmt_fs": 10,
-                    "fmt_pad": "0 4px",  "lbl_fs": 10, "min_w": 32}
+            return {"tb_fs": 12, "btn_pad": "0 7px",  "fmt_fs": 11,
+                    "fmt_pad": "0 5px",  "lbl_fs": 11, "min_w": 36}
 
     # ════════════════════════════════════════════
     #  HTML ビルダー
     # ════════════════════════════════════════════
+    def _toc_js(self):
+        p = self._palette
+        return (
+            '<script>'
+            'window.addEventListener("load",function(){'
+            'var wrap=document.querySelector(".wrap");'
+            'if(!wrap)return;'
+            'var hs=wrap.querySelectorAll("h1,h2,h3,h4,h5,h6");'
+            'if(hs.length===0)return;'
+            'hs.forEach(function(h,i){if(!h.id)h.id="mdv-h-"+i;});'
+            'var toc=document.createElement("div");'
+            'toc.id="mdv-toc";'
+            f'toc.style.cssText="position:fixed;top:0;left:0;bottom:0;width:220px;'
+            f'background:{p["bg2"]};border-right:1px solid {p["border"]};'
+            f'overflow-y:auto;z-index:9999;padding:12px 0 24px 0;'
+            f'box-shadow:2px 0 8px rgba(0,0,0,0.4);";'
+            'var title=document.createElement("div");'
+            f'title.style.cssText="padding:10px 14px 8px 14px;font-weight:bold;'
+            f'font-size:13px;color:{p["heading"]};border-bottom:1px solid {p["border"]};'
+            f'margin-bottom:6px;";'
+            'title.textContent="≡ 目次";'
+            'toc.appendChild(title);'
+            'hs.forEach(function(h){'
+            'var a=document.createElement("a");'
+            'var lv=parseInt(h.tagName[1]);'
+            'var indent=(lv-1)*12;'
+            f'a.style.cssText="display:block;padding:5px 12px 5px "+(indent+12)+"px;'
+            f'font-size:"+(15-lv)+"px;color:{p["text"]};text-decoration:none;'
+            f'cursor:pointer;border-radius:3px;margin:1px 6px;'
+            f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";'
+            'a.textContent=h.textContent;'
+            f'a.onmouseover=function(){{this.style.background="{p["btn_hover"]}";this.style.color="{p["accent"]}";}}; '
+            f'a.onmouseout=function(){{this.style.background="";this.style.color="{p["text"]}";}}; '
+            'a.onclick=function(e){'
+            'e.preventDefault();'
+            'h.scrollIntoView({behavior:"smooth",block:"start"});'
+            '};'
+            'toc.appendChild(a);'
+            '});'
+            'document.body.appendChild(toc);'
+            'document.body.style.marginLeft="228px";'
+            '});'
+            '</script>'
+        )
+
     @staticmethod
     def _copy_plain_js():
         return (
@@ -1498,16 +1583,24 @@ class MDViewerPro(QMainWindow):
             return m.group(0)
         return re.sub(r'<img\s+src="(https?://[^"]+)"', replace_src, html)
 
-    def _build_md_html(self, text, editable=False):
+    def _build_md_html(self, text, editable=False, strip_images=False):
         p   = self._palette
         fs  = int(16 * SCALE_STEPS[self.scale_idx])
-        body = markdown.markdown(
-            text,
-            extensions=["tables", "fenced_code", "codehilite"],
-            extension_configs={"codehilite": {"guess_lang": False, "noclasses": True}},
-        )
+        try:
+            body = markdown.markdown(
+                text,
+                extensions=["tables", "fenced_code", "codehilite"],
+                extension_configs={"codehilite": {"guess_lang": False, "noclasses": True}},
+            )
+        except Exception:
+            try:
+                body = markdown.markdown(text, extensions=["tables", "fenced_code"])
+            except Exception:
+                body = markdown.markdown(text)
         body = self._render_checklist(body)
         body = self._embed_remote_images(body)
+        if strip_images:
+            body = re.sub(r'<img[^>]*>', '', body)
 
         if self.page_mode == "a4":
             t, r, b, l = self.a4_margins
@@ -1591,6 +1684,7 @@ class MDViewerPro(QMainWindow):
                 '</script>'
             )
 
+        toc_js = self._toc_js() if (self._show_toc and not editable) else ""
         return (
             '<!DOCTYPE html><html><head><meta charset="utf-8">'
             f'<style>{css}</style></head>'
@@ -1600,6 +1694,7 @@ class MDViewerPro(QMainWindow):
             f'{(self._md_edit_fmt_js() if editable else "")}'
             f'{webchannel_js}'
             f'{("" if editable else self._copy_plain_js())}'
+            f'{toc_js}'
             '</body></html>'
         )
 
@@ -1733,6 +1828,7 @@ class MDViewerPro(QMainWindow):
         self._scale_lbl.setText(self._t("scale"))
         self._scale_val_lbl.setText(SCALE_LABELS[self.scale_idx])
         self._settings_btn.setText(self._t("settings"))
+        self._toc_btn.setText(self._t("toc"))
         self._pdf_btn.setText(self._t("pdf_export"))
 
     def _refresh_btn_states(self):
@@ -1747,6 +1843,7 @@ class MDViewerPro(QMainWindow):
         self._back_btn.setEnabled(self.edit_mode != "view")
         self._margin_btn.setEnabled(self.page_mode in ("a4", "b5"))
         self._scale_val_lbl.setText(SCALE_LABELS[self.scale_idx])
+        self._toc_btn.set_active(self._show_toc)
 
     # ════════════════════════════════════════════
     #  表示更新
@@ -1886,6 +1983,11 @@ class MDViewerPro(QMainWindow):
         self._refresh_btn_states()
         self._refresh_view()
 
+    def _toggle_toc(self):
+        self._show_toc = not self._show_toc
+        self._toc_btn.set_active(self._show_toc)
+        self._refresh_view()
+
     def _go_back(self):
         self._set_mode("view")
 
@@ -1921,12 +2023,13 @@ class MDViewerPro(QMainWindow):
 
     def _save_app_settings(self):
         save_settings({
-            "lang":        self.lang,
-            "theme":       self.current_theme,
-            "font_family": self.ui_font_family,
-            "bold_mode":   self.bold_mode,
-            "scale_idx":   self.scale_idx,
-            "last_pdf_dir": self._last_pdf_dir,
+            "lang":             self.lang,
+            "theme":            self.current_theme,
+            "font_family":      self.ui_font_family,
+            "bold_mode":        self.bold_mode,
+            "scale_idx":        self.scale_idx,
+            "last_pdf_dir":     self._last_pdf_dir,
+            "pdf_embed_images": self._pdf_embed_images,
         })
 
     def _open_settings(self):
@@ -2010,11 +2113,14 @@ class MDViewerPro(QMainWindow):
         dlg = PdfExportDialog(
             self, self.page_mode,
             self.a4_margins, self.b5_margins,
-            I18N[self.lang]
+            I18N[self.lang],
+            embed_images=self._pdf_embed_images,
         )
         if not dlg.exec():
             return
-        page_size_name, landscape, margins = dlg.get_settings()
+        page_size_name, landscape, margins, embed_images = dlg.get_settings()
+        self._pdf_embed_images = embed_images
+        self._save_app_settings()
         t_m, r_m, b_m, l_m = margins
 
         path, _ = QFileDialog.getSaveFileName(
@@ -2044,19 +2150,44 @@ class MDViewerPro(QMainWindow):
 
         self._pdf_layout_ref = layout  # prevent GC while Chromium processes
 
+        # 画像除外が選択された場合は画像なしHTMLを一時的に読み込んで印刷後に復元
+        need_restore = not embed_images
+        if need_restore:
+            orig_html = self._build_md_html(self._content_text, editable=False)
+            pdf_html  = self._build_md_html(self._content_text, editable=False, strip_images=True)
+            base_path = None
+            if self.current_file_path:
+                base_path = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
+            self._loader.load_html(pdf_html, base_path)
+
         def _on_pdf_done(pdf_path, ok):
             try:
                 self._preview_web.page().pdfPrintingFinished.disconnect(_on_pdf_done)
             except Exception:
                 pass
             self._pdf_layout_ref = None
+            if need_restore:
+                base_path2 = None
+                if self.current_file_path:
+                    base_path2 = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
+                self._loader.load_html(orig_html, base_path2)
             if ok:
                 QMessageBox.information(self, "PDF", self._t("pdf_success"))
             else:
                 QMessageBox.warning(self, "PDF", self._t("pdf_error"))
 
-        self._preview_web.page().pdfPrintingFinished.connect(_on_pdf_done)
-        self._preview_web.page().printToPdf(path, layout)
+        def _do_print(ok=True):
+            try:
+                self._preview_web.loadFinished.disconnect(_do_print)
+            except Exception:
+                pass
+            self._preview_web.page().pdfPrintingFinished.connect(_on_pdf_done)
+            self._preview_web.page().printToPdf(path, layout)
+
+        if need_restore:
+            self._preview_web.loadFinished.connect(_do_print)
+        else:
+            _do_print()
 
     # ════════════════════════════════════════════
     #  HTML書き出し
