@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Yuki_Orita
+# See LICENSE and NOTICE.md for details.
+# Third-party libraries (PySide6/Qt) are used under LGPL-3.0.
 
 import sys
 import os
@@ -30,7 +34,7 @@ from PySide6.QtGui import (
     QPageLayout, QPageSize, QFont, QColor, QDesktopServices,
     QFileOpenEvent,
 )
-from PySide6.QtCore import Qt, QMarginsF, QTimer, QUrl, QSizeF, QObject, Slot
+from PySide6.QtCore import Qt, QMarginsF, QTimer, QUrl, QSizeF, QObject, Slot, QEvent, Signal, QByteArray
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebEngineCore import QWebEnginePage
 from PySide6.QtWebChannel import QWebChannel
@@ -47,7 +51,7 @@ LANGS = {"日本語": "ja", "English": "en", "Deutsch": "de", "Français": "fr"}
 PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
-APP_VERSION   = "1.01"
+APP_VERSION   = "1.1"
 
 DARK_PALETTE = {
     "bg":            "#000000",
@@ -154,6 +158,7 @@ I18N = {
         "toc": "目次",
         "pdf_embed_images": "画像を含める",
         "pdf_embed_images_label": "PDFに画像を埋め込む",
+        "pdf_style_mode": "スタイルモード",
     },
     "en": {
         "back": "Back", "view": "View", "md_edit": "MD Edit", "txt_edit": "TXT Edit",
@@ -213,6 +218,7 @@ I18N = {
         "toc": "TOC",
         "pdf_embed_images": "Include images",
         "pdf_embed_images_label": "Embed images in PDF",
+        "pdf_style_mode": "Style Mode",
     },
     "de": {
         "back": "Zurück", "view": "Ansicht", "md_edit": "MD Bearbeiten", "txt_edit": "TXT Bearbeiten",
@@ -272,6 +278,7 @@ I18N = {
         "toc": "Inhalt",
         "pdf_embed_images": "Bilder einbetten",
         "pdf_embed_images_label": "Bilder in PDF einbetten",
+        "pdf_style_mode": "Stilmodus",
     },
     "fr": {
         "back": "Retour", "view": "Vue", "md_edit": "Édition MD", "txt_edit": "Édition TXT",
@@ -331,6 +338,7 @@ I18N = {
         "toc": "Sommaire",
         "pdf_embed_images": "Inclure les images",
         "pdf_embed_images_label": "Intégrer les images dans le PDF",
+        "pdf_style_mode": "Mode de style",
     },
 }
 
@@ -346,6 +354,7 @@ _SETTINGS_DEFAULTS: dict = {
     "scale_idx":        DEFAULT_SCALE_IDX,
     "last_pdf_dir":     "",
     "pdf_embed_images": True,
+    "window_geometry":  "",
 }
 
 def load_settings() -> dict:
@@ -375,24 +384,96 @@ def save_settings(settings: dict):
 
 
 # ════════════════════════════════════════════════
-#  QApplication サブクラス — macOS ファイルオープンイベント対応
+#  QApplication サブクラス — macOS ファイルオープンイベント / マルチウィンドウ対応
 # ════════════════════════════════════════════════
 class MDApplication(QApplication):
     def __init__(self, argv):
         super().__init__(argv)
-        self._main_win: Optional["MDViewerPro"] = None
+        self._windows: List["MDViewerPro"] = []
+        self.setQuitOnLastWindowClosed(False)
+        self._dock_menu: Optional[object] = None
+        self._setup_dock_menu()
 
+    # ─── 新規ウィンドウ ──────────────────────────
+    def new_window(self) -> "MDViewerPro":
+        win = MDViewerPro()
+        win.show()
+        win.raise_()
+        win.activateWindow()
+        self._windows.append(win)
+        win.window_closed.connect(lambda w=win: self._on_window_closed(w))
+        return win
+
+    def _on_window_closed(self, win: "MDViewerPro"):
+        if win in self._windows:
+            self._windows.remove(win)
+        if not self._windows:
+            self.quit()
+
+    # ─── macOS Dock メニュー ─────────────────────
+    def _setup_dock_menu(self):
+        try:
+            from AppKit import NSApplication, NSMenu, NSMenuItem
+            import objc
+
+            qt_app = self
+
+            # NSObject サブクラスとして New Window アクションターゲットを作成
+            class _DockTarget(objc.lookUpClass("NSObject")):
+                def newMDWindow_(self, sender):
+                    """Dock メニューから新規ウィンドウを開く"""
+                    from PySide6.QtCore import QTimer as _QTimer
+                    _QTimer.singleShot(0, qt_app.new_window)
+
+            target = _DockTarget.alloc().init()
+
+            def _build_and_set_dock_menu():
+                try:
+                    menu = NSMenu.alloc().init()
+                    item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                        "New Window", "newMDWindow:", ""
+                    )
+                    item.setTarget_(target)
+                    item.setEnabled_(True)
+                    menu.addItem_(item)
+                    NSApplication.sharedApplication().setDockMenu_(menu)
+                    # GC 対策: 参照を保持
+                    self._dock_menu_obj = menu
+                    self._dock_target_obj = target
+                except Exception:
+                    pass
+
+            from PySide6.QtCore import QTimer as _QTimer
+            _QTimer.singleShot(1000, _build_and_set_dock_menu)
+        except Exception:
+            pass
+
+    # ─── イベント処理 ────────────────────────────
     def event(self, e):
         if isinstance(e, QFileOpenEvent):
             path = e.file()
             if path and os.path.isfile(path):
-                win = self._main_win
-                if win is not None:
-                    if win._startup_done:
-                        win._load_file(path)
+                target = self._windows[-1] if self._windows else None
+                if target is not None:
+                    if target._startup_done:
+                        # すでにコンテンツがあるウィンドウは新規ウィンドウで開く
+                        if target.current_file_path is not None or target._content_text.strip():
+                            new_win = self.new_window()
+                            new_win._initial_file = path
+                        else:
+                            target._load_file(path)
                     else:
-                        win._initial_file = path
+                        target._initial_file = path
                 return True
+        elif e.type() == QEvent.Type.ApplicationActivated:
+            # Dock アイコンクリックなどでアプリが前面に — ウィンドウがなければ新規作成
+            visible = any(w.isVisible() and not w.isMinimized() for w in self._windows)
+            if not visible:
+                if self._windows:
+                    self._windows[-1].showNormal()
+                    self._windows[-1].raise_()
+                else:
+                    self.new_window()
         return super().event(e)
 
 
@@ -497,6 +578,18 @@ class ContentBridge(QObject):
 
 
 # ════════════════════════════════════════════════
+#  QWebChannel ブリッジ — クリップボード用（全モード共通）
+# ════════════════════════════════════════════════
+class ClipboardBridge(QObject):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    @Slot(str)
+    def copyText(self, text: str):
+        QApplication.clipboard().setText(text)
+
+
+# ════════════════════════════════════════════════
 #  HTML → Markdown 変換 (標準ライブラリのみ使用)
 # ════════════════════════════════════════════════
 class _HTML2MD(HTMLParser):
@@ -520,7 +613,10 @@ class _HTML2MD(HTMLParser):
         elif tag == 'p':
             self.parts.append('\n\n')
         elif tag == 'br':
-            self.parts.append('\n')
+            if any(t in self._stack for t in ('td', 'th')):
+                self.parts.append('<br>')
+            else:
+                self.parts.append('\n')
         elif tag in ('strong', 'b'):
             self.parts.append('**')
         elif tag in ('em', 'i'):
@@ -605,6 +701,10 @@ class _HTML2MD(HTMLParser):
             self.parts.append('\n')
 
     def handle_data(self, data):
+        # テーブル要素内の空白のみのデータはMarkdown変換を壊すため無視する
+        _TABLE_TAGS = {'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td'}
+        if data.strip() == '' and any(t in self._stack for t in _TABLE_TAGS):
+            return
         self.parts.append(data)
 
     def get_result(self) -> str:
@@ -883,12 +983,15 @@ class StartupDialog(QDialog):
 #  PDF書き出し設定ダイアログ
 # ════════════════════════════════════════════════
 class PdfExportDialog(QDialog):
-    def __init__(self, parent, page_mode, a4_margins, b5_margins, t, embed_images=True):
+    def __init__(self, parent, page_mode, a4_margins, b5_margins, t,
+                 embed_images=True, current_theme="dark", plugin_themes=None):
         super().__init__(parent)
         self.setWindowTitle(t.get("pdf_settings_title", "PDF書き出し設定"))
         self.setMinimumWidth(320)
         self._a4_margins = a4_margins
         self._b5_margins = b5_margins
+        if plugin_themes is None:
+            plugin_themes = {}
         root = QVBoxLayout(self)
         root.setSpacing(12)
 
@@ -936,6 +1039,21 @@ class PdfExportDialog(QDialog):
         il.addWidget(self._embed_images_cb)
         root.addWidget(ig)
 
+        # スタイルモード選択 (ダーク / ライト / プラグイン)
+        sg = QGroupBox(t.get("pdf_style_mode", "スタイルモード"))
+        sl = QVBoxLayout(sg)
+        self._style_cb = QComboBox()
+        _dark_lbl  = t.get("dark",  "ダークモード")
+        _light_lbl = t.get("light", "ライトモード")
+        self._style_items = [("dark", _dark_lbl), ("light", _light_lbl)]
+        for name in plugin_themes.keys():
+            self._style_items.append((name, name))
+        self._style_cb.addItems([lbl for _, lbl in self._style_items])
+        cur_idx = next((i for i, (k, _) in enumerate(self._style_items) if k == current_theme), 0)
+        self._style_cb.setCurrentIndex(cur_idx)
+        sl.addWidget(self._style_cb)
+        root.addWidget(sg)
+
         self._page_cb.currentTextChanged.connect(self._on_page_changed)
 
         bb = QDialogButtonBox(
@@ -956,7 +1074,8 @@ class PdfExportDialog(QDialog):
         landscape = self._orient_cb.currentIndex() == 1
         margins = tuple(self._margin_spins[k].value() for k in ["top", "right", "bottom", "left"])
         embed_images = self._embed_images_cb.isChecked()
-        return page, landscape, margins, embed_images
+        pdf_theme = self._style_items[self._style_cb.currentIndex()][0]
+        return page, landscape, margins, embed_images, pdf_theme
 
 
 # ════════════════════════════════════════════════
@@ -982,6 +1101,7 @@ class PianoBtn(QPushButton):
 #  メインウィンドウ
 # ════════════════════════════════════════════════
 class MDViewerPro(QMainWindow):
+    window_closed = Signal()
 
     def __init__(self):
         super().__init__()
@@ -1038,30 +1158,34 @@ class MDViewerPro(QMainWindow):
 
         self._build_ui()
 
+        # ウィンドウジオメトリ復元 (前回終了時のサイズ・位置)
+        if _s.get("window_geometry"):
+            try:
+                geom = QByteArray.fromBase64(_s["window_geometry"].encode("ascii"))
+                self.restoreGeometry(geom)
+            except Exception:
+                pass
+
         self._loader = SafeWebLoader(self._preview_web, dark=True)
 
         self._bridge = ContentBridge(self._on_md_content_changed, self)
+        self._clipboard_bridge = ClipboardBridge(self)
         self._channel = QWebChannel(self)
         self._channel.registerObject("bridge", self._bridge)
+        self._channel.registerObject("clipboard", self._clipboard_bridge)
         self._md_page.setWebChannel(self._channel)
 
         self._apply_theme(refresh=False)
 
-        self._startup_done = False
-        self._preview_web.loadFinished.connect(self._on_initial_load_finished)
-        self._loader.load_html("<html><body></body></html>")
-
-        # フォールバック: WebEngine が loadFinished を発火しない場合の保険
-        self._startup_fallback = QTimer(self)
+        # スタートアップダイアログを即座に表示しつつ WebEngine をバックグラウンドで初期化
+        # (旧実装: loadFinished 待ち → 最大 4 秒の遅延があった)
+        self._startup_done = True
+        self._loader.load_html("<html><body></body></html>")  # WebEngine ウォームアップ
+        self._startup_fallback = QTimer(self)  # 後方互換: stop() 呼び出し用に保持
         self._startup_fallback.setSingleShot(True)
-        self._startup_fallback.setInterval(4000)
-        self._startup_fallback.timeout.connect(self._ensure_startup)
-        self._startup_fallback.start()
+        QTimer.singleShot(0, self._startup_open)
 
-        # MDApplication に自身を登録（QFileOpenEvent 対応）
-        app_inst = QApplication.instance()
-        if isinstance(app_inst, MDApplication):
-            app_inst._main_win = self
+        # MDApplication の管理リストへの登録は MDApplication.new_window() で行う
 
     def _t(self, key):
         return (I18N[self.lang].get(key)
@@ -1245,8 +1369,8 @@ class MDViewerPro(QMainWindow):
         fb("fmt_bold",   txt_wrap="wrap",   txt_pre="**",      txt_post="**",  md_cmd="bold")
         fb("fmt_italic", txt_wrap="wrap",   txt_pre="*",       txt_post="*",   md_cmd="italic")
         fb("fmt_strike", txt_wrap="wrap",   txt_pre="~~",      txt_post="~~",  md_cmd="strikethrough")
-        fb("fmt_code",   txt_wrap="wrap",   txt_pre="`",       txt_post="`",
-           md_js="(function(){var s=window.getSelection();if(s&&s.rangeCount){var r=s.getRangeAt(0);var t=r.toString()||'code';r.deleteContents();var c=document.createElement('code');c.textContent=t;r.insertNode(c);var w=document.querySelector('.wrap');if(w)w.dispatchEvent(new Event('input',{bubbles:true}));}})();")
+        fb("fmt_code",   txt_wrap="wrap",   txt_pre="\n```\n", txt_post="\n```\n",
+           md_js="(function(){var s=window.getSelection();if(s&&s.rangeCount){var r=s.getRangeAt(0);var t=r.toString()||'code';r.deleteContents();var pre=document.createElement('pre');var c=document.createElement('code');c.textContent=t;pre.appendChild(c);r.insertNode(pre);var w=document.querySelector('.wrap');if(w)w.dispatchEvent(new Event('input',{bubbles:true}));}})();")
         fs()
         fb("fmt_h1",     txt_wrap="prefix", txt_pre="# ",      md_block="h1")
         fb("fmt_h2",     txt_wrap="prefix", txt_pre="## ",     md_block="h2")
@@ -1272,14 +1396,27 @@ class MDViewerPro(QMainWindow):
             if self.edit_mode == "txt":
                 self._md_insert_table()
             elif self.edit_mode == "md":
-                tbl_html = (
-                    "<table><thead><tr><th>列1</th><th>列2</th><th>列3</th></tr></thead>"
-                    "<tbody><tr><td>セル</td><td>セル</td><td>セル</td></tr>"
-                    "<tr><td>セル</td><td>セル</td><td>セル</td></tr></tbody></table>"
-                )
                 self._preview_web.page().runJavaScript(
-                    f"(function(){{document.execCommand('insertHTML',false,{json.dumps(tbl_html)});"
-                    "var w=document.querySelector('.wrap');if(w)w.dispatchEvent(new Event('input',{bubbles:true}));}})()"
+                    "(function(){"
+                    "var w=document.querySelector('.wrap');"
+                    "if(!w)return;"
+                    "var tmp=document.createElement('div');"
+                    "tmp.innerHTML='<table><thead><tr><th>列1</th><th>列2</th><th>列3</th></tr></thead>"
+                    "<tbody><tr><td>セル</td><td>セル</td><td>セル</td></tr>"
+                    "<tr><td>セル</td><td>セル</td><td>セル</td></tr></tbody></table>';"
+                    "var tbl=tmp.firstChild;"
+                    "var sel=window.getSelection();"
+                    "if(sel&&sel.rangeCount){"
+                    "var r=sel.getRangeAt(0);"
+                    "var anchor=r.startContainer;"
+                    "while(anchor&&anchor.parentNode!==w)anchor=anchor.parentNode;"
+                    "if(anchor&&anchor.parentNode===w){"
+                    "w.insertBefore(tbl,anchor.nextSibling);"
+                    "}else{w.appendChild(tbl);}"
+                    "}else{w.appendChild(tbl);}"
+                    "w.dispatchEvent(new Event('input',{bubbles:true}));"
+                    "if(typeof window._mdvSetupTableBtns==='function')window._mdvSetupTableBtns();"
+                    "})()"
                 )
         tbl_btn.clicked.connect(on_table)
         lay.addWidget(tbl_btn)
@@ -1298,6 +1435,14 @@ class MDViewerPro(QMainWindow):
         mb = self.menuBar()
         mb.setNativeMenuBar(True)
         fm = mb.addMenu(self._t("file"))
+
+        # New Window
+        nw_act = QAction("New Window", self)
+        nw_act.setShortcut(QKeySequence("Ctrl+Shift+N"))
+        nw_act.triggered.connect(self.new_window)
+        fm.addAction(nw_act)
+        fm.addSeparator()
+
         for tk, sc, fn in [
             ("new",             "Ctrl+N",       self.file_new),
             ("open",            "Ctrl+O",       self.file_open),
@@ -1429,18 +1574,23 @@ class MDViewerPro(QMainWindow):
             '<script>'
             'function _mdvCopy(btn){'
             'var pre=btn.parentElement;'
-            'var code=pre.querySelector("code")||pre;'
-            'var text=(code.innerText||code.textContent||"");'
-            'function fb(){'
+            # copyボタン自身を除いたcode要素のテキストを取得
+            'var clone=pre.cloneNode(true);'
+            'clone.querySelectorAll(".mdv-copy-btn").forEach(function(b){b.remove();});'
+            'var code=clone.querySelector("code")||clone;'
+            'var text=(code.innerText||code.textContent||"").replace(/\\n$/,"");'
+            # Python ClipboardBridgeを使う（WebEngineのclipboard制限を回避）
+            'if(typeof _mdvClipboard!=="undefined"&&_mdvClipboard){'
+            '_mdvClipboard.copyText(text);'
+            '}else{'
+            # フォールバック: textarea経由でコピー
             'var ta=document.createElement("textarea");'
             'ta.value=text;'
-            'ta.style.cssText="position:fixed;top:0;left:0;opacity:0;pointer-events:none;";'
+            'ta.style.cssText="position:fixed;top:-9999px;left:-9999px;";'
             'document.body.appendChild(ta);ta.focus();ta.select();'
             'try{document.execCommand("copy");}catch(e){}'
-            'document.body.removeChild(ta);}'
-            'if(navigator.clipboard&&navigator.clipboard.writeText){'
-            'navigator.clipboard.writeText(text).then(function(){})'
-            '.catch(fb);}else{fb();}'
+            'document.body.removeChild(ta);'
+            '}'
             'var orig=btn.textContent;'
             'btn.textContent="✓";btn.style.opacity="1";'
             'setTimeout(function(){btn.textContent=orig;btn.style.opacity="";},1500);}'
@@ -1461,8 +1611,13 @@ class MDViewerPro(QMainWindow):
         """MD編集モード用の書式JS関数群"""
         return (
             '<script>'
+            # ── 書式コマンド (HR は <p> を後挿入してカーソル位置を安定させる) ──
             'window._mdvExec=function(cmd){'
+            'if(cmd==="insertHorizontalRule"){'
+            'document.execCommand("insertHTML",false,"<hr><p><br></p>");'
+            '}else{'
             'document.execCommand(cmd,false,null);'
+            '}'
             'var w=document.querySelector(".wrap");'
             'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
             '};'
@@ -1471,6 +1626,76 @@ class MDViewerPro(QMainWindow):
             'var w=document.querySelector(".wrap");'
             'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
             '};'
+            # ── テーブルセル内 Enter → <br> 挿入 ──
+            'document.addEventListener("keydown",function(e){'
+            'if(e.key!=="Enter"||e.shiftKey)return;'
+            'var sel=window.getSelection();'
+            'if(!sel||!sel.rangeCount)return;'
+            'var n=sel.getRangeAt(0).startContainer;'
+            'var wrap=document.querySelector(".wrap");'
+            'while(n&&n!==wrap){'
+            'if(n.nodeName==="TD"||n.nodeName==="TH"){'
+            'e.preventDefault();'
+            'document.execCommand("insertHTML",false,"<br>");'
+            'if(wrap)wrap.dispatchEvent(new Event("input",{bubbles:true}));'
+            'return;'
+            '}'
+            'n=n.parentNode;'
+            '}'
+            '},true);'
+            # ── テーブルに +列 / +行 ボタンを追加 ──
+            'window._mdvSetupTableBtns=function(){'
+            'var wrap=document.querySelector(".wrap");'
+            'if(!wrap)return;'
+            'wrap.querySelectorAll(".mdv-table-ctrl").forEach(function(b){b.remove();});'
+            'wrap.querySelectorAll("table").forEach(function(tbl){'
+            'var ctrl=document.createElement("div");'
+            'ctrl.className="mdv-table-ctrl";'
+            'ctrl.contentEditable="false";'
+            'ctrl.style.cssText="display:flex;gap:4px;margin:2px 0 10px 0;user-select:none;";'
+            'var mkBtn=function(label,title,fn){'
+            'var b=document.createElement("button");'
+            'b.type="button";b.textContent=label;b.title=title;'
+            'b.style.cssText="padding:2px 10px;font-size:11px;cursor:pointer;'
+            'border:1px solid rgba(74,158,255,0.5);border-radius:3px;'
+            'background:rgba(74,158,255,0.12);color:#4a9eff;font-weight:bold;";'
+            'b.onmouseenter=function(){this.style.background="rgba(74,158,255,0.3)";};'
+            'b.onmouseleave=function(){this.style.background="rgba(74,158,255,0.12)";};'
+            'b.onclick=fn;return b;'
+            '};'
+            'ctrl.appendChild(mkBtn("+ 列","列を追加",function(e){'
+            'e.stopPropagation();e.preventDefault();'
+            'var rows=tbl.querySelectorAll("tr");'
+            'rows.forEach(function(row,i){'
+            'var isHead=tbl.querySelector("thead")&&row.closest("thead")!==null;'
+            'var cell=document.createElement(isHead?"th":"td");'
+            'cell.textContent=isHead?"列":"セル";'
+            'row.appendChild(cell);'
+            '});'
+            'var w=document.querySelector(".wrap");'
+            'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
+            'window._mdvSetupTableBtns();'
+            '}));'
+            'ctrl.appendChild(mkBtn("+ 行","行を追加",function(e){'
+            'e.stopPropagation();e.preventDefault();'
+            'var tbody=tbl.querySelector("tbody")||tbl;'
+            'var lastRow=tbody.querySelector("tr:last-child");'
+            'if(!lastRow)return;'
+            'var newRow=document.createElement("tr");'
+            'for(var j=0;j<lastRow.cells.length;j++){'
+            'var td=document.createElement("td");'
+            'td.textContent="セル";'
+            'newRow.appendChild(td);'
+            '}'
+            'tbody.appendChild(newRow);'
+            'var w=document.querySelector(".wrap");'
+            'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
+            'window._mdvSetupTableBtns();'
+            '}));'
+            'tbl.insertAdjacentElement("afterend",ctrl);'
+            '});'
+            '};'
+            'window.addEventListener("load",function(){setTimeout(window._mdvSetupTableBtns,200);});'
             '</script>'
         )
 
@@ -1664,25 +1889,31 @@ class MDViewerPro(QMainWindow):
 
         wrap_attrs = ' contenteditable="true" spellcheck="false"' if editable else ""
 
-        webchannel_js = ""
+        # 全モードでクリップボードブリッジを初期化。編集モード時はコンテンツブリッジも初期化
+        _ch_content = ""
         if editable:
-            webchannel_js = (
-                '<script src="qrc:///qtwebchannel/qwebchannel.js"></script>'
-                '<script>'
-                'document.addEventListener("DOMContentLoaded",function(){'
-                'if(typeof QWebChannel==="undefined")return;'
-                'new QWebChannel(qt.webChannelTransport,function(ch){'
+            _ch_content = (
                 'var br=ch.objects.bridge;'
                 'var w=document.querySelector(".wrap");'
-                'if(!w)return;'
+                'if(w){'
                 'var tmr=null;'
                 'w.addEventListener("input",function(){'
                 'clearTimeout(tmr);'
                 'tmr=setTimeout(function(){br.contentChanged(w.innerHTML);},400);'
-                '});'
-                '});});'
-                '</script>'
+                '});}'
             )
+        webchannel_js = (
+            '<script src="qrc:///qtwebchannel/qwebchannel.js"></script>'
+            '<script>'
+            'var _mdvClipboard=null;'
+            'document.addEventListener("DOMContentLoaded",function(){'
+            'if(typeof QWebChannel==="undefined"||typeof qt==="undefined")return;'
+            'new QWebChannel(qt.webChannelTransport,function(ch){'
+            '_mdvClipboard=ch.objects.clipboard;'
+            + _ch_content +
+            '});});'
+            '</script>'
+        )
 
         toc_js = self._toc_js() if (self._show_toc and not editable) else ""
         return (
@@ -1733,7 +1964,7 @@ class MDViewerPro(QMainWindow):
             f"QPlainTextEdit{{"
             f"background-color:{p['bg']};color:{p['text']};"
             f"font-family:{ff};font-size:{ed_fs}px;font-weight:{fw_editor};"
-            f"padding:14px;border:none;"
+            f"border:none;"
             f"selection-background-color:{p['select']};}}"
         )
 
@@ -1811,6 +2042,8 @@ class MDViewerPro(QMainWindow):
 
         self.setStyleSheet(app_ss)
         self._md_editor.setStyleSheet(editor_ss)
+        # padding:14px の代わりに document margin を使う（| 文字の座標ズレを防ぐ）
+        self._md_editor.document().setDocumentMargin(16)
         if hasattr(self, "_loader"):
             self._loader.set_background(p["bg"])
         self._sync_tb_labels()
@@ -1947,8 +2180,15 @@ class MDViewerPro(QMainWindow):
         self._timer.stop()
         if self.edit_mode == "md":
             self._pending_mode = mode
+            # コピーボタン等を除去してからinnerHTMLを取得（テーブル変換の精度向上）
             self._preview_web.page().runJavaScript(
-                "var w=document.querySelector('.wrap');w?w.innerHTML:'';",
+                "(function(){"
+                "var w=document.querySelector('.wrap');"
+                "if(!w)return '';"
+                "var c=w.cloneNode(true);"
+                "c.querySelectorAll('.mdv-copy-btn,.pg-brk,.mdv-table-ctrl').forEach(function(el){el.remove();});"
+                "return c.innerHTML;"
+                "})()",
                 lambda html: self._finish_mode_switch_from_md(html, mode)
             )
         else:
@@ -2022,6 +2262,7 @@ class MDViewerPro(QMainWindow):
         self._timer.start()
 
     def _save_app_settings(self):
+        geom_b64 = self.saveGeometry().toBase64().data().decode("ascii")
         save_settings({
             "lang":             self.lang,
             "theme":            self.current_theme,
@@ -2030,6 +2271,7 @@ class MDViewerPro(QMainWindow):
             "scale_idx":        self.scale_idx,
             "last_pdf_dir":     self._last_pdf_dir,
             "pdf_embed_images": self._pdf_embed_images,
+            "window_geometry":  geom_b64,
         })
 
     def _open_settings(self):
@@ -2115,10 +2357,12 @@ class MDViewerPro(QMainWindow):
             self.a4_margins, self.b5_margins,
             I18N[self.lang],
             embed_images=self._pdf_embed_images,
+            current_theme=self.current_theme,
+            plugin_themes=self._plugin_themes,
         )
         if not dlg.exec():
             return
-        page_size_name, landscape, margins, embed_images = dlg.get_settings()
+        page_size_name, landscape, margins, embed_images, pdf_theme = dlg.get_settings()
         self._pdf_embed_images = embed_images
         self._save_app_settings()
         t_m, r_m, b_m, l_m = margins
@@ -2150,15 +2394,29 @@ class MDViewerPro(QMainWindow):
 
         self._pdf_layout_ref = layout  # prevent GC while Chromium processes
 
-        # 画像除外が選択された場合は画像なしHTMLを一時的に読み込んで印刷後に復元
-        need_restore = not embed_images
-        if need_restore:
-            orig_html = self._build_md_html(self._content_text, editable=False)
-            pdf_html  = self._build_md_html(self._content_text, editable=False, strip_images=True)
-            base_path = None
-            if self.current_file_path:
-                base_path = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
-            self._loader.load_html(pdf_html, base_path)
+        # 選択テーマのパレットを一時的に適用してクリーンなHTML生成
+        # (カーソル/contenteditable除去 + テーマ適用)
+        orig_palette = self._palette
+        if pdf_theme == "dark":
+            self._palette = DARK_PALETTE
+        elif pdf_theme == "light":
+            self._palette = LIGHT_PALETTE
+        elif pdf_theme in self._plugin_themes:
+            self._palette = self._plugin_themes[pdf_theme]
+
+        strip_img = not embed_images
+        pdf_html = self._build_md_html(self._content_text, editable=False, strip_images=strip_img)
+        self._palette = orig_palette  # パレットを元に戻す
+
+        # 現在の表示状態を保持するため元のHTMLも生成
+        orig_html = self._build_md_html(self._content_text, editable=(self.edit_mode == "md"))
+
+        base_path = None
+        if self.current_file_path:
+            base_path = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
+
+        # 常にクリーンなPDF用HTMLをロードしてから印刷 (カーソル非表示)
+        self._loader.load_html(pdf_html, base_path)
 
         def _on_pdf_done(pdf_path, ok):
             try:
@@ -2166,11 +2424,11 @@ class MDViewerPro(QMainWindow):
             except Exception:
                 pass
             self._pdf_layout_ref = None
-            if need_restore:
-                base_path2 = None
-                if self.current_file_path:
-                    base_path2 = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
-                self._loader.load_html(orig_html, base_path2)
+            # 元の表示を復元
+            base_path2 = None
+            if self.current_file_path:
+                base_path2 = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
+            self._loader.load_html(orig_html, base_path2)
             if ok:
                 QMessageBox.information(self, "PDF", self._t("pdf_success"))
             else:
@@ -2184,10 +2442,7 @@ class MDViewerPro(QMainWindow):
             self._preview_web.page().pdfPrintingFinished.connect(_on_pdf_done)
             self._preview_web.page().printToPdf(path, layout)
 
-        if need_restore:
-            self._preview_web.loadFinished.connect(_do_print)
-        else:
-            _do_print()
+        self._preview_web.loadFinished.connect(_do_print)
 
     # ════════════════════════════════════════════
     #  HTML書き出し
@@ -2538,6 +2793,14 @@ class MDViewerPro(QMainWindow):
         self._refresh_btn_states()
         self._update_title()
 
+    # ════════════════════════════════════════════
+    #  新規ウィンドウ
+    # ════════════════════════════════════════════
+    def new_window(self):
+        app = QApplication.instance()
+        if isinstance(app, MDApplication):
+            app.new_window()
+
     def closeEvent(self, event):
         self._timer.stop()
         self._resize_timer.stop()
@@ -2546,6 +2809,7 @@ class MDViewerPro(QMainWindow):
             self._save_app_settings()
             self._loader.cleanup()
             event.accept()
+            self.window_closed.emit()
         else:
             event.ignore()
 
@@ -2555,8 +2819,8 @@ if __name__ == "__main__":
     app = MDApplication(sys.argv)
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
     app.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
-    win = MDViewerPro()
-    win.show()
+
+    win = app.new_window()
 
     # コマンドライン引数でファイルが指定された場合
     args = app.arguments()

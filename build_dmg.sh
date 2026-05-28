@@ -34,6 +34,9 @@ echo "[4/5] DMG を作成中..."
 mkdir -p dmg_tmp
 cp -R "dist/${APP_NAME}.app" dmg_tmp/
 ln -s /Applications dmg_tmp/Applications
+# LGPL準拠: LICENSE / NOTICE をDMGに同梱
+cp "$(dirname "$0")/LICENSE"   dmg_tmp/ 2>/dev/null || true
+cp "$(dirname "$0")/NOTICE.md" dmg_tmp/ 2>/dev/null || true
 
 hdiutil create \
     -volname "MD Viewer Pro" \
