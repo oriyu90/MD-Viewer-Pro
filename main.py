@@ -51,7 +51,7 @@ LANGS = {"日本語": "ja", "English": "en", "Deutsch": "de", "Français": "fr"}
 PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
-APP_VERSION   = "1.1"
+APP_VERSION   = "1.2"
 
 DARK_PALETTE = {
     "bg":            "#000000",
@@ -976,6 +976,38 @@ class StartupDialog(QDialog):
     def _on_guide(self):
         self.selected_lang = self._current_selected_lang()
         self.action = self.ACTION_GUIDE
+        self.accept()
+
+    # ─── × ボタン / Escape → 新規作成として扱う ──────────
+    def reject(self):
+        if self.action is None:
+            self.selected_lang = self._current_selected_lang()
+            self.action = self.ACTION_NEW
+        super().accept()
+
+    # ─── ダイアログ以外（本体ウィンドウ等）がアクティブになった → 新規作成 ──
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if (event.type() == QEvent.Type.ActivationChange
+                and not self.isActiveWindow()
+                and self.isVisible()
+                and self.action is None):
+            # ComboBox ポップアップ等による一時的な非アクティブ化を除外するため
+            # 200ms 待ってから判定する
+            QTimer.singleShot(200, self._check_deactivation)
+
+    def _check_deactivation(self):
+        """非アクティブ化が持続していれば（本体クリック等）新規作成として処理"""
+        if not self.isVisible() or self.action is not None:
+            return
+        # 自分自身または子ポップアップがアクティブな場合は何もしない
+        if self.isActiveWindow():
+            return
+        active = QApplication.activeWindow()
+        if active is self or (active is not None and active.parent() is self):
+            return
+        self.selected_lang = self._current_selected_lang()
+        self.action = self.ACTION_NEW
         self.accept()
 
 
@@ -2526,8 +2558,8 @@ class MDViewerPro(QMainWindow):
         elif result and dlg.action == StartupDialog.ACTION_GUIDE:
             self._open_guide()
         else:
-            # × で閉じた場合: 最新の sample_*.md ファイルを読み取り専用で表示
-            self._open_guide()
+            # フォールバック（通常ここには来ない）
+            self.file_new()
 
     # ════════════════════════════════════════════
     #  ファイル操作
@@ -2542,7 +2574,7 @@ class MDViewerPro(QMainWindow):
         self._md_editor.blockSignals(True)
         self._md_editor.setPlainText("")
         self._md_editor.blockSignals(False)
-        self._do_set_mode("txt")
+        self._do_set_mode("md")
         self._update_title()
 
     def _load_file(self, path):

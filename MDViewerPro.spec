@@ -13,8 +13,25 @@ _shiryobako = os.path.join(os.path.dirname(os.path.abspath(SPEC)), '資料箱')
 for _f in _glob.glob(os.path.join(_shiryobako, 'sample_*.md')):
     datas.append((_f, '資料箱'))
 
+# LICENSE / NOTICE をバンドルに含める (LGPL準拠)
+_spec_dir = os.path.dirname(os.path.abspath(SPEC))
+for _lf in ('LICENSE', 'NOTICE.md'):
+    _lpath = os.path.join(_spec_dir, _lf)
+    if os.path.exists(_lpath):
+        datas.append((_lpath, '.'))
+
 for pkg in ('PySide6', 'PySide6.QtWebEngineWidgets', 'PySide6.QtWebChannel',
             'markdown', 'pygments'):
+    try:
+        tmp = collect_all(pkg)
+        datas    += tmp[0]
+        binaries += tmp[1]
+        hiddenimports += tmp[2]
+    except Exception:
+        pass
+
+# PyObjC (macOS Dock メニュー対応)
+for pkg in ('objc', 'AppKit', 'Foundation'):
     try:
         tmp = collect_all(pkg)
         datas    += tmp[0]
@@ -39,6 +56,9 @@ hiddenimports += [
     'urllib.request',
     'urllib.error',
     'base64',
+    'objc',
+    'AppKit',
+    'Foundation',
 ]
 
 a = Analysis(
@@ -91,8 +111,8 @@ app = BUNDLE(
     info_plist={
         'CFBundleName': 'MD Viewer Pro',
         'CFBundleDisplayName': 'MD Viewer Pro',
-        'CFBundleVersion': '1.01',
-        'CFBundleShortVersionString': '1.00',
+        'CFBundleVersion': '1.2',
+        'CFBundleShortVersionString': '1.2',
         'CFBundlePackageType': 'APPL',
         'CFBundleSignature': '????',
         'NSHighResolutionCapable': True,
