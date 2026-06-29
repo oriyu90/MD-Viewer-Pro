@@ -51,7 +51,7 @@ LANGS = {"日本語": "ja", "English": "en", "Deutsch": "de", "Français": "fr"}
 PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
-APP_VERSION   = "1.2"
+APP_VERSION   = "1.3"
 
 DARK_PALETTE = {
     "bg":            "#000000",
@@ -126,7 +126,7 @@ I18N = {
         "margin_top": "上", "margin_right": "右",
         "margin_bottom": "下", "margin_left": "左",
         "fmt_bold": "B", "fmt_italic": "I", "fmt_strike": "~~", "fmt_code": "コード",
-        "fmt_h1": "H1", "fmt_h2": "H2", "fmt_h3": "H3",
+        "fmt_h1": "H1", "fmt_h2": "H2", "fmt_h3": "H3", "fmt_body": "本文",
         "fmt_list": "リスト", "fmt_num": "番号", "fmt_check": "チェック",
         "fmt_quote": "引用", "fmt_hr": "水平線", "fmt_link": "リンク",
         "fmt_img": "画像", "fmt_table": "テーブル",
@@ -186,7 +186,7 @@ I18N = {
         "margin_top": "Top", "margin_right": "Right",
         "margin_bottom": "Bottom", "margin_left": "Left",
         "fmt_bold": "B", "fmt_italic": "I", "fmt_strike": "~~", "fmt_code": "Code",
-        "fmt_h1": "H1", "fmt_h2": "H2", "fmt_h3": "H3",
+        "fmt_h1": "H1", "fmt_h2": "H2", "fmt_h3": "H3", "fmt_body": "Body",
         "fmt_list": "List", "fmt_num": "Num", "fmt_check": "Check",
         "fmt_quote": "Quote", "fmt_hr": "HR", "fmt_link": "Link",
         "fmt_img": "Image", "fmt_table": "Table",
@@ -246,7 +246,7 @@ I18N = {
         "margin_top": "Oben", "margin_right": "Rechts",
         "margin_bottom": "Unten", "margin_left": "Links",
         "fmt_bold": "B", "fmt_italic": "I", "fmt_strike": "~~", "fmt_code": "Code",
-        "fmt_h1": "H1", "fmt_h2": "H2", "fmt_h3": "H3",
+        "fmt_h1": "H1", "fmt_h2": "H2", "fmt_h3": "H3", "fmt_body": "Text",
         "fmt_list": "Liste", "fmt_num": "Num.", "fmt_check": "Check",
         "fmt_quote": "Zitat", "fmt_hr": "HR", "fmt_link": "Link",
         "fmt_img": "Bild", "fmt_table": "Tabelle",
@@ -306,7 +306,7 @@ I18N = {
         "margin_top": "Haut", "margin_right": "Droite",
         "margin_bottom": "Bas", "margin_left": "Gauche",
         "fmt_bold": "G", "fmt_italic": "I", "fmt_strike": "~~", "fmt_code": "Code",
-        "fmt_h1": "H1", "fmt_h2": "H2", "fmt_h3": "H3",
+        "fmt_h1": "H1", "fmt_h2": "H2", "fmt_h3": "H3", "fmt_body": "Corps",
         "fmt_list": "Liste", "fmt_num": "Num.", "fmt_check": "Case",
         "fmt_quote": "Citation", "fmt_hr": "Ligne", "fmt_link": "Lien",
         "fmt_img": "Image", "fmt_table": "Tableau",
@@ -603,15 +603,28 @@ class _HTML2MD(HTMLParser):
         self._ol_counters: List[int] = []
         self._in_thead = False
         self._th_count = 0
+        self._skip_at: Optional[int] = None
 
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
         attrs_d = dict(attrs)
         self._stack.append(tag)
+        # エディタが注入する制御要素(コピーボタン・テーブル操作ボタン・改ページ等)は除外
+        cls = attrs_d.get('class', '') or ''
+        if self._skip_at is None and any(
+            c in cls for c in ('mdv-copy-btn', 'mdv-table-ctrl', 'pg-brk', 'mdv-toc')
+        ):
+            self._skip_at = len(self._stack)
+        if self._skip_at is not None:
+            return
         if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
             self.parts.append('\n\n' + '#' * int(tag[1]) + ' ')
         elif tag == 'p':
             self.parts.append('\n\n')
+        elif tag == 'div':
+            # contenteditable が Enter で生成する <div> 行を改行として扱う
+            if self.parts and not self.parts[-1].endswith('\n'):
+                self.parts.append('\n')
         elif tag == 'br':
             if any(t in self._stack for t in ('td', 'th')):
                 self.parts.append('<br>')
@@ -666,6 +679,10 @@ class _HTML2MD(HTMLParser):
         tag = tag.lower()
         if self._stack and self._stack[-1] == tag:
             self._stack.pop()
+        if self._skip_at is not None:
+            if len(self._stack) < self._skip_at:
+                self._skip_at = None
+            return
         if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
             self.parts.append('\n\n')
         elif tag == 'p':
@@ -701,6 +718,8 @@ class _HTML2MD(HTMLParser):
             self.parts.append('\n')
 
     def handle_data(self, data):
+        if self._skip_at is not None:
+            return
         # テーブル要素内の空白のみのデータはMarkdown変換を壊すため無視する
         _TABLE_TAGS = {'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td'}
         if data.strip() == '' and any(t in self._stack for t in _TABLE_TAGS):
@@ -1407,11 +1426,20 @@ class MDViewerPro(QMainWindow):
         fb("fmt_h1",     txt_wrap="prefix", txt_pre="# ",      md_block="h1")
         fb("fmt_h2",     txt_wrap="prefix", txt_pre="## ",     md_block="h2")
         fb("fmt_h3",     txt_wrap="prefix", txt_pre="### ",    md_block="h3")
+
+        # 本文ボタン: 現在のカーソル位置のブロックを通常の本文(段落)にする
+        body_btn = PianoBtn(self._t("fmt_body"))
+        body_btn.setObjectName("fmtBtn")
+        def on_body():
+            if self.edit_mode == "txt":
+                self._md_body()
+            elif self.edit_mode == "md":
+                self._preview_web.page().runJavaScript("window._mdvBody && window._mdvBody();")
+        body_btn.clicked.connect(on_body)
+        lay.addWidget(body_btn)
         fs()
         fb("fmt_list",   txt_wrap="prefix", txt_pre="- ",      md_cmd="insertUnorderedList")
         fb("fmt_num",    txt_wrap="prefix", txt_pre="1. ",     md_cmd="insertOrderedList")
-        fb("fmt_check",  txt_wrap="prefix", txt_pre="- [ ] ",
-           md_js="(function(){var w=document.querySelector('.wrap');if(w){document.execCommand('insertHTML',false,'<p>☐ テキスト</p>');w.dispatchEvent(new Event('input',{bubbles:true}));}})();")
         fs()
         fb("fmt_quote",  txt_wrap="prefix", txt_pre="> ",      md_block="blockquote")
         fb("fmt_hr",     txt_wrap="insert", txt_pre="\n---\n", md_cmd="insertHorizontalRule")
@@ -1658,6 +1686,34 @@ class MDViewerPro(QMainWindow):
             'var w=document.querySelector(".wrap");'
             'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
             '};'
+            # ── 本文ボタン: 現在ブロックを通常の段落に戻す ──
+            #    引用・コードブロック内では直後に新しい本文段落を作って抜ける
+            'window._mdvBody=function(){'
+            'var w=document.querySelector(".wrap");if(!w)return;'
+            'var sel=window.getSelection();if(!sel||!sel.rangeCount){w.focus();return;}'
+            'var node=sel.getRangeAt(0).startContainer;'
+            'var block=(node.nodeType===3)?node.parentNode:node;'
+            'while(block&&block.parentNode&&block.parentNode!==w){block=block.parentNode;}'
+            'var tag=block&&block.parentNode===w?block.tagName:"";'
+            'if(tag==="PRE"||tag==="BLOCKQUOTE"){'
+            'var p=document.createElement("p");p.appendChild(document.createElement("br"));'
+            'block.insertAdjacentElement("afterend",p);'
+            'var r=document.createRange();r.setStart(p,0);r.collapse(true);'
+            'sel.removeAllRanges();sel.addRange(r);'
+            '}else{'
+            'document.execCommand("formatBlock",false,"p");'
+            '}'
+            'w.dispatchEvent(new Event("input",{bubbles:true}));'
+            '};'
+            # ── 外部からの貼り付けは書式なし(プレーンテキスト)で挿入 ──
+            'document.addEventListener("paste",function(e){'
+            'var w=document.querySelector(".wrap");'
+            'if(!w||!w.contains(e.target))return;'
+            'e.preventDefault();'
+            'var t=(e.clipboardData||window.clipboardData).getData("text/plain");'
+            'if(t)document.execCommand("insertText",false,t);'
+            'w.dispatchEvent(new Event("input",{bubbles:true}));'
+            '},true);'
             # ── テーブルセル内 Enter → <br> 挿入 ──
             'document.addEventListener("keydown",function(e){'
             'if(e.key!=="Enter"||e.shiftKey)return;'
@@ -1846,14 +1902,14 @@ class MDViewerPro(QMainWindow):
         try:
             body = markdown.markdown(
                 text,
-                extensions=["tables", "fenced_code", "codehilite"],
+                extensions=["tables", "fenced_code", "codehilite", "nl2br"],
                 extension_configs={"codehilite": {"guess_lang": False, "noclasses": True}},
             )
         except Exception:
             try:
-                body = markdown.markdown(text, extensions=["tables", "fenced_code"])
+                body = markdown.markdown(text, extensions=["tables", "fenced_code", "nl2br"])
             except Exception:
-                body = markdown.markdown(text)
+                body = markdown.markdown(text, extensions=["nl2br"])
         body = self._render_checklist(body)
         body = self._embed_remote_images(body)
         if strip_images:
@@ -1956,7 +2012,7 @@ class MDViewerPro(QMainWindow):
             f'{self._copy_code_btn_js()}'
             f'{(self._md_edit_fmt_js() if editable else "")}'
             f'{webchannel_js}'
-            f'{("" if editable else self._copy_plain_js())}'
+            f'{self._copy_plain_js()}'
             f'{toc_js}'
             '</body></html>'
         )
@@ -2368,6 +2424,21 @@ class MDViewerPro(QMainWindow):
     def _md_insert(self, text):
         cur = self._md_editor.textCursor()
         cur.insertText(text)
+        self._md_editor.setTextCursor(cur)
+        self._md_editor.setFocus()
+
+    def _md_body(self):
+        """現在行を本文(通常テキスト)に戻す。見出し/引用/リスト等の行頭マーカーを除去。"""
+        cur = self._md_editor.textCursor()
+        cur.movePosition(QTextCursor.MoveOperation.StartOfLine)
+        cur.movePosition(QTextCursor.MoveOperation.EndOfLine,
+                         QTextCursor.MoveMode.KeepAnchor)
+        line = cur.selectedText()
+        # 行頭の見出し(#)・引用(>)・リスト(- * +)・番号(1.)・チェック等のマーカーを除去
+        new = re.sub(r'^(\s*)(?:#{1,6}\s+|>\s?|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+\.\s+)',
+                     r'\1', line)
+        if new != line:
+            cur.insertText(new)
         self._md_editor.setTextCursor(cur)
         self._md_editor.setFocus()
 
