@@ -9,16 +9,25 @@ import re
 import json
 import glob as glob_mod
 import shutil
+import socket
+import ipaddress
 import tempfile
 import webbrowser
 import base64
 import urllib.request
 import urllib.error
+import http.client
+from urllib.parse import urlparse
 from typing import Optional, Dict, List
 import markdown
 from html.parser import HTMLParser
 
-os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"
+# QtWebEngine の sandbox は既定で有効のまま動かす（セキュリティ上の隔離を維持）。
+# 開発環境で sandbox が原因で起動しない場合のみ、明示的に
+#   MDVP_DISABLE_SANDBOX=1
+# を設定して無効化できる。配布ビルドでは設定しないこと。
+if os.environ.get("MDVP_DISABLE_SANDBOX") == "1":
+    os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"
 os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu")
 os.environ.setdefault("QT_MAC_WANTS_LAYER", "1")
 
@@ -34,9 +43,9 @@ from PySide6.QtGui import (
     QPageLayout, QPageSize, QFont, QColor, QDesktopServices,
     QFileOpenEvent,
 )
-from PySide6.QtCore import Qt, QMarginsF, QTimer, QUrl, QSizeF, QObject, Slot, QEvent, Signal, QByteArray
+from PySide6.QtCore import Qt, QMarginsF, QTimer, QUrl, QSizeF, QObject, Slot, QEvent, Signal, QByteArray, QThread
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWebEngineCore import QWebEnginePage
+from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings
 from PySide6.QtWebChannel import QWebChannel
 
 # ════════════════════════════════════════════════
@@ -51,7 +60,7 @@ LANGS = {"日本語": "ja", "English": "en", "Deutsch": "de", "Français": "fr"}
 PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
-APP_VERSION   = "1.3"
+APP_VERSION   = "1.3.2"
 
 DARK_PALETTE = {
     "bg":            "#000000",
@@ -524,15 +533,114 @@ def _write_example_theme():
 # ════════════════════════════════════════════════
 #  画像フェッチユーティリティ
 # ════════════════════════════════════════════════
-_REMOTE_IMG_RE = re.compile(r'!\[[^\]]*\]\((https?://[^)\s]+)\)')
+# 画像 URL を抽出。タイトル付き構文 ![alt](url "title") にも対応する。
+_REMOTE_IMG_RE = re.compile(r'!\[[^\]]*\]\(\s*(https?://[^\s)]+)(?:\s+[^)]*)?\)')
 
 def _extract_remote_image_urls(text: str) -> List[str]:
     return list(dict.fromkeys(_REMOTE_IMG_RE.findall(text)))
 
+def _ip_is_safe(ip: str) -> bool:
+    """IP アドレス文字列が外部公開アドレスかを判定する。"""
+    ip = (ip or "").split("%", 1)[0]  # IPv6 ゾーン ID を除去
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return not (addr.is_private or addr.is_loopback or addr.is_link_local
+                or addr.is_reserved or addr.is_multicast or addr.is_unspecified)
+
+
+def _host_is_safe(host: str) -> bool:
+    """ホスト名/IP が外部公開アドレスかを確認する (SSRF 対策・事前チェック)。
+
+    localhost・社内 IP・リンクローカル・クラウド metadata endpoint 等の
+    内部アドレスへの到達を拒否する。名前解決した全 IP を検査する。
+    実際の接続時には _Pinned*Connection が接続先 IP を再検査するため、
+    DNS リバインディング (TTL を悪用した二度目の解決すり替え) も防止される。
+    """
+    if not host:
+        return False
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except Exception:
+        return False
+    if not infos:
+        return False
+    return all(_ip_is_safe(info[4][0]) for info in infos)
+
+
+class _PinnedHTTPConnection(http.client.HTTPConnection):
+    """接続直前に解決先 IP を検査し、公開アドレスにのみ接続する (DNS リバインディング対策)。"""
+    def connect(self):
+        infos = socket.getaddrinfo(self.host, self.port, 0, socket.SOCK_STREAM)
+        last_err = None
+        for family, socktype, proto, _canon, sa in infos:
+            if not _ip_is_safe(sa[0]):
+                raise OSError(f"blocked non-public address: {sa[0]}")
+            try:
+                self.sock = socket.create_connection(
+                    sa, self.timeout, self.source_address)
+                if getattr(self, "_tunnel_host", None):
+                    self._tunnel()
+                return
+            except OSError as e:
+                last_err = e
+        raise last_err or OSError("no address for host")
+
+
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    """HTTPS 版。SNI/証明書検証は元のホスト名で行い、接続先 IP のみ検査・固定する。"""
+    def connect(self):
+        infos = socket.getaddrinfo(self.host, self.port, 0, socket.SOCK_STREAM)
+        last_err = None
+        for family, socktype, proto, _canon, sa in infos:
+            if not _ip_is_safe(sa[0]):
+                raise OSError(f"blocked non-public address: {sa[0]}")
+            try:
+                sock = socket.create_connection(
+                    sa, self.timeout, self.source_address)
+            except OSError as e:
+                last_err = e
+                continue
+            self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+            return
+        raise last_err or OSError("no address for host")
+
+
+class _PinnedHTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, req):
+        return self.do_open(_PinnedHTTPConnection, req)
+
+
+class _PinnedHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_PinnedHTTPSConnection, req)
+
+
+class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """リダイレクト先も http/https かつ外部アドレスのみ許可する。"""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        pu = urlparse(newurl)
+        if pu.scheme not in ("http", "https"):
+            return None
+        if not _host_is_safe(pu.hostname or ""):
+            return None
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def _safe_fetch_image(url: str, max_bytes: int = 10 * 1024 * 1024, timeout: int = 10):
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "MDViewerPro/1.3"})
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        pu = urlparse(url)
+        if pu.scheme not in ("http", "https"):
+            return None
+        if not _host_is_safe(pu.hostname or ""):
+            return None
+        req = urllib.request.Request(
+            url, headers={"User-Agent": f"MDViewerPro/{APP_VERSION}"})
+        # IP 固定接続ハンドラを使い、接続時にも解決先 IP を再検査する
+        opener = urllib.request.build_opener(
+            _PinnedHTTPHandler, _PinnedHTTPSHandler, _SafeRedirectHandler)
+        with opener.open(req, timeout=timeout) as resp:
             ctype = resp.headers.get("Content-Type", "")
             if not ctype.startswith("image/"):
                 return None
@@ -545,6 +653,40 @@ def _safe_fetch_image(url: str, max_bytes: int = 10 * 1024 * 1024, timeout: int 
         return None
 
 
+class ImageFetchWorker(QThread):
+    """リモート画像をバックグラウンドスレッドで取得する (UI を固めない)。"""
+    fetched = Signal(dict)  # {url: data_uri}
+
+    MAX_IMAGES = 50
+    MAX_TOTAL_BYTES = 40 * 1024 * 1024
+
+    def __init__(self, urls: List[str], parent=None):
+        super().__init__(parent)
+        self._urls = list(urls)[: self.MAX_IMAGES]
+        self._cancel = False
+
+    def cancel(self):
+        self._cancel = True
+
+    def run(self):
+        results: Dict[str, str] = {}
+        total = 0
+        for url in self._urls:
+            if self._cancel:
+                break
+            r = _safe_fetch_image(url)
+            if not r:
+                continue
+            mime, data = r
+            total += len(data)
+            if total > self.MAX_TOTAL_BYTES:
+                break
+            b64 = base64.b64encode(data).decode("ascii")
+            results[url] = f"data:{mime};base64,{b64}"
+        if not self._cancel:
+            self.fetched.emit(results)
+
+
 # ════════════════════════════════════════════════
 #  カスタム WebEnginePage — リンク制御
 # ════════════════════════════════════════════════
@@ -552,6 +694,17 @@ class MDWebPage(QWebEnginePage):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._mode = "view"
+        # Web コンテンツ側からの危険な操作を明示的に禁止する。
+        try:
+            s = self.settings()
+            A = QWebEngineSettings.WebAttribute
+            s.setAttribute(A.JavascriptCanOpenWindows, False)
+            s.setAttribute(A.LocalContentCanAccessRemoteUrls, False)
+            s.setAttribute(A.AllowRunningInsecureContent, False)
+            s.setAttribute(A.JavascriptCanAccessClipboard, False)
+            s.setAttribute(A.JavascriptCanPaste, False)
+        except Exception:
+            pass
 
     def set_mode(self, mode: str):
         self._mode = mode
@@ -598,7 +751,9 @@ class _HTML2MD(HTMLParser):
         self.parts: List[str] = []
         self._stack: List[str] = []
         self._in_pre = False
+        self._pre_fence_open = False
         self._pending_href: Optional[str] = None
+        self._a_depth = 0
         self._list_depth = 0
         self._ol_counters: List[int] = []
         self._in_thead = False
@@ -636,14 +791,26 @@ class _HTML2MD(HTMLParser):
             self.parts.append('*')
         elif tag in ('s', 'del', 'strike'):
             self.parts.append('~~')
-        elif tag == 'code' and not self._in_pre:
-            self.parts.append('`')
+        elif tag == 'code':
+            if self._in_pre:
+                # コードブロックの言語指定 (class="language-xxx") を保持する
+                m = re.search(r'language-([\w+#.\-]+)', cls)
+                lang = m.group(1) if m else ''
+                self.parts.append('\n\n```' + lang + '\n')
+                self._pre_fence_open = True
+            else:
+                self.parts.append('`')
         elif tag == 'pre':
             self._in_pre = True
-            self.parts.append('\n\n```\n')
+            self._pre_fence_open = False
+            # フェンスは <code class="language-xxx"> を見てから開く (言語保持)。
+            # <code> が無い <pre> は handle_data 側でフェンスを開く。
         elif tag == 'a':
-            self._pending_href = attrs_d.get('href', '')
-            self.parts.append('[')
+            # 入れ子の <a> は最も外側だけをリンクとして扱う (Markdown はリンク入れ子不可)
+            if self._a_depth == 0:
+                self._pending_href = attrs_d.get('href', '')
+                self.parts.append('[')
+            self._a_depth += 1
         elif tag == 'img':
             src = attrs_d.get('src', '')
             alt = attrs_d.get('alt', '')
@@ -697,11 +864,20 @@ class _HTML2MD(HTMLParser):
             self.parts.append('`')
         elif tag == 'pre':
             self._in_pre = False
-            self.parts.append('\n```\n\n')
+            if not self._pre_fence_open:
+                self.parts.append('\n\n```\n')
+            # コード末尾に既に改行があれば重複させない (往復での空行累積を防ぐ)
+            if self.parts and self.parts[-1].endswith('\n'):
+                self.parts.append('```\n\n')
+            else:
+                self.parts.append('\n```\n\n')
+            self._pre_fence_open = False
         elif tag == 'a':
-            href = self._pending_href or ''
-            self.parts.append(f']({href})')
-            self._pending_href = None
+            self._a_depth = max(0, self._a_depth - 1)
+            if self._a_depth == 0:
+                href = self._pending_href or ''
+                self.parts.append(f']({href})')
+                self._pending_href = None
         elif tag in ('th', 'td'):
             self.parts.append(' |')
         elif tag == 'thead':
@@ -720,6 +896,10 @@ class _HTML2MD(HTMLParser):
     def handle_data(self, data):
         if self._skip_at is not None:
             return
+        # <code> を持たない <pre> の場合はここでフェンスを開く
+        if self._in_pre and not self._pre_fence_open:
+            self.parts.append('\n\n```\n')
+            self._pre_fence_open = True
         # テーブル要素内の空白のみのデータはMarkdown変換を壊すため無視する
         _TABLE_TAGS = {'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td'}
         if data.strip() == '' and any(t in self._stack for t in _TABLE_TAGS):
@@ -736,6 +916,155 @@ def _html_to_md(html: str) -> str:
     parser = _HTML2MD()
     parser.feed(html)
     return parser.get_result()
+
+
+# ════════════════════════════════════════════════
+#  HTML サニタイザ — Markdown 由来の未信頼 HTML を無害化
+#  (標準ライブラリのみ。bleach 等の追加依存を増やさない)
+# ════════════════════════════════════════════════
+import html as _html_mod
+
+# 許可するタグ
+_SAN_ALLOWED_TAGS = {
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr', 'div', 'span',
+    'pre', 'code', 'blockquote', 'a', 'img', 'strong', 'b', 'em', 'i', 'u',
+    's', 'strike', 'del', 'ins', 'mark', 'sub', 'sup', 'small', 'kbd', 'samp',
+    'var', 'abbr', 'cite', 'q', 'dfn', 'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption',
+    'colgroup', 'col', 'input', 'figure', 'figcaption', 'details', 'summary',
+    'wbr',
+}
+# 中身ごと完全に削除するタグ (スクリプト等)
+_SAN_DROP_CONTENT = {
+    'script', 'style', 'iframe', 'object', 'embed', 'template', 'noscript',
+    'svg', 'math', 'frame', 'frameset', 'applet', 'form', 'textarea',
+    'select', 'option', 'button', 'audio', 'video', 'source', 'track',
+    'link', 'meta', 'base', 'title', 'head', 'canvas',
+}
+# 終了タグを出さない void 要素
+_SAN_VOID = {'br', 'hr', 'img', 'input', 'col', 'wbr'}
+# 属性の許可リスト
+_SAN_GLOBAL_ATTRS = {'class', 'id', 'title', 'dir', 'lang', 'style', 'align'}
+_SAN_TAG_ATTRS = {
+    'a': {'href', 'target', 'rel', 'name'},
+    'img': {'src', 'alt', 'width', 'height'},
+    'input': {'type', 'checked', 'disabled'},
+    'ol': {'start', 'type'},
+    'td': {'colspan', 'rowspan', 'scope'},
+    'th': {'colspan', 'rowspan', 'scope'},
+    'col': {'span'},
+    'colgroup': {'span'},
+}
+_SAN_HREF_OK_SCHEMES = ('http:', 'https:', 'mailto:', 'tel:')
+
+
+def _san_safe_url(val: str, allow_data_image: bool = False) -> bool:
+    v = (val or '').strip()
+    if not v:
+        return False
+    low = v.lower().replace('\t', '').replace('\n', '').replace('\r', '')
+    # 相対 URL・アンカー・絶対パスは許可
+    if low.startswith('#') or low.startswith('/') or low.startswith('./') or low.startswith('../'):
+        return True
+    if low.startswith('data:'):
+        return allow_data_image and low.startswith('data:image/')
+    # スキームを含む場合は allowlist のみ
+    if ':' in low.split('/', 1)[0]:
+        return any(low.startswith(s) for s in _SAN_HREF_OK_SCHEMES)
+    # スキームなし (相対パス)
+    return True
+
+
+class _HTMLSanitizer(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.out: List[str] = []
+        self._skip_depth = 0
+        self._skip_tag: Optional[str] = None
+
+    def _emit_tag(self, tag, attrs, self_close=False):
+        parts = ['<', tag]
+        allowed = _SAN_GLOBAL_ATTRS | _SAN_TAG_ATTRS.get(tag, set())
+        for name, val in attrs:
+            name = (name or '').lower()
+            if name.startswith('on'):           # イベントハンドラは常に除去
+                continue
+            if name not in allowed:
+                continue
+            if name == 'style':
+                sv = (val or '')
+                low = sv.lower()
+                # url()/expression()/javascript: を含む style は破棄
+                if '(' in sv or 'javascript:' in low or 'expression' in low or '@import' in low:
+                    continue
+            if name == 'href' and not _san_safe_url(val):
+                continue
+            if name == 'src' and not _san_safe_url(val, allow_data_image=True):
+                continue
+            if val is None:
+                parts.append(f' {name}')
+            else:
+                parts.append(f' {name}="{_html_mod.escape(val, quote=True)}"')
+        parts.append(' />' if self_close else '>')
+        self.out.append(''.join(parts))
+
+    def handle_starttag(self, tag, attrs):
+        tag = tag.lower()
+        if self._skip_depth > 0:
+            if tag == self._skip_tag:
+                self._skip_depth += 1
+            return
+        if tag in _SAN_DROP_CONTENT:
+            self._skip_tag = tag
+            self._skip_depth = 1
+            return
+        if tag in _SAN_VOID:
+            if tag in _SAN_ALLOWED_TAGS:
+                self._emit_tag(tag, attrs, self_close=True)
+            return
+        if tag in _SAN_ALLOWED_TAGS:
+            self._emit_tag(tag, attrs)
+        # 許可外の非危険タグは unwrap (中身は残す)
+
+    def handle_startendtag(self, tag, attrs):
+        tag = tag.lower()
+        if self._skip_depth > 0:
+            return
+        if tag in _SAN_DROP_CONTENT:
+            return
+        if tag in _SAN_ALLOWED_TAGS:
+            self._emit_tag(tag, attrs, self_close=True)
+
+    def handle_endtag(self, tag):
+        tag = tag.lower()
+        if self._skip_depth > 0:
+            if tag == self._skip_tag:
+                self._skip_depth -= 1
+                if self._skip_depth == 0:
+                    self._skip_tag = None
+            return
+        if tag in _SAN_VOID:
+            return
+        if tag in _SAN_ALLOWED_TAGS:
+            self.out.append(f'</{tag}>')
+
+    def handle_data(self, data):
+        if self._skip_depth > 0:
+            return
+        self.out.append(_html_mod.escape(data, quote=False))
+
+    def handle_comment(self, data):
+        pass
+
+    def get_result(self) -> str:
+        return ''.join(self.out)
+
+
+def _sanitize_html(html: str) -> str:
+    s = _HTMLSanitizer()
+    s.feed(html)
+    s.close()
+    return s.get_result()
 
 
 # ════════════════════════════════════════════════
@@ -1634,11 +1963,14 @@ class MDViewerPro(QMainWindow):
             '<script>'
             'function _mdvCopy(btn){'
             'var pre=btn.parentElement;'
-            # copyボタン自身を除いたcode要素のテキストを取得
-            'var clone=pre.cloneNode(true);'
-            'clone.querySelectorAll(".mdv-copy-btn").forEach(function(b){b.remove();});'
-            'var code=clone.querySelector("code")||clone;'
-            'var text=(code.innerText||code.textContent||"").replace(/\\n$/,"");'
+            # ライブDOMの <code> から textContent を取得する。
+            # detachした clone に innerText を使うと Chromium ではレイアウト未計算のため
+            # 空になる。pre 直下の子である copy ボタンは <code> の外なので混入しない。
+            # <pre> のコード本文は改行を <br> ではなく実際の改行文字で保持するため
+            # textContent で改行が正しく取得できる。
+            'var code=pre.querySelector("code");'
+            'var src=code?code:pre;'
+            'var text=(src.textContent||"").replace(/\\n$/,"");'
             # Python ClipboardBridgeを使う（WebEngineのclipboard制限を回避）
             'if(typeof _mdvClipboard!=="undefined"&&_mdvClipboard){'
             '_mdvClipboard.copyText(text);'
@@ -1899,17 +2231,26 @@ class MDViewerPro(QMainWindow):
     def _build_md_html(self, text, editable=False, strip_images=False):
         p   = self._palette
         fs  = int(16 * SCALE_STEPS[self.scale_idx])
+        # 編集モードでは codehilite を使わず fenced_code のみ使用する。
+        # codehilite はコードを色付き <span> に変換して言語情報を失わせるため、
+        # ビジュアル編集→Markdown 逆変換で言語指定 (```python 等) が壊れる。
+        # fenced_code は <code class="language-xxx"> を出力し _HTML2MD が言語を復元できる。
+        if editable:
+            _exts = ["tables", "fenced_code", "nl2br"]
+            _cfg = {}
+        else:
+            _exts = ["tables", "fenced_code", "codehilite", "nl2br"]
+            _cfg = {"codehilite": {"guess_lang": False, "noclasses": True}}
         try:
-            body = markdown.markdown(
-                text,
-                extensions=["tables", "fenced_code", "codehilite", "nl2br"],
-                extension_configs={"codehilite": {"guess_lang": False, "noclasses": True}},
-            )
+            body = markdown.markdown(text, extensions=_exts, extension_configs=_cfg)
         except Exception:
             try:
                 body = markdown.markdown(text, extensions=["tables", "fenced_code", "nl2br"])
             except Exception:
                 body = markdown.markdown(text, extensions=["nl2br"])
+        # Markdown 由来の生 HTML/JavaScript を無害化 (信頼済みの自前スクリプト/CSS は
+        # この body の外側で付加されるためサニタイズ対象外)。
+        body = _sanitize_html(body)
         body = self._render_checklist(body)
         body = self._embed_remote_images(body)
         if strip_images:
@@ -1926,8 +2267,9 @@ class MDViewerPro(QMainWindow):
             # PDF印刷時: 余白(body背景)と本文エリアを同色に統一
             print_css = (
                 f"@media print{{"
-                f"@page{{size:{page_css_name} portrait;"
-                f"margin:{t}mm {r}mm {b}mm {l}mm;}}"
+                # 余白は printToPdf() に渡す QPageLayout (ユーザー設定値) が管理する。
+                # CSS 側 @page でも余白を指定すると二重適用の恐れがあるため 0 にする。
+                f"@page{{size:{page_css_name} portrait;margin:0;}}"
                 f"body{{margin:0!important;background:{p['bg']}!important;}}"
                 f".wrap{{max-width:100%!important;margin:0!important;"
                 f"padding:0!important;box-shadow:none!important;"
@@ -1946,8 +2288,8 @@ class MDViewerPro(QMainWindow):
             )
             print_css = (
                 f"@media print{{"
-                f"@page{{size:{page_w}mm {page_h}mm portrait;"
-                f"margin:{t}mm {r}mm {b}mm {l}mm;}}"
+                # 余白は QPageLayout が管理 (CSS 側は 0 にして二重適用を防ぐ)
+                f"@page{{size:{page_w}mm {page_h}mm portrait;margin:0;}}"
                 f"body{{margin:0!important;background:{p['bg']}!important;}}"
                 f".wrap{{max-width:100%!important;margin:0!important;"
                 f"padding:0!important;box-shadow:none!important;"
@@ -1959,7 +2301,8 @@ class MDViewerPro(QMainWindow):
         else:
             wrap = "padding:32px 48px;max-width:920px;margin:0 auto;"
             print_css = (
-                f"@media print{{@page{{margin:15mm;}}"
+                # 余白は QPageLayout が管理 (CSS 側は 0 にして二重適用を防ぐ)
+                f"@media print{{@page{{margin:0;}}"
                 f"body{{background:{p['bg']}!important;}}"
                 f".wrap{{background:{p['bg']}!important;}}}}"
             )
@@ -2182,7 +2525,8 @@ class MDViewerPro(QMainWindow):
         if self.edit_mode != "txt":
             return
         self._content_text = self._md_editor.toPlainText()
-        self._auto_fetch_new_images(self._content_text)
+        # 編集中のネットワークアクセスはしない。リモート画像はファイルを開く時に
+        # ユーザー確認のうえで取得する (_check_and_fetch_images_for_file)。
         self.is_modified = True
         self._update_title()
         self._timer.start()
@@ -2229,19 +2573,22 @@ class MDViewerPro(QMainWindow):
     #  画像フェッチ
     # ════════════════════════════════════════════
     def _fetch_remote_images(self, urls: List[str]):
-        for url in urls:
-            if url not in self._image_cache:
-                result = _safe_fetch_image(url)
-                if result:
-                    mime, data = result
-                    b64 = base64.b64encode(data).decode("ascii")
-                    self._image_cache[url] = f"data:{mime};base64,{b64}"
+        """リモート画像をバックグラウンドで取得する (非同期・UI を固めない)。"""
+        new_urls = [u for u in urls if u not in self._image_cache]
+        if not new_urls:
+            return
+        prev = getattr(self, "_img_worker", None)
+        if prev is not None and prev.isRunning():
+            prev.cancel()
+        worker = ImageFetchWorker(new_urls, self)
+        self._img_worker = worker
+        worker.fetched.connect(self._on_images_fetched)
+        worker.start()
 
-    def _auto_fetch_new_images(self, text: str):
-        new_urls = [u for u in _extract_remote_image_urls(text)
-                    if u not in self._image_cache]
-        if new_urls:
-            self._fetch_remote_images(new_urls)
+    def _on_images_fetched(self, results: dict):
+        if results:
+            self._image_cache.update(results)
+            self._refresh_view()
 
     def _check_and_fetch_images_for_file(self, text: str):
         all_urls = _extract_remote_image_urls(text)
@@ -2518,34 +2865,66 @@ class MDViewerPro(QMainWindow):
         if self.current_file_path:
             base_path = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
 
-        # 常にクリーンなPDF用HTMLをロードしてから印刷 (カーソル非表示)
-        self._loader.load_html(pdf_html, base_path)
+        # PDF 書き出しの状態管理 ("loading" → "printing" → 終了)。
+        # 小さい HTML では load_html が即座に loadFinished を発火しうるため、
+        # 接続は load_html より「前」に行い、取りこぼしを防ぐ。
+        self._pdf_state = "loading"
+
+        def _restore_original():
+            base_path2 = None
+            if self.current_file_path:
+                base_path2 = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
+            self._loader.load_html(orig_html, base_path2)
 
         def _on_pdf_done(pdf_path, ok):
+            if self._pdf_state != "printing":
+                return
+            self._pdf_state = "done"
             try:
                 self._preview_web.page().pdfPrintingFinished.disconnect(_on_pdf_done)
             except Exception:
                 pass
             self._pdf_layout_ref = None
-            # 元の表示を復元
-            base_path2 = None
-            if self.current_file_path:
-                base_path2 = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
-            self._loader.load_html(orig_html, base_path2)
+            _restore_original()
             if ok:
                 QMessageBox.information(self, "PDF", self._t("pdf_success"))
             else:
                 QMessageBox.warning(self, "PDF", self._t("pdf_error"))
 
         def _do_print(ok=True):
+            if self._pdf_state != "loading":
+                return
             try:
                 self._preview_web.loadFinished.disconnect(_do_print)
             except Exception:
                 pass
+            if not ok:
+                self._pdf_state = "done"
+                self._pdf_layout_ref = None
+                _restore_original()
+                QMessageBox.warning(self, "PDF", self._t("pdf_error"))
+                return
+            self._pdf_state = "printing"
             self._preview_web.page().pdfPrintingFinished.connect(_on_pdf_done)
             self._preview_web.page().printToPdf(path, layout)
 
+        def _on_pdf_timeout():
+            # ロードが完了しないまま固まった場合の保険: 表示を復元して通知。
+            if self._pdf_state != "loading":
+                return
+            self._pdf_state = "done"
+            try:
+                self._preview_web.loadFinished.disconnect(_do_print)
+            except Exception:
+                pass
+            self._pdf_layout_ref = None
+            _restore_original()
+            QMessageBox.warning(self, "PDF", self._t("pdf_error"))
+
+        # 接続 → ロード の順序を厳守する
         self._preview_web.loadFinished.connect(_do_print)
+        self._loader.load_html(pdf_html, base_path)
+        QTimer.singleShot(20000, _on_pdf_timeout)
 
     # ════════════════════════════════════════════
     #  HTML書き出し
@@ -2910,6 +3289,10 @@ class MDViewerPro(QMainWindow):
         self._startup_fallback.stop()
         if self._maybe_save():
             self._save_app_settings()
+            worker = getattr(self, "_img_worker", None)
+            if worker is not None and worker.isRunning():
+                worker.cancel()
+                worker.wait(2000)
             self._loader.cleanup()
             event.accept()
             self.window_closed.emit()
