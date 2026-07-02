@@ -3,8 +3,6 @@
 A simple and fast Markdown viewer built with Python and PySide6 (Qt for Python).
 
 **Current version / 現在のバージョン: v1.3.2**
-See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.3.2).
-更新履歴は [RELEASE_NOTES.md](RELEASE_NOTES.md) をご覧ください。
 
 ---
 
