@@ -180,8 +180,8 @@ app = BUNDLE(
     info_plist={
         'CFBundleName': 'MD Viewer Pro',
         'CFBundleDisplayName': 'MD Viewer Pro',
-        'CFBundleVersion': '1.3.2',
-        'CFBundleShortVersionString': '1.3.2',
+        'CFBundleVersion': '1.4.0',
+        'CFBundleShortVersionString': '1.4.0',
         'CFBundlePackageType': 'APPL',
         'CFBundleSignature': '????',
         'NSHighResolutionCapable': True,

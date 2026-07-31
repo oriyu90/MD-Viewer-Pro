@@ -2,7 +2,9 @@
 
 A simple and fast Markdown viewer built with Python and PySide6 (Qt for Python).
 
-**Current version / 現在のバージョン: v1.3.2**
+**Current version / 現在のバージョン: v1.4.0**
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.4.0).
+更新履歴は [RELEASE_NOTES.md](RELEASE_NOTES.md) をご覧ください。
 
 ---
 
@@ -49,7 +51,8 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 | -------- | ------------------------------------- |
 | 閲覧モード    | Markdown をきれいにレンダリング                  |
 | MD編集     | レンダリング形式のまま直接編集                       |
-| TXT編集    | 左エディタ + 右リアルタイムプレビュー                  |
+| TXT編集    | 左エディタ + 右リアルタイムプレビュー（編集行を自動ハイライト・追従スクロール） |
+| 見出し(TOC)パネル | MD編集・TXT編集で見出し一覧を表示し、クリックでジャンプ |
 | A4文書     | 印刷向けA4レイアウト・余白設定                      |
 | 詳細設定     | フォント・言語・テーマ・表示設定の変更                   |
 | プラグインテーマ | `~/.mdviewer/themes/` にJSONを配置してテーマ追加 |
@@ -109,7 +112,8 @@ To open the app:
 | ----------------- | -------------------------------------------- |
 | View Mode         | Clean Markdown rendering                     |
 | MD Editing        | Edit directly in rendered format             |
-| TXT Editing       | Split editor with live preview               |
+| TXT Editing       | Split editor with live preview (auto-highlights and scrolls to the edited line) |
+| TOC Panel         | Headings sidebar in MD/TXT edit modes, click to jump |
 | A4 Document       | Print-ready A4 layout with margins           |
 | Advanced Settings | Customize fonts, language, and themes        |
 | Plugin Themes     | Add themes via JSON in `~/.mdviewer/themes/` |

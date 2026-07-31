@@ -149,4 +149,4 @@ different version of PySide6/Qt by:
 3. Installing a different version of PySide6 in the virtual environment
 4. Running `./build_dmg.sh`
 
-Repository: `/Users/yuki/Used_ai/MD Viewer Pro/`
+Repository: https://github.com/oriyu90/MD-Viewer-Pro

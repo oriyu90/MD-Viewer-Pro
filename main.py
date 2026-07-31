@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
     QLabel, QSpinBox, QDialog, QDialogButtonBox, QFormLayout,
     QStackedWidget, QPushButton, QSizePolicy, QSlider,
     QComboBox, QGroupBox, QFontComboBox, QCheckBox,
+    QListWidget, QListWidgetItem,
 )
 from PySide6.QtGui import (
     QAction, QKeySequence, QTextCursor,
@@ -60,7 +61,7 @@ LANGS = {"日本語": "ja", "English": "en", "Deutsch": "de", "Français": "fr"}
 PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
-APP_VERSION   = "1.3.2"
+APP_VERSION   = "1.4.0"
 
 DARK_PALETTE = {
     "bg":            "#000000",
@@ -107,6 +108,9 @@ LIGHT_PALETTE = {
 }
 
 _PALETTE_REQUIRED_KEYS = list(DARK_PALETTE.keys())
+
+# TXT編集モードの行同期プレビュー用: ブロック分割時のリスト項目判定
+_LIST_ITEM_RE = re.compile(r'^\s{0,3}([-*+]|\d+[.)])\s+')
 
 I18N = {
     "ja": {
@@ -168,6 +172,20 @@ I18N = {
         "pdf_embed_images": "画像を含める",
         "pdf_embed_images_label": "PDFに画像を埋め込む",
         "pdf_style_mode": "スタイルモード",
+        "new_window": "新規ウィンドウ",
+        "toc_title": "≡ 目次",
+        "toc_empty": "見出しがありません",
+        "link_text_default": "テキスト",
+        "img_alt_default": "説明",
+        "img_url_prompt": "画像URL",
+        "table_col": "列",
+        "table_cell": "セル",
+        "table_add_col": "+ 列",
+        "table_add_col_title": "列を追加",
+        "table_add_row": "+ 行",
+        "table_add_row_title": "行を追加",
+        "page_label_prefix": "",
+        "page_label_suffix": " ページ目",
     },
     "en": {
         "back": "Back", "view": "View", "md_edit": "MD Edit", "txt_edit": "TXT Edit",
@@ -228,6 +246,20 @@ I18N = {
         "pdf_embed_images": "Include images",
         "pdf_embed_images_label": "Embed images in PDF",
         "pdf_style_mode": "Style Mode",
+        "new_window": "New Window",
+        "toc_title": "≡ Contents",
+        "toc_empty": "No headings",
+        "link_text_default": "Text",
+        "img_alt_default": "Description",
+        "img_url_prompt": "Image URL",
+        "table_col": "Col",
+        "table_cell": "Cell",
+        "table_add_col": "+ Col",
+        "table_add_col_title": "Add column",
+        "table_add_row": "+ Row",
+        "table_add_row_title": "Add row",
+        "page_label_prefix": "Page ",
+        "page_label_suffix": "",
     },
     "de": {
         "back": "Zurück", "view": "Ansicht", "md_edit": "MD Bearbeiten", "txt_edit": "TXT Bearbeiten",
@@ -288,6 +320,20 @@ I18N = {
         "pdf_embed_images": "Bilder einbetten",
         "pdf_embed_images_label": "Bilder in PDF einbetten",
         "pdf_style_mode": "Stilmodus",
+        "new_window": "Neues Fenster",
+        "toc_title": "≡ Inhalt",
+        "toc_empty": "Keine Überschriften",
+        "link_text_default": "Text",
+        "img_alt_default": "Beschreibung",
+        "img_url_prompt": "Bild-URL",
+        "table_col": "Sp.",
+        "table_cell": "Zelle",
+        "table_add_col": "+ Sp.",
+        "table_add_col_title": "Spalte hinzufügen",
+        "table_add_row": "+ Zeile",
+        "table_add_row_title": "Zeile hinzufügen",
+        "page_label_prefix": "Seite ",
+        "page_label_suffix": "",
     },
     "fr": {
         "back": "Retour", "view": "Vue", "md_edit": "Édition MD", "txt_edit": "Édition TXT",
@@ -348,6 +394,20 @@ I18N = {
         "pdf_embed_images": "Inclure les images",
         "pdf_embed_images_label": "Intégrer les images dans le PDF",
         "pdf_style_mode": "Mode de style",
+        "new_window": "Nouvelle fenêtre",
+        "toc_title": "≡ Sommaire",
+        "toc_empty": "Aucun titre",
+        "link_text_default": "Texte",
+        "img_alt_default": "Description",
+        "img_url_prompt": "URL de l'image",
+        "table_col": "Col",
+        "table_cell": "Cellule",
+        "table_add_col": "+ Col",
+        "table_add_col_title": "Ajouter une colonne",
+        "table_add_row": "+ Ligne",
+        "table_add_row_title": "Ajouter une ligne",
+        "page_label_prefix": "Page ",
+        "page_label_suffix": "",
     },
 }
 
@@ -777,9 +837,10 @@ class _HTML2MD(HTMLParser):
         elif tag == 'p':
             self.parts.append('\n\n')
         elif tag == 'div':
-            # contenteditable が Enter で生成する <div> 行を改行として扱う
-            if self.parts and not self.parts[-1].endswith('\n'):
-                self.parts.append('\n')
+            # contenteditable が Enter で生成する <div> は <p> と同じ段落境界として扱う。
+            # 単一改行 ('\n') のみだと、往復編集のたびに段落間の空行(段落区切り)が
+            # 失われ、保存後に再度開くと改行が詰まって表示される不具合の原因になっていた。
+            self.parts.append('\n\n')
         elif tag == 'br':
             if any(t in self._stack for t in ('td', 'th')):
                 self.parts.append('<br>')
@@ -852,7 +913,7 @@ class _HTML2MD(HTMLParser):
             return
         if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
             self.parts.append('\n\n')
-        elif tag == 'p':
+        elif tag in ('p', 'div'):
             self.parts.append('\n\n')
         elif tag in ('strong', 'b'):
             self.parts.append('**')
@@ -1165,7 +1226,7 @@ class SettingsDialog(QDialog):
         root.addWidget(fg)
 
         # 言語
-        lg = QGroupBox("Languages")
+        lg = QGroupBox(t.get("lang_label", "Language"))
         ll = QVBoxLayout(lg)
         self._lang_cb = QComboBox()
         self._lang_cb.addItems(list(LANGS.keys()))
@@ -1281,8 +1342,8 @@ class StartupDialog(QDialog):
         lang_row = QWidget()
         lang_lay = QHBoxLayout(lang_row)
         lang_lay.setContentsMargins(0, 0, 0, 0)
-        lang_lbl = QLabel("Languages")
-        lang_lay.addWidget(lang_lbl)
+        self._lang_lbl = QLabel(t.get("startup_language", "Language"))
+        lang_lay.addWidget(self._lang_lbl)
         self._lang_cb = QComboBox()
         self._lang_cb.addItems(list(LANGS.keys()))
         cur_key = [k for k, v in LANGS.items() if v == current_lang]
@@ -1307,6 +1368,7 @@ class StartupDialog(QDialog):
         self._open_btn.setText(t["startup_open"])
         self._new_btn.setText(t["startup_new"])
         self._guide_btn.setText(t.get("startup_guide", "説明を開く"))
+        self._lang_lbl.setText(t.get("startup_language", "Language"))
 
     def _current_selected_lang(self) -> str:
         return LANGS.get(self._lang_cb.currentText(), "ja")
@@ -1536,6 +1598,10 @@ class MDViewerPro(QMainWindow):
         self._resize_timer.setInterval(80)
         self._resize_timer.timeout.connect(self._apply_responsive_style)
 
+        self._startup_fallback = QTimer(self)  # 後方互換: stop() 呼び出し用に保持
+        self._startup_fallback.setSingleShot(True)
+        self._startup_done = False
+
         self._build_ui()
 
         # ウィンドウジオメトリ復元 (前回終了時のサイズ・位置)
@@ -1545,6 +1611,26 @@ class MDViewerPro(QMainWindow):
                 self.restoreGeometry(geom)
             except Exception:
                 pass
+
+        # ツールバー等は即座にスタイル適用し、ウィンドウをすぐ表示できるようにする。
+        # 重い QWebEngineView の生成は show() 後 (次のイベントループ) まで遅延させる
+        # (旧実装は __init__ 内で同期生成しておりウィンドウ表示自体が遅延していた)。
+        self._apply_theme(refresh=False)
+        QTimer.singleShot(0, self._finish_deferred_init)
+
+        # MDApplication の管理リストへの登録は MDApplication.new_window() で行う
+
+    def _finish_deferred_init(self):
+        """QWebEngineView の生成・WebChannel 配線・スタートアップダイアログ表示。
+        ウィンドウが画面に表示された直後の最初のイベントループで実行される。"""
+        self._md_page = MDWebPage()
+        self._preview_web = QWebEngineView()
+        self._preview_web.setPage(self._md_page)
+        self._preview_web.loadFinished.connect(self._on_preview_loaded)
+        idx = self._splitter.indexOf(self._preview_placeholder)
+        self._splitter.replaceWidget(idx, self._preview_web)
+        self._preview_placeholder.deleteLater()
+        self._preview_placeholder = None
 
         self._loader = SafeWebLoader(self._preview_web, dark=True)
 
@@ -1561,16 +1647,27 @@ class MDViewerPro(QMainWindow):
         # (旧実装: loadFinished 待ち → 最大 4 秒の遅延があった)
         self._startup_done = True
         self._loader.load_html("<html><body></body></html>")  # WebEngine ウォームアップ
-        self._startup_fallback = QTimer(self)  # 後方互換: stop() 呼び出し用に保持
-        self._startup_fallback.setSingleShot(True)
         QTimer.singleShot(0, self._startup_open)
 
-        # MDApplication の管理リストへの登録は MDApplication.new_window() で行う
+    def _on_preview_loaded(self, ok):
+        """プレビュー再読み込み完了ごとに呼ばれる (TXT編集時の行ハイライト再適用用)。"""
+        if not ok or self.edit_mode != "txt":
+            return
+        line = self._md_editor.textCursor().blockNumber()
+        self._preview_web.page().runJavaScript(
+            f"window._mdvHighlightLine && window._mdvHighlightLine({line});"
+        )
 
     def _t(self, key):
-        return (I18N[self.lang].get(key)
-                or I18N["ja"].get(key)
-                or key)
+        # 空文字列が正規の翻訳値であるケース (page_label_prefix/suffix 等) を
+        # "未翻訳" と誤判定しないよう、真偽値ではなく None で判定する。
+        v = I18N[self.lang].get(key)
+        if v is not None:
+            return v
+        v = I18N["ja"].get(key)
+        if v is not None:
+            return v
+        return key
 
     # ════════════════════════════════════════════
     #  UI 構築
@@ -1599,21 +1696,47 @@ class MDViewerPro(QMainWindow):
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         root_l.addWidget(self._splitter)
 
+        # 見出し(TOC)パネル: MD編集/TXT編集モードでのみ引き出せる
+        self._toc_panel = self._make_toc_panel()
+        self._toc_panel.setVisible(False)
+        self._splitter.addWidget(self._toc_panel)
+
         self._editor_stack = QStackedWidget()
         self._view_placeholder = QWidget()
         self._editor_stack.addWidget(self._view_placeholder)
         self._md_editor = QPlainTextEdit()
         self._md_editor.textChanged.connect(self._on_editor_changed)
+        self._md_editor.cursorPositionChanged.connect(self._on_txt_cursor_moved)
         self._editor_stack.addWidget(self._md_editor)
+        # 閲覧・MD編集モードでは中身が空のため隠す (非表示ウィジェットは
+        # QSplitter が自動的に幅0に畳み、ハンドルも操作不能になる →
+        # 空白パネルをドラッグで引き出せてしまう不具合を防ぐ)
+        self._editor_stack.setVisible(False)
         self._splitter.addWidget(self._editor_stack)
 
-        self._md_page = MDWebPage()
-        self._preview_web = QWebEngineView()
-        self._preview_web.setPage(self._md_page)
-        self._splitter.addWidget(self._preview_web)
+        # QWebEngineView は生成コストが高くウィンドウ表示を遅らせるため、
+        # ここでは軽量なプレースホルダーを差し込み、show() 後に差し替える
+        # (_finish_deferred_init 参照)。
+        self._preview_placeholder = QWidget()
+        self._splitter.addWidget(self._preview_placeholder)
 
-        self._splitter.setSizes([0, 1])
+        self._splitter.setSizes([0, 0, 1])
         self._build_menu()
+
+    def _make_toc_panel(self):
+        panel = QWidget()
+        panel.setObjectName("tocPanel")
+        lay = QVBoxLayout(panel)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        self._toc_title_lbl = QLabel(self._t("toc_title"))
+        self._toc_title_lbl.setObjectName("tocTitle")
+        lay.addWidget(self._toc_title_lbl)
+        self._toc_list = QListWidget()
+        self._toc_list.setObjectName("tocList")
+        self._toc_list.itemClicked.connect(self._on_toc_item_clicked)
+        lay.addWidget(self._toc_list)
+        return panel
 
     # ─── メインツールバー ─────────────────────────
     def _make_main_tb(self):
@@ -1724,6 +1847,10 @@ class MDViewerPro(QMainWindow):
                         self._md_wrap(_tp, _tpo or "")
                     elif _tw == "prefix" and _tp is not None:
                         self._md_prefix(_tp)
+                    elif _tw == "num_toggle":
+                        self._md_toggle_ordered()
+                    elif _tw == "bullet_toggle":
+                        self._md_toggle_unordered()
                     elif _tw == "insert" and _tp is not None:
                         self._md_insert(_tp)
                 elif self.edit_mode == "md":
@@ -1767,20 +1894,30 @@ class MDViewerPro(QMainWindow):
         body_btn.clicked.connect(on_body)
         lay.addWidget(body_btn)
         fs()
-        fb("fmt_list",   txt_wrap="prefix", txt_pre="- ",      md_cmd="insertUnorderedList")
-        fb("fmt_num",    txt_wrap="prefix", txt_pre="1. ",     md_cmd="insertOrderedList")
+        fb("fmt_list",   txt_wrap="bullet_toggle",             md_cmd="insertUnorderedList")
+        fb("fmt_num",    txt_wrap="num_toggle",                md_cmd="insertOrderedList")
         fs()
         fb("fmt_quote",  txt_wrap="prefix", txt_pre="> ",      md_block="blockquote")
         fb("fmt_hr",     txt_wrap="insert", txt_pre="\n---\n", md_cmd="insertHorizontalRule")
-        fb("fmt_link",   txt_wrap="insert", txt_pre="[テキスト](URL)",
+        _link_placeholder = f'[{self._t("link_text_default")}](URL)'
+        _img_placeholder = f'![{self._t("img_alt_default")}](URL)'
+        _img_prompt_js = json.dumps(self._t("img_url_prompt"))
+        fb("fmt_link",   txt_wrap="insert", txt_pre=_link_placeholder,
            md_js="(function(){var u=prompt('URL','https://');if(u)document.execCommand('createLink',false,u);var w=document.querySelector('.wrap');if(w)w.dispatchEvent(new Event('input',{bubbles:true}));})();")
-        fb("fmt_img",    txt_wrap="insert", txt_pre="![説明](URL)",
-           md_js="(function(){var u=prompt('画像URL','https://');if(u)document.execCommand('insertImage',false,u);var w=document.querySelector('.wrap');if(w)w.dispatchEvent(new Event('input',{bubbles:true}));})();")
+        fb("fmt_img",    txt_wrap="insert", txt_pre=_img_placeholder,
+           md_js=f"(function(){{var u=prompt({_img_prompt_js},'https://');if(u)document.execCommand('insertImage',false,u);var w=document.querySelector('.wrap');if(w)w.dispatchEvent(new Event('input',{{bubbles:true}}));}})();")
         fs()
 
         # テーブルボタン（特殊）
         tbl_btn = PianoBtn(self._t("fmt_table"))
         tbl_btn.setObjectName("fmtBtn")
+        _col = self._t("table_col")
+        _cell = self._t("table_cell")
+        _table_html = (
+            f"<table><thead><tr><th>{_col}1</th><th>{_col}2</th><th>{_col}3</th></tr></thead>"
+            f"<tbody><tr><td>{_cell}</td><td>{_cell}</td><td>{_cell}</td></tr>"
+            f"<tr><td>{_cell}</td><td>{_cell}</td><td>{_cell}</td></tr></tbody></table>"
+        )
         def on_table():
             if self.edit_mode == "txt":
                 self._md_insert_table()
@@ -1790,9 +1927,7 @@ class MDViewerPro(QMainWindow):
                     "var w=document.querySelector('.wrap');"
                     "if(!w)return;"
                     "var tmp=document.createElement('div');"
-                    "tmp.innerHTML='<table><thead><tr><th>列1</th><th>列2</th><th>列3</th></tr></thead>"
-                    "<tbody><tr><td>セル</td><td>セル</td><td>セル</td></tr>"
-                    "<tr><td>セル</td><td>セル</td><td>セル</td></tr></tbody></table>';"
+                    f"tmp.innerHTML={json.dumps(_table_html)};"
                     "var tbl=tmp.firstChild;"
                     "var sel=window.getSelection();"
                     "if(sel&&sel.rangeCount){"
@@ -1826,7 +1961,7 @@ class MDViewerPro(QMainWindow):
         fm = mb.addMenu(self._t("file"))
 
         # New Window
-        nw_act = QAction("New Window", self)
+        nw_act = QAction(self._t("new_window"), self)
         nw_act.setShortcut(QKeySequence("Ctrl+Shift+N"))
         nw_act.triggered.connect(self.new_window)
         fm.addAction(nw_act)
@@ -1859,6 +1994,10 @@ class MDViewerPro(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._resize_timer.start()
+        if (getattr(self, "_show_toc", False)
+                and getattr(self, "edit_mode", None) in ("md", "txt")
+                and hasattr(self, "_splitter")):
+            self._sync_toc_width_on_resize()
 
     def _get_ui_scale_cat(self):
         w = self.width()
@@ -1899,8 +2038,16 @@ class MDViewerPro(QMainWindow):
     # ════════════════════════════════════════════
     #  HTML ビルダー
     # ════════════════════════════════════════════
+    def _toc_base_font_px(self):
+        """目次の基準フォントサイズ(px)。ウィンドウ幅で縮む tb_fs には連動させず、
+        常にはっきり読める大きさを保つ。閲覧モードのオーバーレイ目次と
+        MD/TXT編集モードのネイティブ目次パネルで同じ値を使い、見た目を揃える。"""
+        return max(16, self._ui_sizes()["tb_fs"] + 3)
+
     def _toc_js(self):
         p = self._palette
+        base_fs = self._toc_base_font_px()
+        toc_w = self._toc_panel_width()
         return (
             '<script>'
             'window.addEventListener("load",function(){'
@@ -1909,24 +2056,26 @@ class MDViewerPro(QMainWindow):
             'var hs=wrap.querySelectorAll("h1,h2,h3,h4,h5,h6");'
             'if(hs.length===0)return;'
             'hs.forEach(function(h,i){if(!h.id)h.id="mdv-h-"+i;});'
+            f'var baseFs={int(base_fs)};'
             'var toc=document.createElement("div");'
             'toc.id="mdv-toc";'
-            f'toc.style.cssText="position:fixed;top:0;left:0;bottom:0;width:220px;'
+            f'toc.style.cssText="position:fixed;top:0;left:0;bottom:0;width:{int(toc_w)}px;'
             f'background:{p["bg2"]};border-right:1px solid {p["border"]};'
             f'overflow-y:auto;z-index:9999;padding:12px 0 24px 0;'
             f'box-shadow:2px 0 8px rgba(0,0,0,0.4);";'
             'var title=document.createElement("div");'
             f'title.style.cssText="padding:10px 14px 8px 14px;font-weight:bold;'
-            f'font-size:13px;color:{p["heading"]};border-bottom:1px solid {p["border"]};'
-            f'margin-bottom:6px;";'
-            'title.textContent="≡ 目次";'
+            f'font-size:"+baseFs+"px;color:{p["heading"]};'
+            f'border-bottom:1px solid {p["border"]};margin-bottom:6px;";'
+            f'title.textContent={json.dumps(self._t("toc_title"))};'
             'toc.appendChild(title);'
             'hs.forEach(function(h){'
             'var a=document.createElement("a");'
             'var lv=parseInt(h.tagName[1]);'
             'var indent=(lv-1)*12;'
+            'var fs=Math.max(16,baseFs-(lv-1));'
             f'a.style.cssText="display:block;padding:5px 12px 5px "+(indent+12)+"px;'
-            f'font-size:"+(15-lv)+"px;color:{p["text"]};text-decoration:none;'
+            f'font-size:"+fs+"px;color:{p["text"]};text-decoration:none;'
             f'cursor:pointer;border-radius:3px;margin:1px 6px;'
             f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";'
             'a.textContent=h.textContent;'
@@ -1939,7 +2088,7 @@ class MDViewerPro(QMainWindow):
             'toc.appendChild(a);'
             '});'
             'document.body.appendChild(toc);'
-            'document.body.style.marginLeft="228px";'
+            f'document.body.style.marginLeft="{int(toc_w) + 8}px";'
             '});'
             '</script>'
         )
@@ -1998,11 +2147,64 @@ class MDViewerPro(QMainWindow):
             '</script>'
         )
 
-    @staticmethod
-    def _md_edit_fmt_js():
+    def _md_edit_fmt_js(self):
         """MD編集モード用の書式JS関数群"""
         return (
             '<script>'
+            # ── DOM正規化: execCommand が生成しがちな不正な入れ子
+            #    (<p> の中に <ol>/<ul> が入る、隣接する同種リストが分裂する等) を
+            #    修復する。リスト操作系コマンドの直後に必ず呼び出す。
+            'window._mdvNormalize=function(){'
+            'var w=document.querySelector(".wrap");if(!w)return;'
+            'var guard=0;'
+            'while(guard++<50){'
+            'var list=w.querySelector("p>ol,p>ul");'
+            'if(!list)break;'
+            'var p=list.parentNode;'
+            'if(!p||!p.parentNode)break;'
+            'var before=document.createElement("p");'
+            'var after=document.createElement("p");'
+            'var seen=false;'
+            'Array.prototype.slice.call(p.childNodes).forEach(function(n){'
+            'if(n===list){seen=true;return;}'
+            '(seen?after:before).appendChild(n);'
+            '});'
+            'var parent=p.parentNode;'
+            'if(before.childNodes.length)parent.insertBefore(before,p);'
+            'parent.insertBefore(list,p);'
+            'if(after.childNodes.length)parent.insertBefore(after,p);'
+            'parent.removeChild(p);'
+            '}'
+            '["ol","ul"].forEach(function(tn){'
+            'var again=true;'
+            'while(again){'
+            'again=false;'
+            'var els=w.querySelectorAll(tn);'
+            'for(var i=0;i<els.length;i++){'
+            'var cur=els[i];var prev=cur.previousSibling;'
+            'while(prev&&prev.nodeType===3&&!prev.textContent.trim())prev=prev.previousSibling;'
+            'if(prev&&prev.nodeName&&prev.nodeName.toLowerCase()===tn){'
+            'while(cur.firstChild)prev.appendChild(cur.firstChild);'
+            'cur.parentNode.removeChild(cur);'
+            'again=true;break;'
+            '}'
+            '}'
+            '}'
+            '});'
+            'Array.prototype.slice.call(w.childNodes).forEach(function(n){'
+            'if(n.nodeType===3&&n.textContent.trim()!==""){'
+            'var np=document.createElement("p");'
+            'n.parentNode.insertBefore(np,n);np.appendChild(n);'
+            '}'
+            '});'
+            # リスト解除等で残る、段落間に浮いた孤立<br>(直下の子要素)を除去する
+            '(function(){'
+            'Array.prototype.slice.call(w.children).forEach(function(el){'
+            'if(el.tagName==="BR")el.remove();'
+            '});'
+            '})();'
+            'w.querySelectorAll("p:empty").forEach(function(e){e.remove();});'
+            '};'
             # ── 書式コマンド (HR は <p> を後挿入してカーソル位置を安定させる) ──
             'window._mdvExec=function(cmd){'
             'if(cmd==="insertHorizontalRule"){'
@@ -2010,21 +2212,33 @@ class MDViewerPro(QMainWindow):
             '}else{'
             'document.execCommand(cmd,false,null);'
             '}'
+            'window._mdvNormalize();'
             'var w=document.querySelector(".wrap");'
             'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
             '};'
             'window._mdvBlock=function(tag){'
             'document.execCommand("formatBlock",false,tag);'
+            'window._mdvNormalize();'
             'var w=document.querySelector(".wrap");'
             'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
             '};'
             # ── 本文ボタン: 現在ブロックを通常の段落に戻す ──
-            #    引用・コードブロック内では直後に新しい本文段落を作って抜ける
+            #    リスト項目内ではリストそのものを解除し、引用・コードブロック内では
+            #    直後に新しい本文段落を作って抜ける
             'window._mdvBody=function(){'
             'var w=document.querySelector(".wrap");if(!w)return;'
             'var sel=window.getSelection();if(!sel||!sel.rangeCount){w.focus();return;}'
             'var node=sel.getRangeAt(0).startContainer;'
-            'var block=(node.nodeType===3)?node.parentNode:node;'
+            'var el=(node.nodeType===3)?node.parentNode:node;'
+            'var li=el&&el.closest?el.closest("li"):null;'
+            'if(li&&w.contains(li)){'
+            'var listEl=li.closest("ol,ul");'
+            'var cmd=(listEl&&listEl.tagName==="OL")?"insertOrderedList":"insertUnorderedList";'
+            'document.execCommand(cmd,false,null);'
+            'document.execCommand("formatBlock",false,"p");'
+            'window._mdvNormalize();'
+            '}else{'
+            'var block=el;'
             'while(block&&block.parentNode&&block.parentNode!==w){block=block.parentNode;}'
             'var tag=block&&block.parentNode===w?block.tagName:"";'
             'if(tag==="PRE"||tag==="BLOCKQUOTE"){'
@@ -2034,6 +2248,8 @@ class MDViewerPro(QMainWindow):
             'sel.removeAllRanges();sel.addRange(r);'
             '}else{'
             'document.execCommand("formatBlock",false,"p");'
+            '}'
+            'window._mdvNormalize();'
             '}'
             'w.dispatchEvent(new Event("input",{bubbles:true}));'
             '};'
@@ -2083,20 +2299,22 @@ class MDViewerPro(QMainWindow):
             'b.onmouseleave=function(){this.style.background="rgba(74,158,255,0.12)";};'
             'b.onclick=fn;return b;'
             '};'
-            'ctrl.appendChild(mkBtn("+ 列","列を追加",function(e){'
+            f'ctrl.appendChild(mkBtn({json.dumps(self._t("table_add_col"))},'
+            f'{json.dumps(self._t("table_add_col_title"))},function(e){{'
             'e.stopPropagation();e.preventDefault();'
             'var rows=tbl.querySelectorAll("tr");'
             'rows.forEach(function(row,i){'
             'var isHead=tbl.querySelector("thead")&&row.closest("thead")!==null;'
             'var cell=document.createElement(isHead?"th":"td");'
-            'cell.textContent=isHead?"列":"セル";'
+            f'cell.textContent=isHead?{json.dumps(self._t("table_col"))}:{json.dumps(self._t("table_cell"))};'
             'row.appendChild(cell);'
             '});'
             'var w=document.querySelector(".wrap");'
             'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
             'window._mdvSetupTableBtns();'
             '}));'
-            'ctrl.appendChild(mkBtn("+ 行","行を追加",function(e){'
+            f'ctrl.appendChild(mkBtn({json.dumps(self._t("table_add_row"))},'
+            f'{json.dumps(self._t("table_add_row_title"))},function(e){{'
             'e.stopPropagation();e.preventDefault();'
             'var tbody=tbl.querySelector("tbody")||tbl;'
             'var lastRow=tbody.querySelector("tr:last-child");'
@@ -2104,7 +2322,7 @@ class MDViewerPro(QMainWindow):
             'var newRow=document.createElement("tr");'
             'for(var j=0;j<lastRow.cells.length;j++){'
             'var td=document.createElement("td");'
-            'td.textContent="セル";'
+            f'td.textContent={json.dumps(self._t("table_cell"))};'
             'newRow.appendChild(td);'
             '}'
             'tbody.appendChild(newRow);'
@@ -2167,8 +2385,9 @@ class MDViewerPro(QMainWindow):
             ".task-list-item input[type='checkbox']{margin-right:6px;vertical-align:middle}"
         )
 
-    @staticmethod
-    def _page_break_js(page_height_mm):
+    def _page_break_js(self, page_height_mm):
+        _pg_prefix = json.dumps(self._t("page_label_prefix"))
+        _pg_suffix = json.dumps(self._t("page_label_suffix"))
         return (
             f'<script>'
             f'window.addEventListener("load",function(){{'
@@ -2196,7 +2415,7 @@ class MDViewerPro(QMainWindow):
             f'background:rgba(200,215,255,0.25);'
             f'border:1px solid rgba(100,140,255,0.35);'
             f'padding:0 6px;border-radius:8px;white-space:nowrap;";'
-            f's.textContent=(i+1)+" ページ目";'
+            f's.textContent={_pg_prefix}+(i+1)+{_pg_suffix};'
             f'd.appendChild(s);w.appendChild(d);'
             f'}}}}'
             f'upd();'
@@ -2228,26 +2447,144 @@ class MDViewerPro(QMainWindow):
             return m.group(0)
         return re.sub(r'<img\s+src="(https?://[^"]+)"', replace_src, html)
 
-    def _build_md_html(self, text, editable=False, strip_images=False):
+    # ════════════════════════════════════════════
+    #  TXT編集: プレビュー行同期 (編集中の行をプレビューでハイライト/自動スクロール)
+    # ════════════════════════════════════════════
+    @staticmethod
+    def _split_source_blocks(text):
+        """空行区切りでソースをおおよそのMarkdownブロック単位に分割し、
+        各ブロックの開始行番号 (0-indexed) の一覧を返す。
+        markdown.markdown() が生成する `.wrap` 直下のトップレベル要素の並び順と
+        概ね対応するため、行番号 ⇔ DOM要素の近似マッピングに使う。"""
+        lines = text.split('\n')
+        n = len(lines)
+        starts = []
+        i = 0
+        while i < n:
+            if lines[i].strip() == '':
+                i += 1
+                continue
+            start = i
+            fence_m = re.match(r'^\s{0,3}(```+|~~~+)', lines[i])
+            if fence_m:
+                fence = fence_m.group(1)[0] * 3
+                i += 1
+                while i < n and fence not in lines[i]:
+                    i += 1
+                i = min(i + 1, n)
+                starts.append(start)
+                continue
+            is_list = bool(_LIST_ITEM_RE.match(lines[i]))
+            while i < n and lines[i].strip() != '':
+                i += 1
+            # 空行を挟んでも次がリスト項目なら同一ブロック(loose list)として扱う。
+            # インデントされた継続行はここではリストに併合しない (実際の
+            # markdown パーサーの継続判定はインデント幅次第で分かれるため、
+            # 誤って併合するより素直に別ブロック扱いにした方がずれが小さい)。
+            while is_list and i < n:
+                j = i
+                while j < n and lines[j].strip() == '':
+                    j += 1
+                if j < n and _LIST_ITEM_RE.match(lines[j]):
+                    i = j
+                    while i < n and lines[i].strip() != '':
+                        i += 1
+                else:
+                    break
+            starts.append(start)
+        return starts
+
+    @staticmethod
+    def _tag_src_lines(body: str, block_starts: List[int]) -> str:
+        """body内のトップレベル要素それぞれに data-src-line 属性を付与する。"""
+        if not block_starts:
+            return body
+        lines = body.split('\n')
+        line_offsets = [0] * (len(lines) + 1)
+        off = 0
+        for i, ln in enumerate(lines):
+            off += len(ln) + 1
+            line_offsets[i + 1] = off
+
+        state = {"depth": 0, "block_idx": 0}
+        inserts = []
+
+        class _Tagger(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+                if state["depth"] == 0 and state["block_idx"] < len(block_starts):
+                    line, col = self.getpos()
+                    insert_at = line_offsets[line - 1] + col + 1 + len(tag)
+                    inserts.append(
+                        (insert_at, f' data-src-line="{block_starts[state["block_idx"]]}"')
+                    )
+                    state["block_idx"] += 1
+                state["depth"] += 1
+
+            def handle_startendtag(self, tag, attrs):
+                self.handle_starttag(tag, attrs)
+                state["depth"] -= 1
+
+            def handle_endtag(self, tag):
+                state["depth"] = max(0, state["depth"] - 1)
+
+        try:
+            parser = _Tagger()
+            parser.feed(body)
+        except Exception:
+            return body
+        result = body
+        for ins_off, ins_text in sorted(inserts, key=lambda x: -x[0]):
+            result = result[:ins_off] + ins_text + result[ins_off:]
+        return result
+
+    @staticmethod
+    def _line_sync_js():
+        return (
+            '<script>'
+            'window._mdvHighlightLine=function(line){'
+            'var wrap=document.querySelector(".wrap");'
+            'if(!wrap)return;'
+            'var els=wrap.querySelectorAll("[data-src-line]");'
+            'var target=null;'
+            'for(var i=0;i<els.length;i++){'
+            'var ln=parseInt(els[i].getAttribute("data-src-line"),10);'
+            'if(ln<=line){target=els[i];}else{break;}'
+            '}'
+            'var prev=wrap.querySelector(".mdv-line-hl");'
+            'if(prev)prev.classList.remove("mdv-line-hl");'
+            'if(target){'
+            'target.classList.add("mdv-line-hl");'
+            'var r=target.getBoundingClientRect();'
+            'if(r.top<0||r.bottom>window.innerHeight){'
+            'target.scrollIntoView({behavior:"smooth",block:"center"});'
+            '}'
+            '}'
+            '};'
+            '</script>'
+        )
+
+    def _build_md_html(self, text, editable=False, strip_images=False, sync_lines=False):
         p   = self._palette
         fs  = int(16 * SCALE_STEPS[self.scale_idx])
         # 編集モードでは codehilite を使わず fenced_code のみ使用する。
         # codehilite はコードを色付き <span> に変換して言語情報を失わせるため、
         # ビジュアル編集→Markdown 逆変換で言語指定 (```python 等) が壊れる。
         # fenced_code は <code class="language-xxx"> を出力し _HTML2MD が言語を復元できる。
+        # nl2br は使わない: 単一の改行を強制的に <br> にすると、行末2スペース/
+        # 空行で改段落するという本来のMarkdown仕様と異なる表示になってしまうため。
         if editable:
-            _exts = ["tables", "fenced_code", "nl2br"]
+            _exts = ["tables", "fenced_code"]
             _cfg = {}
         else:
-            _exts = ["tables", "fenced_code", "codehilite", "nl2br"]
+            _exts = ["tables", "fenced_code", "codehilite"]
             _cfg = {"codehilite": {"guess_lang": False, "noclasses": True}}
         try:
             body = markdown.markdown(text, extensions=_exts, extension_configs=_cfg)
         except Exception:
             try:
-                body = markdown.markdown(text, extensions=["tables", "fenced_code", "nl2br"])
+                body = markdown.markdown(text, extensions=["tables", "fenced_code"])
             except Exception:
-                body = markdown.markdown(text, extensions=["nl2br"])
+                body = markdown.markdown(text)
         # Markdown 由来の生 HTML/JavaScript を無害化 (信頼済みの自前スクリプト/CSS は
         # この body の外側で付加されるためサニタイズ対象外)。
         body = _sanitize_html(body)
@@ -2255,6 +2592,11 @@ class MDViewerPro(QMainWindow):
         body = self._embed_remote_images(body)
         if strip_images:
             body = re.sub(r'<img[^>]*>', '', body)
+        if sync_lines and not editable:
+            try:
+                body = self._tag_src_lines(body, self._split_source_blocks(text))
+            except Exception:
+                pass
 
         if self.page_mode == "a4":
             t, r, b, l = self.a4_margins
@@ -2316,7 +2658,14 @@ class MDViewerPro(QMainWindow):
                 ".mdv-copy-btn{display:none}"
             )
 
-        css = self._css(fs) + f".wrap{{{wrap}}}" + print_css + editable_css
+        sync_css = ""
+        if sync_lines and not editable:
+            sync_css = (
+                ".mdv-line-hl{background:rgba(255,60,60,.16)!important;"
+                "transition:background .15s;border-radius:3px;}"
+            )
+
+        css = self._css(fs) + f".wrap{{{wrap}}}" + print_css + editable_css + sync_css
 
         wrap_attrs = ' contenteditable="true" spellcheck="false"' if editable else ""
 
@@ -2324,6 +2673,9 @@ class MDViewerPro(QMainWindow):
         _ch_content = ""
         if editable:
             _ch_content = (
+                # Enter で <div> ではなく <p> を生成させ、段落境界の解釈を
+                # HTML→Markdown 変換側 (<p>/<div> どちらも \n\n) と揃える。
+                'try{document.execCommand("defaultParagraphSeparator",false,"p");}catch(e){}'
                 'var br=ch.objects.bridge;'
                 'var w=document.querySelector(".wrap");'
                 'if(w){'
@@ -2346,7 +2698,11 @@ class MDViewerPro(QMainWindow):
             '</script>'
         )
 
-        toc_js = self._toc_js() if (self._show_toc and not editable) else ""
+        # 閲覧モードのみプレビュー内オーバーレイのTOCを使う。
+        # TXT編集モード (sync_lines) や MD編集モード (editable) は
+        # 左側のネイティブTOCパネル (_toc_panel) を使うため重複表示しない。
+        toc_js = self._toc_js() if (self._show_toc and not editable and not sync_lines) else ""
+        sync_js = self._line_sync_js() if (sync_lines and not editable) else ""
         return (
             '<!DOCTYPE html><html><head><meta charset="utf-8">'
             f'<style>{css}</style></head>'
@@ -2354,6 +2710,7 @@ class MDViewerPro(QMainWindow):
             f'{pg_js}'
             f'{self._copy_code_btn_js()}'
             f'{(self._md_edit_fmt_js() if editable else "")}'
+            f'{sync_js}'
             f'{webchannel_js}'
             f'{self._copy_plain_js()}'
             f'{toc_js}'
@@ -2452,6 +2809,22 @@ class MDViewerPro(QMainWindow):
             f"QScrollBar::add-line:horizontal,"
             f"QScrollBar::sub-line:horizontal{{width:0;}}"
             f"QSplitter::handle{{background-color:{p['sep']};border:none;}}"
+            f"QWidget#tocPanel{{background-color:{p['bg2']};"
+            f"border-right:1px solid {p['sep']};}}"
+            f"QLabel#tocTitle{{color:{p['heading']};"
+            f"font-size:{self._toc_base_font_px()}px;"
+            f"font-weight:bold;padding:10px 12px 8px 12px;"
+            f"border-bottom:1px solid {p['sep']};background:transparent;}}"
+            # font-size はウィジェット側にだけ指定する。::item に書くと
+            # 見出しレベルごとに setFont() で付けた大きさを打ち消してしまう。
+            f"QListWidget#tocList{{background-color:{p['bg2']};color:{p['text']};"
+            f"border:none;outline:none;padding:4px 0;font-size:16px;}}"
+            f"QListWidget#tocList::item{{padding:5px 12px;border-radius:3px;"
+            f"margin:1px 6px;}}"
+            f"QListWidget#tocList::item:hover{{background-color:{p['btn_hover']};"
+            f"color:{p['accent']};}}"
+            f"QListWidget#tocList::item:selected{{background-color:{p['select']};"
+            f"color:{p['text']};}}"
             f"QDialog{{background-color:{p['bg2']};color:{p['text']};}}"
             f"QGroupBox{{border:1px solid {p['sep']};border-radius:4px;"
             f"margin-top:8px;padding-top:8px;font-weight:bold;font-size:{lbl_fs}px;}}"
@@ -2494,6 +2867,9 @@ class MDViewerPro(QMainWindow):
         self._settings_btn.setText(self._t("settings"))
         self._toc_btn.setText(self._t("toc"))
         self._pdf_btn.setText(self._t("pdf_export"))
+        self._toc_title_lbl.setText(self._t("toc_title"))
+        if self._toc_panel.isVisible():
+            self._rebuild_toc_list()
 
     def _refresh_btn_states(self):
         for k, b in self._mode_btns.items():
@@ -2513,9 +2889,12 @@ class MDViewerPro(QMainWindow):
     #  表示更新
     # ════════════════════════════════════════════
     def _refresh_view(self):
+        if self._toc_panel.isVisible():
+            self._rebuild_toc_list()
         text = self._content_text
         editable = (self.edit_mode == "md")
-        html = self._build_md_html(text, editable=editable)
+        sync_lines = (self.edit_mode == "txt")
+        html = self._build_md_html(text, editable=editable, sync_lines=sync_lines)
         base_path = None
         if self.current_file_path:
             base_path = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
@@ -2537,6 +2916,11 @@ class MDViewerPro(QMainWindow):
         self._content_text = self._html_to_markdown(html_content)
         self.is_modified = True
         self._update_title()
+        # MD編集モードでは _refresh_view() が走らない(プレビュー欄がそのまま
+        # 編集領域のため)。見出しを増減しても目次が古いままにならないよう、
+        # ここで作り直す (中身が変わっていなければ _rebuild_toc_list 側で握り潰す)。
+        if self._toc_panel.isVisible():
+            self._rebuild_toc_list()
 
     def _flush_preview(self):
         if self.edit_mode == "txt":
@@ -2639,14 +3023,13 @@ class MDViewerPro(QMainWindow):
         self.edit_mode = mode
         idx = 1 if mode == "txt" else 0
         self._editor_stack.setCurrentIndex(idx)
+        # 閲覧・MD編集モードではエディタ欄が空のまま残るため隠す
+        # (可視のままだとスプリッターのハンドルをドラッグして空白パネルを
+        # 引き出せてしまう)。
+        self._editor_stack.setVisible(mode == "txt")
 
         # 書式ツールバーはTXT編集・MD編集モードの両方で表示
         self._fmt_container.setVisible(mode in ("txt", "md"))
-
-        if mode in ("view", "md"):
-            self._splitter.setSizes([0, 1])
-        else:
-            self._splitter.setSizes([480, 720])
 
         self._md_page.set_mode(mode)
 
@@ -2655,13 +3038,208 @@ class MDViewerPro(QMainWindow):
             self._md_editor.setPlainText(self._content_text)
             self._md_editor.blockSignals(False)
 
+        self._update_toc_panel_visibility()
+        self._update_splitter_sizes()
         self._refresh_btn_states()
         self._refresh_view()
 
     def _toggle_toc(self):
         self._show_toc = not self._show_toc
         self._toc_btn.set_active(self._show_toc)
+        self._update_toc_panel_visibility()
+        self._update_splitter_sizes()
         self._refresh_view()
+
+    # ─── 見出し(TOC)パネル ─────────────────────────
+    def _update_toc_panel_visibility(self):
+        show = self._show_toc and self.edit_mode in ("md", "txt")
+        self._toc_panel.setVisible(show)
+        if show:
+            self._rebuild_toc_list()
+
+    def _toc_panel_width(self):
+        """本文が最大幅まで広がった状態でウィンドウを横に広げた場合、
+        目次パネルの幅もある程度追従して広がるようにする(220〜420pxの範囲)。"""
+        base, grow_from, ratio, cap = 220, 900, 0.18, 420
+        extra = max(0, self.width() - grow_from) * ratio
+        return int(min(cap, base + extra))
+
+    def _splitter_total_width(self):
+        """setSizes() に渡す合計幅。QSplitter は渡された値の合計を実幅に
+        比例スケールするため、ここが実幅より小さいと目次だけが不当に広くなる。
+        レイアウト前は QSplitter が既定幅のままのことがあるので、その場合は
+        ウィンドウ幅を使う (スプリッターは余白なしで全幅を占める)。"""
+        w = self._splitter.width()
+        win_w = max(1, self.width())
+        return w if w >= win_w * 0.5 else win_w
+
+    def _update_splitter_sizes(self):
+        """モード切替・目次トグル時にスプリッターを初期配分に戻す。"""
+        toc_w = (self._toc_panel_width()
+                 if (self._show_toc and self.edit_mode in ("md", "txt")) else 0)
+        rest = max(1, self._splitter_total_width() - toc_w)
+        if self.edit_mode == "txt":
+            # エディタ:プレビュー = 4:6。実ピクセルで渡すことで、目次の幅が
+            # 比率に巻き込まれて _toc_panel_width() どおりにならないのを防ぐ。
+            edit_w = int(rest * 0.4)
+            self._splitter.setSizes([toc_w, edit_w, rest - edit_w])
+        else:
+            self._splitter.setSizes([toc_w, 0, rest])
+
+    def _sync_toc_width_on_resize(self):
+        """ウィンドウ幅の変化に合わせて目次の幅だけを追従させる。
+        エディタ/プレビューはユーザーがドラッグした比率を保つ
+        (_update_splitter_sizes をそのまま呼ぶと手動調整が毎回失われる)。"""
+        if not (self._show_toc and self.edit_mode in ("md", "txt")):
+            return
+        sizes = self._splitter.sizes()
+        if len(sizes) != 3:
+            return
+        toc_w = self._toc_panel_width()
+        rest = max(1, self._splitter_total_width() - toc_w)
+        old_rest = sizes[1] + sizes[2]
+        if old_rest <= 0:
+            self._update_splitter_sizes()
+            return
+        mid = int(rest * sizes[1] / old_rest)
+        self._splitter.setSizes([toc_w, mid, rest - mid])
+
+    @staticmethod
+    def _extract_headings(text):
+        """本文から見出し(ATX形式の# ... および Setext形式の下線見出し)を抽出する。
+        markdown.markdown() が実際にレンダリングする見出し (先頭の空白なしATX、
+        #の後にスペースがないATX、Setext見出し) と一致するように検出する。
+        フェンスコードブロック内、およびブロック引用/リスト等にネストした見出しは
+        対象外 (querySelectorAll('.wrap>h1,...') 側もトップレベルのみを見るため)。"""
+        heads = []
+        lines = text.split("\n")
+        n = len(lines)
+
+        # ── 1st pass: 実際に閉じているフェンスの行範囲だけを求める ──
+        # python-markdown は「行頭(インデントなし)で始まり、開始と全く同じ記号列で
+        # 閉じられた」フェンスのみをコードブロックとして扱う。閉じていないフェンスや
+        # インデントされたフェンスは通常の本文として解釈され、中の `# ...` は
+        # 見出しとして描画される。これらを誤ってスキップすると見出しを取りこぼし、
+        # TOC のジャンプ先がずれる。
+        fenced = [False] * n
+        i = 0
+        while i < n:
+            m_open = re.match(r'^(`{3,}|~{3,})', lines[i])
+            if m_open:
+                marker = m_open.group(1)
+                close_re = re.compile(r'^' + re.escape(marker) + r'[ \t]*$')
+                j = i + 1
+                while j < n and not close_re.match(lines[j]):
+                    j += 1
+                if j < n:                       # 閉じている → フェンスとして扱う
+                    for k in range(i, j + 1):
+                        fenced[k] = True
+                    i = j + 1
+                    continue
+            i += 1
+
+        # ── 2nd pass: 見出しを抽出 ──
+        prev_text = None
+        prev_line_no = None
+        i = 0
+        while i < n:
+            line = lines[i]
+            stripped = line.strip()
+
+            if fenced[i]:
+                prev_text = None
+                i += 1
+                continue
+
+            if stripped == "":
+                prev_text = None
+                i += 1
+                continue
+
+            m = re.match(r'^(#{1,6})(.*)$', line)
+            if m:
+                level = len(m.group(1))
+                title = m.group(2).strip().rstrip('#').strip()
+                heads.append((level, title, i))
+                prev_text = None
+                i += 1
+                continue
+
+            if prev_text is not None and re.match(r'^=+\s*$', stripped):
+                heads.append((1, prev_text.strip(), prev_line_no))
+                prev_text = None
+                i += 1
+                continue
+            if prev_text is not None and re.match(r'^-+\s*$', stripped):
+                heads.append((2, prev_text.strip(), prev_line_no))
+                prev_text = None
+                i += 1
+                continue
+
+            prev_text = line
+            prev_line_no = i
+            i += 1
+        return heads
+
+    def _rebuild_toc_list(self, force=False):
+        heads = self._extract_headings(self._content_text)
+        # 編集のたびに呼ばれるため、見出しに変化がなければ作り直さない
+        # (作り直すと選択やスクロール位置が毎回リセットされてちらつく)。
+        cache_key = (heads, self._toc_base_font_px(), self.lang)
+        if not force and cache_key == getattr(self, "_toc_cache_key", None):
+            return
+        self._toc_cache_key = cache_key
+
+        scroll = self._toc_list.verticalScrollBar().value()
+        self._toc_list.clear()
+        if not heads:
+            item = QListWidgetItem(self._t("toc_empty"))
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable
+                          & ~Qt.ItemFlag.ItemIsEnabled)
+            self._toc_list.addItem(item)
+            return
+        base_fs = self._toc_base_font_px()
+        for i, (level, title, line_no) in enumerate(heads):
+            label = ("  " * (level - 1)) + (title or f"H{level}")
+            item = QListWidgetItem(label)
+            item.setData(Qt.ItemDataRole.UserRole, i)
+            item.setData(Qt.ItemDataRole.UserRole + 1, line_no)
+            f = item.font()
+            f.setPixelSize(max(16, base_fs - (level - 1)))
+            item.setFont(f)
+            self._toc_list.addItem(item)
+        self._toc_list.verticalScrollBar().setValue(scroll)
+
+    def _on_toc_item_clicked(self, item):
+        line_no = item.data(Qt.ItemDataRole.UserRole + 1)
+        heading_idx = item.data(Qt.ItemDataRole.UserRole)
+        if line_no is None or heading_idx is None:
+            return
+        if self.edit_mode == "txt":
+            block = self._md_editor.document().findBlockByNumber(line_no)
+            if block.isValid():
+                cur = self._md_editor.textCursor()
+                cur.setPosition(block.position())
+                self._md_editor.setTextCursor(cur)
+                self._md_editor.centerCursor()
+            self._md_editor.setFocus()
+        elif self.edit_mode == "md":
+            self._preview_web.page().runJavaScript(
+                "(function(){"
+                "var hs=document.querySelectorAll("
+                "'.wrap>h1,.wrap>h2,.wrap>h3,.wrap>h4,.wrap>h5,.wrap>h6');"
+                f"var idx={int(heading_idx)};"
+                "if(hs[idx]){hs[idx].scrollIntoView({behavior:'smooth',block:'start'});}"
+                "})();"
+            )
+
+    def _on_txt_cursor_moved(self):
+        if self.edit_mode != "txt" or not hasattr(self, "_preview_web"):
+            return
+        line = self._md_editor.textCursor().blockNumber()
+        self._preview_web.page().runJavaScript(
+            f"window._mdvHighlightLine && window._mdvHighlightLine({line});"
+        )
 
     def _go_back(self):
         self._set_mode("view")
@@ -2755,7 +3333,7 @@ class MDViewerPro(QMainWindow):
     # ════════════════════════════════════════════
     def _md_wrap(self, pre, post):
         cur = self._md_editor.textCursor()
-        sel = cur.selectedText().replace("\u2029", "\n") or "テキスト"
+        sel = cur.selectedText().replace("\u2029", "\n") or self._t("link_text_default")
         cur.insertText(f"{pre}{sel}{post}")
         self._md_editor.setTextCursor(cur)
         self._md_editor.setFocus()
@@ -2771,6 +3349,47 @@ class MDViewerPro(QMainWindow):
     def _md_insert(self, text):
         cur = self._md_editor.textCursor()
         cur.insertText(text)
+        self._md_editor.setTextCursor(cur)
+        self._md_editor.setFocus()
+
+    def _md_toggle_ordered(self):
+        """現在行の番号付きリスト書式をトグルする。既に番号付きなら解除し、
+        付けるときは直前行の番号を見て連番になるようにする。"""
+        cur = self._md_editor.textCursor()
+        cur.movePosition(QTextCursor.MoveOperation.StartOfLine)
+        cur.movePosition(QTextCursor.MoveOperation.EndOfLine,
+                         QTextCursor.MoveMode.KeepAnchor)
+        line = cur.selectedText()
+        m = re.match(r'^(\s*)\d+\.\s+(.*)$', line)
+        if m:
+            cur.insertText(m.group(1) + m.group(2))
+        else:
+            indent = re.match(r'^(\s*)', line).group(1)
+            content = line[len(indent):]
+            n = 1
+            prev = cur.block().previous()
+            if prev.isValid():
+                pm = re.match(r'^(\s*)(\d+)\.\s+', prev.text())
+                if pm and pm.group(1) == indent:
+                    n = int(pm.group(2)) + 1
+            cur.insertText(f"{indent}{n}. {content}")
+        self._md_editor.setTextCursor(cur)
+        self._md_editor.setFocus()
+
+    def _md_toggle_unordered(self):
+        """現在行の箇条書きリスト書式をトグルする。"""
+        cur = self._md_editor.textCursor()
+        cur.movePosition(QTextCursor.MoveOperation.StartOfLine)
+        cur.movePosition(QTextCursor.MoveOperation.EndOfLine,
+                         QTextCursor.MoveMode.KeepAnchor)
+        line = cur.selectedText()
+        m = re.match(r'^(\s*)[-*+]\s+(.*)$', line)
+        if m:
+            cur.insertText(m.group(1) + m.group(2))
+        else:
+            indent = re.match(r'^(\s*)', line).group(1)
+            content = line[len(indent):]
+            cur.insertText(f"{indent}- {content}")
         self._md_editor.setTextCursor(cur)
         self._md_editor.setFocus()
 
@@ -2790,11 +3409,12 @@ class MDViewerPro(QMainWindow):
         self._md_editor.setFocus()
 
     def _md_insert_table(self):
+        col, cell = self._t("table_col"), self._t("table_cell")
         self._md_insert(
-            "\n| 列1 | 列2 | 列3 |\n"
+            f"\n| {col}1 | {col}2 | {col}3 |\n"
             "| :--- | :--- | :--- |\n"
-            "| セル | セル | セル |\n"
-            "| セル | セル | セル |\n"
+            f"| {cell} | {cell} | {cell} |\n"
+            f"| {cell} | {cell} | {cell} |\n"
         )
 
     # ════════════════════════════════════════════
@@ -3054,7 +3674,9 @@ class MDViewerPro(QMainWindow):
         self.edit_mode = "view"
         self._md_page.set_mode("view")
         self._editor_stack.setCurrentIndex(0)
-        self._splitter.setSizes([0, 1])
+        self._editor_stack.setVisible(False)
+        self._update_toc_panel_visibility()
+        self._update_splitter_sizes()
         self._fmt_container.setVisible(False)
         self._refresh_btn_states()
         self._check_and_fetch_images_for_file(text)
@@ -3293,7 +3915,9 @@ class MDViewerPro(QMainWindow):
             if worker is not None and worker.isRunning():
                 worker.cancel()
                 worker.wait(2000)
-            self._loader.cleanup()
+            loader = getattr(self, "_loader", None)
+            if loader is not None:
+                loader.cleanup()
             event.accept()
             self.window_closed.emit()
         else:
