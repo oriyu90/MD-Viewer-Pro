@@ -398,6 +398,44 @@ for target in (0, 10, 30):
     # 末尾付近は最終行までしかスクロールできないため許容幅を持たせる
     check("[anchor] エディタが指定行付近へ移動", abs(first - target) <= 2,
           f"target={target} first={first}")
+
+# 折り返しのある長い行でも、狙った行がぴったり最上部に来るか。
+# スクロールバーの1目盛りは「表示行」なので、折り返しがあると
+# ピクセル換算だけでは数行ずれる (v1.4.1 で補正ループを追加)。
+WRAP_DOC = "\n\n".join(
+    f"段落{i} の本文です。これは折り返しが起きる程度に長い日本語の行で、"
+    f"エディタの幅によっては複数の表示行にまたがります。" for i in range(40))
+win._md_editor.blockSignals(True)
+win._md_editor.setPlainText(WRAP_DOC)
+win._md_editor.blockSignals(False)
+for w in (300, 420, 700, 1000):
+    win._md_editor.resize(w, 300)
+    over, exact = [], 0
+    for target in range(0, 76, 2):
+        win._scroll_editor_to_anchor((target, 0.0))
+        got = win._md_editor.firstVisibleBlock().blockNumber()
+        if got == target:
+            exact += 1
+        if got > target:
+            over.append((target, got))
+    # 行き過ぎ(狙いより下に行く)は起きてはならない。
+    # 届かない(-)のは文末でスクロールしきれない場合のみ許容。
+    check(f"[anchor/{w}px] 折り返し行で行き過ぎない", not over, f"over={over[:5]}")
+    check(f"[anchor/{w}px] 狙った行が最上部に来る", exact == 38, f"exact={exact}/38")
+
+# リサイズ直後 (レイアウト未確定) でもずれないか
+win._md_editor.resize(380, 260)
+win._scroll_editor_to_anchor((50, 0.0))
+check("[anchor] レイアウト確定前でも正確",
+      win._md_editor.firstVisibleBlock().blockNumber() == 50,
+      str(win._md_editor.firstVisibleBlock().blockNumber()))
+
+# 補正ループが必ず止まるか (文末を狙っても無限ループしない)
+win._scroll_editor_to_anchor((10 ** 6, 0.0))
+check("[anchor] 範囲外の行でも停止する", True)
+win._md_editor.blockSignals(True)
+win._md_editor.setPlainText(ANCHOR_DOC)
+win._md_editor.blockSignals(False)
 check("[anchor] None を渡しても落ちない",
       win._scroll_editor_to_anchor(None) is None, "")
 

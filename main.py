@@ -4474,6 +4474,9 @@ class MDViewerPro(QMainWindow):
         except Exception:
             return None
 
+    # スクロール位置の微調整ループの上限 (病的な入力で固まらないための保険)
+    _MAX_SCROLL_FIXUP = 300
+
     def _editor_anchor(self):
         """TXT編集モードのエディタから、最上部に見えている行を取得する。"""
         try:
@@ -4514,6 +4517,7 @@ class MDViewerPro(QMainWindow):
         block = doc.findBlockByNumber(max(0, min(int(line), doc.blockCount() - 1)))
         if not block.isValid():
             return
+        target = block.blockNumber()
         cur = QTextCursor(block)
         self._md_editor.setTextCursor(cur)
         self._md_editor.ensureCursorVisible()
@@ -4524,6 +4528,18 @@ class MDViewerPro(QMainWindow):
         delta = self._md_editor.cursorRect().top() // lh
         if delta:
             vs.setValue(vs.value() + int(delta))
+        # スクロールバーの 1 目盛りは「表示行」で、折り返しのある行では
+        # 文書の行数と一致しない。またモード切替直後はレイアウトが確定して
+        # おらずピクセル換算がずれることがある。実際の先頭行を見ながら
+        # 1 目盛りずつ詰めて、狙った行をきっちり最上部に持ってくる。
+        for _ in range(self._MAX_SCROLL_FIXUP):
+            first = self._md_editor.firstVisibleBlock().blockNumber()
+            if first == target:
+                break
+            before = vs.value()
+            vs.setValue(before + (1 if first < target else -1))
+            if vs.value() == before:   # 文末/文頭でこれ以上動かせない
+                break
 
     def _set_mode(self, mode):
         if not self._mode_available(mode):
