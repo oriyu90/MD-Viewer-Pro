@@ -180,8 +180,8 @@ app = BUNDLE(
     info_plist={
         'CFBundleName': 'MD Viewer Pro',
         'CFBundleDisplayName': 'MD Viewer Pro',
-        'CFBundleVersion': '1.4.0',
-        'CFBundleShortVersionString': '1.4.0',
+        'CFBundleVersion': '1.4.1',
+        'CFBundleShortVersionString': '1.4.1',
         'CFBundlePackageType': 'APPL',
         'CFBundleSignature': '????',
         'NSHighResolutionCapable': True,
@@ -204,7 +204,20 @@ app = BUNDLE(
                     'net.daringfireball.markdown',
                     'public.plain-text',
                 ],
-            }
+            },
+            # v1.4.1: YAML の閲覧に対応したため関連付けを追加 (Owner ではなく
+            # Alternate にして、既存の YAML 用エディタの既定を奪わないようにする)
+            {
+                'CFBundleTypeName': 'YAML Document',
+                'CFBundleTypeExtensions': ['yml', 'yaml'],
+                'CFBundleTypeIconFile': 'MDicon',
+                'CFBundleTypeRole': 'Viewer',
+                'LSHandlerRank': 'Alternate',
+                'LSItemContentTypes': [
+                    'public.yaml',
+                    'public.plain-text',
+                ],
+            },
         ],
         'UTImportedTypeDeclarations': [
             {

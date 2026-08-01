@@ -1,4 +1,4 @@
-"""v1.4.0 Qt ウィジェット層 自動テスト (オフスクリーン).
+"""v1.4.1 Qt ウィジェット層 自動テスト (オフスクリーン).
 
 実際の MDViewerPro を生成し、目次パネル・スプリッター・書式ヘルパ等の
 振る舞いを画面なしで検証する。QWebEngineView は遅延生成のため、
@@ -260,6 +260,146 @@ for mode in ("view", "md", "txt", "view", "txt", "md", "view"):
           not (mode != "txt" and win._editor_stack.isVisible()), str(vis))
     s = win._splitter.sizes()
     check(f"[mode/{mode}] スプリッター幅が負にならない", all(x >= 0 for x in s), str(s))
+
+# ══════════════════════════════════════════════════
+# 7. 目次は既定でオン (v1.4.1)
+# ══════════════════════════════════════════════════
+check("[toc-default] 設定の既定値がオン", M._SETTINGS_DEFAULTS["show_toc"] is True,
+      str(M._SETTINGS_DEFAULTS.get("show_toc")))
+# 設定ファイルが無い状態 (初回起動) を再現する
+_saved_settings_file = M.SETTINGS_FILE
+M.SETTINGS_FILE = os.path.join(os.path.dirname(_saved_settings_file),
+                               "__no_such_settings__.json")
+check("[toc-default] 設定ファイルなしでオン", M.load_settings()["show_toc"] is True,
+      str(M.load_settings()["show_toc"]))
+_fresh = M.MDViewerPro()
+M.SETTINGS_FILE = _saved_settings_file
+check("[toc-default] 新規ウィンドウで目次オン", _fresh._show_toc is True,
+      str(_fresh._show_toc))
+_fresh.edit_mode = "md"
+_fresh._update_toc_panel_visibility()
+_fresh._refresh_btn_states()
+check("[toc-default] MD編集で目次パネルが出る", not _fresh._toc_panel.isHidden(),
+      "パネルが非表示")
+check("[toc-default] 目次ボタンが押下状態", _fresh._toc_btn.property("active") is True,
+      str(_fresh._toc_btn.property("active")))
+
+# ══════════════════════════════════════════════════
+# 8. ボタン文字の自動縮小 (v1.4.1)
+# ══════════════════════════════════════════════════
+def fit_now(tb):
+    """レイアウトを確定させ、各ボタンに幅合わせをやり直させる。
+    非表示ウィジェットへの QResizeEvent は show() まで遅延するため、
+    オフスクリーンのテストでは明示的に呼ぶ必要がある。"""
+    tb.layout().activate()
+    for b in tb.findChildren(M.PianoBtn):
+        b._applied_px = -1
+        b._fit_text()
+
+
+BTN_ATTRS = ["_back_btn", "_settings_btn", "_toc_btn", "_pdf_btn", "_margin_btn"]
+prev_px = {}
+for w in (1600, 1200, 900, 700, 520, 480):
+    win.resize(w, 900)
+    win._last_ui_scale_cat = ""      # リサイズタイマーを待たずに反映させる
+    win._apply_responsive_style()
+    win._main_tb.resize(w, win._main_tb.height())
+    fit_now(win._main_tb)
+    for name in BTN_ATTRS:
+        b = getattr(win, name)
+        px = b._applied_px
+        check(f"[btnfit/{w}] {name} フォントが決まっている", px > 0, f"px={px}")
+        check(f"[btnfit/{w}] {name} 下限を下回らない", px >= M.PianoBtn.MIN_FONT_PX,
+              f"px={px}")
+        # 実測でボタン幅に収まっているか
+        f = M.QFont(b.font()); f.setBold(True); f.setPixelSize(px)
+        adv = M.QFontMetrics(f).horizontalAdvance(b.text())
+        check(f"[btnfit/{w}] {name} 文字が枠内に収まる", adv <= b.width(),
+              f"text={b.text()!r} adv={adv} btn_w={b.width()} px={px}")
+        if name in prev_px:
+            check(f"[btnfit/{w}] {name} 幅が狭いほど大きくならない",
+                  px <= prev_px[name], f"{prev_px[name]} -> {px}")
+        prev_px[name] = px
+    # ツールバー全体がウィンドウ幅を超えない (超えると文字が切れる)
+    need = win._main_tb.minimumSizeHint().width()
+    check(f"[btnfit/{w}] ツールバー最小幅 <= ウィンドウ幅", need <= w,
+          f"need={need} window={w}")
+win.resize(1400, 900)
+win._last_ui_scale_cat = ""
+win._apply_responsive_style()
+
+# ボタンごとに文字量が違えば、必要なときは別々のサイズになりうる
+win.resize(500, 900)
+win._last_ui_scale_cat = ""
+win._apply_responsive_style()
+win._main_tb.resize(500, win._main_tb.height())
+fit_now(win._main_tb)
+_sizes = {n: getattr(win, n)._applied_px for n in BTN_ATTRS}
+check("[btnfit] 短いラベルは長いラベルより小さくならない",
+      _sizes["_back_btn"] >= _sizes["_pdf_btn"], str(_sizes))
+win.resize(1400, 900)
+win._last_ui_scale_cat = ""
+win._apply_responsive_style()
+
+# ══════════════════════════════════════════════════
+# 9. LaTeX / YAML を含む HTML 生成 (v1.4.1)
+# ══════════════════════════════════════════════════
+MATH_DOC = ("---\ntitle: 数式\ntags:\n  - math\n---\n\n"
+            "# 数式\n\n"
+            "インライン $E=mc^2$ です。\n\n"
+            "$$\n\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\n$$\n")
+win._content_text = MATH_DOC
+for mode, kw in [("view", {}), ("md", {"editable": True}),
+                 ("txt", {"sync_lines": True})]:
+    html = win._build_md_html(MATH_DOC, **kw)
+    check(f"[render/{mode}] 数式が組版される", html.count('data-tex="') == 2, mode)
+    check(f"[render/{mode}] プレースホルダが残らない",
+          "\ue000" not in html and "\ue001" not in html, mode)
+    check(f"[render/{mode}] フロントマターがパネルになる", 'class="mdv-fm"' in html, mode)
+    check(f"[render/{mode}] フロントマターが本文に漏れない",
+          "<hr" not in html.split('class="mdv-fm"')[0], mode)
+    check(f"[render/{mode}] 数式CSSが入る", ".mdv-frac" in html, mode)
+    check(f"[render/{mode}] 行対応が全モードで付く", "data-src-line" in html, mode)
+
+# YAML ドキュメントモード
+win.doc_kind = "yaml"
+yhtml = win._build_md_html("key: value\nlist:\n  - a\n")
+check("[render/yaml] YAML はコードブロックとして描画", "<pre" in yhtml, yhtml[:200])
+check("[render/yaml] MD編集は選べない", not win._mode_available("md"), "")
+check("[render/yaml] TXT編集は選べる", win._mode_available("txt"), "")
+win.doc_kind = "md"
+check("[render/md] MD編集に戻る", win._mode_available("md"), "")
+
+# 数式が無い文書でも従来どおり動く
+plain = win._build_md_html("# A\n\ntext\n")
+check("[render] 数式なしでも生成できる", "<h1" in plain and "data-tex" not in plain, "")
+
+# ══════════════════════════════════════════════════
+# 10. スクロールアンカー (v1.4.1)
+# ══════════════════════════════════════════════════
+check("[anchor] 解析", win._parse_anchor("42:0.2500") == (42, 0.25),
+      str(win._parse_anchor("42:0.2500")))
+check("[anchor] 空文字は None", win._parse_anchor("") is None, "")
+check("[anchor] 不正文字列は None", win._parse_anchor("abc") is None, "")
+check("[anchor] JS に行番号が埋め込まれる", "var line=42" in win._js_restore_anchor(42, 0.5),
+      win._js_restore_anchor(42, 0.5)[:120])
+
+ANCHOR_DOC = "\n\n".join(f"段落{i}" for i in range(40))
+win.doc_kind = "md"
+win._content_text = ANCHOR_DOC
+win.edit_mode = "txt"
+win._md_editor.blockSignals(True)
+win._md_editor.setPlainText(ANCHOR_DOC)
+win._md_editor.blockSignals(False)
+win._md_editor.resize(400, 300)
+for target in (0, 10, 30):
+    win._scroll_editor_to_anchor((target, 0.0))
+    first = win._md_editor.firstVisibleBlock().blockNumber()
+    # 末尾付近は最終行までしかスクロールできないため許容幅を持たせる
+    check("[anchor] エディタが指定行付近へ移動", abs(first - target) <= 2,
+          f"target={target} first={first}")
+check("[anchor] None を渡しても落ちない",
+      win._scroll_editor_to_anchor(None) is None, "")
 
 print("=" * 60)
 print(f"PASS: {PASS}   FAIL: {len(FAIL)}")

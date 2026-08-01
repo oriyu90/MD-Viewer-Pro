@@ -1,5 +1,108 @@
 # Release Notes / 更新履歴
 
+## v1.4.1
+
+### 日本語
+
+#### 新機能
+
+- **LaTeX 数式の表示に対応**: 本文中の `$…$`（インライン）と `$$…$$`（別行立て）、
+  および `\(…\)` / `\[…\]` を数式として組版し、Computer Modern 系のセリフ体で
+  表示するようにしました。分数・根号・上下付き・総和/積分などの大型演算子・
+  伸縮する括弧・行列（`pmatrix` / `bmatrix` / `vmatrix` / `cases` / `aligned`）・
+  `\mathbb` などの書体・アクセント記号・多数のギリシャ文字と数学記号に対応します。
+  組版はアプリ内部で完結しており、外部ライブラリのインストールもネットワーク接続も
+  必要ありません。PDF / HTML 書き出しにもそのまま反映されます。
+  コードブロックやインラインコードの中の `$`、および `$5 と $10` のような
+  通貨表記は数式として扱いません。未対応のコマンドは消さずにそのまま表示するため、
+  書いた内容が失われることはありません。
+- **YAML に対応**: 文書の先頭を `---` で囲んだ YAML フロントマターを、本文とは別の
+  メタ情報パネルとして表示するようにしました。また `.yml` / `.yaml` ファイルを
+  開けるようになり、YAML として構文強調表示します（この場合 MD編集は使えません。
+  TXT編集で編集してください）。
+- **フォントを選べるようにしました**: 詳細設定のフォント欄を、推奨フォント・
+  追加したフォント・システムフォントの 3 つに分けて選べるようにしました。
+  推奨フォントには IPAmj明朝 と Source Han Serif を加えています
+  （未インストールのものは「（未インストール）」と表示されます）。
+  「フォントを追加...」から TTF / OTF / TTC ファイルを取り込むと
+  `~/.mdviewer/fonts/` に保存され、次回起動以降も使えます。自分で追加した
+  フォントは「選択中のフォントを削除」で取り除けます（システムに元から入っている
+  フォントは削除されません）。フォントの変更は再起動しなくても UI 全体に反映されます。
+
+#### 修正
+
+- **モードを切り替えるとスクロール位置が先頭に戻る問題**: 閲覧モードから MD編集 /
+  TXT編集へ切り替えると、今読んでいた場所ではなく必ず文書の先頭が表示されて
+  いました。切替時に「画面最上部に見えているブロックとその中の位置」を記録し、
+  切替先で同じ位置を復元するようにしました。閲覧 ⇔ MD編集 ⇔ TXT編集 の
+  どの向きの切り替えでも位置を引き継ぎます。
+- **目次を標準でオンにしました**: 既定でオフだったため、目次機能があること自体に
+  気づきにくい状態でした。初回起動から目次が開いた状態になります。
+  オン / オフの状態は次回起動時にも引き継がれます。
+- **ウィンドウを狭くするとボタンの文字が枠からはみ出す問題**: ウィンドウ幅に応じた
+  一律の文字サイズだったため、「戻る」は余裕があるのに「PDF書き出し」は溢れる、
+  という状態になっていました。ボタンごとに実際の文字幅を測り、枠に収まらない
+  ボタンだけ文字をさらに小さくするようにしました。あわせて、狭い幅では
+  ツールバー全体がウィンドウ幅を超えてしまい文字が切れていた問題も修正し、
+  最小ウィンドウ幅 (480px) でもすべてのボタンが収まるようにしています。
+- **フロントマターが目次に紛れ込む問題**: `---` で囲んだ YAML の閉じ行を
+  下線形式の見出しと誤検出し、直前の `key: value` 行が目次に現れていました。
+- **字下げコードブロック内の行が目次に紛れ込む問題**: 4スペース(またはタブ)で
+  字下げして書いたコードブロックを本文として扱っていたため、その中の `#` 行や
+  `---` の行が見出しとして目次に現れていました。あわせて、その取りこぼしが原因で
+  目次のジャンプ先がずれることもありました。
+
+---
+
+### English
+
+#### New features
+
+- **LaTeX math rendering**: `$…$` (inline) and `$$…$$` (display), as well as `\(…\)` /
+  `\[…\]`, are now typeset as formulas in a Computer Modern style serif face.
+  Supported notation includes fractions, radicals, sub/superscripts, big operators
+  (`\sum`, `\int`, …), auto-stretching delimiters, matrix environments
+  (`pmatrix` / `bmatrix` / `vmatrix` / `cases` / `aligned`), styles such as
+  `\mathbb`, accents, and a large set of Greek letters and mathematical symbols.
+  Typesetting happens entirely inside the app — no extra library to install and no
+  network access — and it carries over to PDF/HTML export. A `$` inside a code block
+  or code span is never treated as math, and currency such as `$5 and $10` is left
+  alone. Unsupported commands are shown verbatim rather than dropped, so nothing you
+  wrote is lost.
+- **YAML support**: a `---` delimited YAML front matter block at the top of a document
+  is now shown as a separate metadata panel instead of leaking into the body. `.yml`
+  and `.yaml` files can also be opened and are shown with YAML syntax highlighting
+  (MD Edit is unavailable for these; use TXT Edit).
+- **Font selection**: the font setting is now split into recommended fonts, fonts you
+  added, and system fonts. IPAmj Mincho and Source Han Serif were added as recommended
+  fonts (shown as "(not installed)" when unavailable). "Add Font..." imports a
+  TTF / OTF / TTC file into `~/.mdviewer/fonts/` so it stays available on later
+  launches, and "Remove selected font" removes fonts you added (fonts installed on the
+  system are never touched). Font changes now apply to the whole UI without a restart.
+
+#### Fixes
+
+- **Switching modes jumped back to the top**: going from View to MD Edit or TXT Edit
+  always showed the beginning of the document instead of where you were reading. The
+  app now records the block visible at the top of the viewport (and the position within
+  it) and restores it in the target mode, in every direction between View, MD Edit and
+  TXT Edit.
+- **The TOC is now on by default**: it used to be off, which made the feature easy to
+  miss entirely. It is open from the first launch, and your on/off choice is remembered.
+- **Button labels overflowed their buttons on narrow windows**: font size followed only
+  the window width, so "Back" had room to spare while "Export PDF" spilled out of its
+  button. Each button now measures its own label and shrinks only if it does not fit.
+  A related issue where the whole toolbar exceeded the window width (clipping labels)
+  was fixed too — every button now fits at the 480px minimum window width.
+- **Front matter leaked into the TOC**: the closing `---` of a YAML block was detected
+  as a Setext (underlined) heading, so the preceding `key: value` line appeared in the
+  headings list.
+- **Indented code blocks leaked into the TOC**: code blocks written with a 4-space (or
+  tab) indent were treated as body text, so `#` lines and `---` lines inside them showed
+  up as headings — which could also make TOC entries jump to the wrong place.
+
+---
+
 ## v1.4.0
 
 ### 日本語

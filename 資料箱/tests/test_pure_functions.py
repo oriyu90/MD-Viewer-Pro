@@ -1,4 +1,4 @@
-"""v1.4.0 純粋関数 回帰テストハーネス.
+"""v1.4.1 純粋関数 回帰テストハーネス.
 
 main.py から対象関数のソースを抽出して実行し、markdown ライブラリの
 実出力と突き合わせる。Qt に依存しない部分のみを対象とする。
@@ -37,6 +37,15 @@ _sanitize_html = ns["_sanitize_html"]
 # _HTML2MD クラス + _html_to_md
 exec(extract("class _HTML2MD(HTMLParser):", "# ════"), ns)
 _html_to_md = ns["_html_to_md"]
+
+# LaTeX 数式レンダラ + YAML フロントマター (v1.4.1)
+exec(extract("# 数式退避用プレースホルダ", "#  SafeWebLoader"), ns)
+_render_tex        = ns["_render_tex"]
+_extract_math      = ns["_extract_math"]
+_restore_math      = ns["_restore_math"]
+_split_front_matter = ns["_split_front_matter"]
+_parse_simple_yaml = ns["_parse_simple_yaml"]
+_front_matter_html = ns["_front_matter_html"]
 
 # _extract_headings (staticmethod 本体をインデント除去して取り込む)
 _eh = extract("    def _extract_headings(text):", "    def _rebuild_toc_list")
@@ -149,6 +158,15 @@ HEADING_CASES = [
     ("フェンス複数(2つ目未閉鎖)", "```\n# c1\n```\n\n# B\n\n```\n# c2 unterminated\n"),
     ("フェンス言語指定", "# A\n\n```python\n# comment\n```\n\n# after\n"),
     ("インデントされたフェンス", "# A\n\n  ```\n# code\n  ```\n\n# after\n"),
+    # 字下げコードブロック (4スペース) 内は見出しにならない
+    ("字下げコード内の#", "# A\n\n    # not a heading\n\n# after\n"),
+    ("字下げコード内のSetext", "# A\n\n    title: x\n    ---\n\n# after\n"),
+    ("字下げコード内のSetextH1", "# A\n\n    title: x\n    ===\n\n# after\n"),
+    ("字下げコード(タブ)", "# A\n\n\t# not a heading\n\n# after\n"),
+    ("字下げコードに空行を含む", "# A\n\n    code1\n\n    code2\n\n# after\n"),
+    ("段落直後の字下げ行(継続行)", "# A\n\npara\n    continued\n\n# after\n"),
+    ("字下げコードが文書先頭", "    # code\n\n# after\n"),
+    ("3スペースは見出しのまま", "   # indented three\n\n# after\n"),
 ]
 
 for name, doc in HEADING_CASES:
@@ -342,6 +360,157 @@ check("[toggle] 箇条書き往復", toggle_unordered(toggle_unordered("A")) == 
 for line in ["1. Alpha", "- Alpha", "  1. Alpha"]:
     check("[toggle] 生成MDがリストになる", "<li>" in markdown.markdown(line),
           f"{line!r} -> {markdown.markdown(line)!r}")
+
+
+# ══════════════════════════════════════════════════════════════
+# 5. LaTeX 数式 (v1.4.1)
+# ══════════════════════════════════════════════════════════════
+TEX_CASES = [
+    ("上下付き",        r"x^2 + y_1",                      ["mdv-sup", "mdv-sub"]),
+    ("分数",            r"\frac{a}{b}",                    ["mdv-frac-n", "mdv-frac-d"]),
+    ("総和(display)",   r"\sum_{i=1}^{n} i",               ["mdv-lim-up", "mdv-lim-lo"]),
+    ("積分",            r"\int_0^\infty e^{-x}\,dx",       ["mdv-bigop-int", "∞"]),
+    ("根号",            r"\sqrt{x}",                       ["mdv-sqrt-body"]),
+    ("n乗根",           r"\sqrt[3]{x}",                    ["mdv-sqrt-idx"]),
+    ("行列",            r"\begin{pmatrix}a&b\\c&d\end{pmatrix}",
+                                                           ["mdv-mtx", "mdv-d-lparen"]),
+    ("場合分け",        r"\begin{cases}1&x>0\\0&x\le 0\end{cases}", ["mdv-mtx"]),
+    ("伸縮括弧",        r"\left(\frac{1}{2}\right)",       ["mdv-fence", "mdv-d-rparen"]),
+    ("ギリシャ文字",    r"\alpha\beta\Gamma",              ["α", "β", "Γ"]),
+    ("黒板太字",        r"\mathbb{R}",                     ["ℝ"]),
+    ("アクセント",      r"\hat{x}\vec{v}\bar{y}",          ["mdv-acc"]),
+    ("立体関数名",      r"\sin x + \log y",                ["mdv-fn"]),
+    ("極限",            r"\lim_{x\to 0}",                  ["mdv-lim"]),
+    ("二項係数",        r"\binom{n}{k}",                   ["mdv-frac-nb"]),
+    ("整列環境",        r"\begin{aligned}a&=b\\&=c\end{aligned}", ["mdv-mtx"]),
+    ("角括弧は式の一部", r"[0,1]",                          ["[", "]"]),
+    ("テキスト",        r"\text{hello world}",             ["hello world"]),
+]
+for name, tex, expects in TEX_CASES:
+    html = _render_tex(tex, True)
+    check(f"[tex] {name} 未フォールバック", "mdv-tex-raw" not in html, f"{tex} -> {html}")
+    for e in expects:
+        check(f"[tex] {name}", e in html, f"expected {e!r} in {html!r}")
+
+# 生成 HTML のタグ対応が取れているか (壊れた HTML を吐かない)
+class TagBalance(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.stack = []
+        self.ok = True
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in ("br", "hr", "img", "input"):
+            self.stack.append(tag)
+
+    def handle_endtag(self, tag):
+        if not self.stack or self.stack.pop() != tag:
+            self.ok = False
+
+
+for name, tex, _ in TEX_CASES:
+    for disp in (True, False):
+        p = TagBalance()
+        p.feed(_render_tex(tex, disp))
+        check(f"[tex] {name} タグ対応", p.ok and not p.stack,
+              f"unbalanced: {tex!r} display={disp}")
+
+# 未対応コマンドでも原文が残る (黙って消えない)
+check("[tex] 未対応コマンドを残す", "unknowncmd" in _render_tex(r"\unknowncmd", False),
+      _render_tex(r"\unknowncmd", False))
+# 空/壊れた入力でも例外を出さない
+for bad in ["", "   ", r"\frac{", r"\begin{pmatrix}", "}" * 50, "^" * 50, r"\left("]:
+    try:
+        _render_tex(bad, False)
+        check("[tex] 異常入力で例外なし", True)
+    except Exception as e:
+        check("[tex] 異常入力で例外なし", False, f"{bad!r}: {e}")
+
+# ─── 数式の抽出 (Markdown 変換前の退避) ───
+MATH_DOC = (
+    "# T\n\n"
+    "Inline $a^2+b^2=c^2$ text.\n\n"
+    "Cost is $5 and $10 total.\n\n"
+    "$$\nE = mc^2\n$$\n\n"
+    "```python\nx = \"$notmath$\"\n```\n\n"
+    "Span `$a$` kept.\n"
+)
+out, store = _extract_math(MATH_DOC)
+check("[math] 抽出数", len(store) == 2, f"store={store}")
+check("[math] 通貨は数式にしない", "$5 and $10" in out, out)
+check("[math] フェンス内は対象外", '"$notmath$"' in out, out)
+check("[math] コードスパンは対象外", "`$a$`" in out, out)
+check("[math] display 判定", store[1][0] is True and "mc^2" in store[1][1], f"{store}")
+check("[math] inline 判定", store[0][0] is False, f"{store}")
+# 退避 → Markdown → サニタイズ → 復元 で数式が戻るか
+_body = _sanitize_html(markdown.markdown(out, extensions=["tables", "fenced_code"]))
+_body = _restore_math(_body, store)
+check("[math] 復元後に数式HTMLがある", _body.count('data-tex="') == 2, _body)
+check("[math] display 用クラスが付く", _body.count("mdv-math-display") == 1, _body)
+check("[math] プレースホルダが残らない", "\ue000" not in _body and "\ue001" not in _body, _body)
+
+# 数式なしの文書は素通し
+_o, _s = _extract_math("# no math here\n\njust text\n")
+check("[math] 数式なしで無変更", _o == "# no math here\n\njust text\n" and _s == [], repr(_o))
+
+# 通貨表記の直後にコードスパンがあっても巻き込まない
+_o2, _s2 = _extract_math("金額の $5 と $10 です。`$x$` も同様。\n")
+check("[math] コードスパンの $ を閉じ記号にしない", _s2 == [], f"{_s2}")
+check("[math] 本文が変わらない", _o2 == "金額の $5 と $10 です。`$x$` も同様。\n", repr(_o2))
+# 単独の $ が閉じないまま行末に来ても本文を壊さない
+_o3, _s3 = _extract_math("価格は $100 でした。\n\n次の段落。\n")
+check("[math] 閉じない $ は素通し", _s3 == [], f"{_s3}")
+
+# MD編集モードの逆変換: data-tex から $...$ を復元する
+_md_back = _html_to_md('<p>a ' + _render_tex("x^2", False) + ' b</p>')
+check("[math] HTML→MD で $ 記法に戻る", "$x^2$" in _md_back, _md_back)
+_md_back2 = _html_to_md(_render_tex("E=mc^2", True))
+check("[math] display は $$ に戻る", "$$E=mc^2$$" in _md_back2, _md_back2)
+
+
+# ══════════════════════════════════════════════════════════════
+# 6. YAML フロントマター (v1.4.1)
+# ══════════════════════════════════════════════════════════════
+FM_DOC = "---\ntitle: Hello\ntags:\n  - a\n  - b\n---\n\n# Body\n\ntext\n"
+fm, body, off = _split_front_matter(FM_DOC)
+check("[yaml] フロントマター抽出", fm is not None and "title: Hello" in fm, repr(fm))
+check("[yaml] 本文の切り出し", body.lstrip().startswith("# Body"), repr(body))
+check("[yaml] 本文開始行", FM_DOC.split("\n")[off] == "", f"off={off}")
+check("[yaml] フロントマターなしは素通し",
+      _split_front_matter("# A\n\ntext")[0] is None)
+check("[yaml] 閉じないブロックは素通し",
+      _split_front_matter("---\ntitle: x\n\n# A")[0] is None)
+check("[yaml] 水平線だけの行は誤検出しない",
+      _split_front_matter("---\n\ntext")[0] is None)
+
+parsed = _parse_simple_yaml("title: Hello\ncount: 3\ntags:\n  - a\n  - b\n")
+check("[yaml] マッピング解析", parsed.get("title") == "Hello", parsed)
+check("[yaml] 並び解析", parsed.get("tags") == ["a", "b"], parsed)
+parsed2 = _parse_simple_yaml('name: "quoted: value"\n# comment\nother: 1\n')
+check("[yaml] 引用文字列", parsed2.get("name") == "quoted: value", parsed2)
+check("[yaml] コメント無視", "# comment" not in parsed2, parsed2)
+nested = _parse_simple_yaml("author:\n  name: Y\n  mail: a@b.test\n")
+check("[yaml] ネスト", isinstance(nested.get("author"), dict)
+      and nested["author"].get("name") == "Y", nested)
+for bad in ["", ":::", "- - -", "a:\n b:\n  c:\n", "\t\t\n"]:
+    try:
+        _parse_simple_yaml(bad)
+        check("[yaml] 異常入力で例外なし", True)
+    except Exception as e:
+        check("[yaml] 異常入力で例外なし", False, f"{bad!r}: {e}")
+
+_fm_html = _front_matter_html("title: Hello\ntags:\n  - a\n", "Front matter")
+_p = TagBalance()
+_p.feed(_fm_html)
+check("[yaml] パネルHTMLのタグ対応", _p.ok and not _p.stack, _fm_html)
+check("[yaml] 原文を data-fm に保持", 'data-fm="' in _fm_html, _fm_html)
+check("[yaml] HTML→MD でブロックが戻る",
+      _html_to_md(_fm_html).startswith("---\ntitle: Hello"), _html_to_md(_fm_html))
+
+# フロントマターの `---` を Setext 見出しと誤検出しない (v1.4.0 の不具合)
+_heads = _extract_headings(FM_DOC)
+check("[yaml] 目次にフロントマターが混ざらない",
+      [t for _, t, _ in _heads] == ["Body"], _heads)
 
 
 # ══════════════════════════════════════════════════════════════

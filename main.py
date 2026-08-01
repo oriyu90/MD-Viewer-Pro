@@ -36,15 +36,18 @@ from PySide6.QtWidgets import (
     QSplitter, QMessageBox, QWidget, QHBoxLayout, QVBoxLayout,
     QLabel, QSpinBox, QDialog, QDialogButtonBox, QFormLayout,
     QStackedWidget, QPushButton, QSizePolicy, QSlider,
-    QComboBox, QGroupBox, QFontComboBox, QCheckBox,
+    QComboBox, QGroupBox, QCheckBox,
     QListWidget, QListWidgetItem,
 )
 from PySide6.QtGui import (
     QAction, QKeySequence, QTextCursor,
     QPageLayout, QPageSize, QFont, QColor, QDesktopServices,
-    QFileOpenEvent,
+    QFileOpenEvent, QFontMetrics, QFontDatabase,
 )
-from PySide6.QtCore import Qt, QMarginsF, QTimer, QUrl, QSizeF, QObject, Slot, QEvent, Signal, QByteArray, QThread
+from PySide6.QtCore import (
+    Qt, QMarginsF, QTimer, QUrl, QSizeF, QObject, Slot, QEvent, Signal,
+    QByteArray, QThread, QSize,
+)
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings
 from PySide6.QtWebChannel import QWebChannel
@@ -61,7 +64,29 @@ LANGS = {"日本語": "ja", "English": "en", "Deutsch": "de", "Français": "fr"}
 PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
-APP_VERSION   = "1.4.0"
+FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
+APP_VERSION   = "1.4.1"
+
+# 開けるファイルの拡張子 (YAML を含む)
+OPEN_FILTER = ("Markdown / Text / YAML "
+               "(*.md *.markdown *.txt *.yml *.yaml);;All Files (*)")
+SAVE_FILTER = ("Markdown (*.md);;Text (*.txt);;"
+               "YAML (*.yml *.yaml);;All Files (*)")
+YAML_EXTS = (".yml", ".yaml")
+
+# 推奨フォント。表示名 → 実際に登録されうるファミリ名の候補(先に見つかった方を使う)。
+# IPAmj明朝 / Source Han Serif は環境によってファミリ名が異なるため別名も見る。
+RECOMMENDED_FONTS = [
+    ("Helvetica Neue",   ["Helvetica Neue", "Helvetica"]),
+    ("Hiragino Sans",    ["Hiragino Sans", "Hiragino Kaku Gothic ProN"]),
+    ("Hiragino Mincho",  ["Hiragino Mincho ProN", "Hiragino Mincho Pro"]),
+    ("IPAmj明朝",         ["IPAmjMincho", "IPAmj明朝", "IPAmj Mincho"]),
+    ("Source Han Serif", ["Source Han Serif", "Source Han Serif JP",
+                          "Source Han Serif JP VF", "Noto Serif CJK JP",
+                          "Noto Serif JP"]),
+    ("LaTeX風セリフ",     ["Latin Modern Roman", "CMU Serif", "Latin Modern Math",
+                          "Times New Roman", "Times"]),
+]
 
 DARK_PALETTE = {
     "bg":            "#000000",
@@ -186,6 +211,21 @@ I18N = {
         "table_add_row_title": "行を追加",
         "page_label_prefix": "",
         "page_label_suffix": " ページ目",
+        "font_recommended": "推奨フォント",
+        "font_user": "追加したフォント",
+        "font_system": "システムフォント",
+        "font_not_installed": "（未インストール）",
+        "font_add": "フォントを追加...",
+        "font_remove": "選択中のフォントを削除",
+        "font_add_title": "フォントファイルを選択",
+        "font_add_error": "フォントの追加に失敗しました。",
+        "font_add_invalid": "このファイルはフォントとして読み込めませんでした。",
+        "font_remove_title": "フォントの削除",
+        "font_remove_msg": "追加したフォント「{name}」を削除しますか？",
+        "font_hint": "未インストールの推奨フォントは「フォントを追加...」から\n"
+                     "TTF/OTF ファイルを登録すると使えるようになります。",
+        "front_matter": "フロントマター",
+        "yaml_doc": "YAML ドキュメント",
     },
     "en": {
         "back": "Back", "view": "View", "md_edit": "MD Edit", "txt_edit": "TXT Edit",
@@ -260,6 +300,21 @@ I18N = {
         "table_add_row_title": "Add row",
         "page_label_prefix": "Page ",
         "page_label_suffix": "",
+        "font_recommended": "Recommended fonts",
+        "font_user": "Added fonts",
+        "font_system": "System fonts",
+        "font_not_installed": " (not installed)",
+        "font_add": "Add Font...",
+        "font_remove": "Remove selected font",
+        "font_add_title": "Choose a font file",
+        "font_add_error": "Failed to add the font.",
+        "font_add_invalid": "This file could not be loaded as a font.",
+        "font_remove_title": "Remove Font",
+        "font_remove_msg": "Remove the added font \"{name}\"?",
+        "font_hint": "Recommended fonts that are not installed become available\n"
+                     "once you register a TTF/OTF file via 'Add Font...'.",
+        "front_matter": "Front matter",
+        "yaml_doc": "YAML document",
     },
     "de": {
         "back": "Zurück", "view": "Ansicht", "md_edit": "MD Bearbeiten", "txt_edit": "TXT Bearbeiten",
@@ -334,6 +389,21 @@ I18N = {
         "table_add_row_title": "Zeile hinzufügen",
         "page_label_prefix": "Seite ",
         "page_label_suffix": "",
+        "font_recommended": "Empfohlene Schriftarten",
+        "font_user": "Hinzugefügte Schriftarten",
+        "font_system": "Systemschriftarten",
+        "font_not_installed": " (nicht installiert)",
+        "font_add": "Schriftart hinzufügen...",
+        "font_remove": "Ausgewählte Schriftart entfernen",
+        "font_add_title": "Schriftdatei auswählen",
+        "font_add_error": "Die Schriftart konnte nicht hinzugefügt werden.",
+        "font_add_invalid": "Diese Datei konnte nicht als Schriftart geladen werden.",
+        "font_remove_title": "Schriftart entfernen",
+        "font_remove_msg": "Hinzugefügte Schriftart „{name}“ entfernen?",
+        "font_hint": "Nicht installierte empfohlene Schriftarten stehen zur Verfügung,\n"
+                     "sobald Sie über „Schriftart hinzufügen...“ eine TTF/OTF-Datei registrieren.",
+        "front_matter": "Front Matter",
+        "yaml_doc": "YAML-Dokument",
     },
     "fr": {
         "back": "Retour", "view": "Vue", "md_edit": "Édition MD", "txt_edit": "Édition TXT",
@@ -408,6 +478,21 @@ I18N = {
         "table_add_row_title": "Ajouter une ligne",
         "page_label_prefix": "Page ",
         "page_label_suffix": "",
+        "font_recommended": "Polices recommandées",
+        "font_user": "Polices ajoutées",
+        "font_system": "Polices système",
+        "font_not_installed": " (non installée)",
+        "font_add": "Ajouter une police...",
+        "font_remove": "Supprimer la police sélectionnée",
+        "font_add_title": "Choisir un fichier de police",
+        "font_add_error": "Échec de l'ajout de la police.",
+        "font_add_invalid": "Ce fichier n'a pas pu être chargé comme police.",
+        "font_remove_title": "Supprimer la police",
+        "font_remove_msg": "Supprimer la police ajoutée « {name} » ?",
+        "font_hint": "Les polices recommandées non installées deviennent disponibles\n"
+                     "après avoir enregistré un fichier TTF/OTF via « Ajouter une police... ».",
+        "front_matter": "En-tête YAML",
+        "yaml_doc": "Document YAML",
     },
 }
 
@@ -424,6 +509,8 @@ _SETTINGS_DEFAULTS: dict = {
     "last_pdf_dir":     "",
     "pdf_embed_images": True,
     "window_geometry":  "",
+    # 目次は既定でオン。機能の存在に気づいてもらうため、初回起動時から開いた状態にする。
+    "show_toc":         True,
 }
 
 def load_settings() -> dict:
@@ -435,6 +522,7 @@ def load_settings() -> dict:
             if k in data:
                 result[k] = data[k]
         result["scale_idx"] = max(0, min(len(SCALE_STEPS) - 1, int(result["scale_idx"])))
+        result["show_toc"] = bool(result["show_toc"])
         if result["lang"] not in ("ja", "en", "de", "fr"):
             result["lang"] = "ja"
         if not result["last_pdf_dir"] or not os.path.isdir(result["last_pdf_dir"]):
@@ -453,6 +541,94 @@ def save_settings(settings: dict):
 
 
 # ════════════════════════════════════════════════
+#  フォント管理 — ユーザーが追加した TTF/OTF を扱う
+#
+#  ~/.mdviewer/fonts/ に置かれたフォントを起動時に Qt へ登録する。
+#  「追加」でファイルをこのフォルダへ取り込み、「削除」で取り除く。
+#  システムに元から入っているフォントは対象外 (削除できない)。
+# ════════════════════════════════════════════════
+_USER_FONTS: Dict[str, str] = {}      # ファミリ名 → フォントファイルのパス
+_USER_FONT_IDS: Dict[str, int] = {}   # フォントファイルのパス → Qt の登録 ID
+_FONT_EXTS = (".ttf", ".otf", ".ttc", ".otc")
+
+
+def _register_font_file(path: str) -> List[str]:
+    """フォントファイルを Qt に登録し、追加されたファミリ名を返す。"""
+    try:
+        fid = QFontDatabase.addApplicationFont(path)
+    except Exception:
+        return []
+    if fid < 0:
+        return []
+    try:
+        fams = list(QFontDatabase.applicationFontFamilies(fid))
+    except Exception:
+        fams = []
+    if not fams:
+        return []
+    _USER_FONT_IDS[path] = fid
+    for fam in fams:
+        _USER_FONTS[fam] = path
+    return fams
+
+
+def load_user_fonts() -> Dict[str, str]:
+    """~/.mdviewer/fonts/ 内のフォントをすべて登録する (起動時に一度)。"""
+    _USER_FONTS.clear()
+    _USER_FONT_IDS.clear()
+    try:
+        os.makedirs(FONT_DIR, exist_ok=True)
+    except Exception:
+        return _USER_FONTS
+    for path in sorted(glob_mod.glob(os.path.join(FONT_DIR, "*"))):
+        if path.lower().endswith(_FONT_EXTS):
+            _register_font_file(path)
+    return _USER_FONTS
+
+
+def add_user_font(src_path: str) -> List[str]:
+    """フォントファイルを取り込んで登録する。追加されたファミリ名を返す。"""
+    try:
+        os.makedirs(FONT_DIR, exist_ok=True)
+        dest = os.path.join(FONT_DIR, os.path.basename(src_path))
+        if os.path.abspath(src_path) != os.path.abspath(dest):
+            shutil.copy2(src_path, dest)
+    except Exception:
+        return []
+    fams = _register_font_file(dest)
+    if not fams:
+        # フォントとして読めなかったファイルは取り込まない
+        try:
+            os.remove(dest)
+        except Exception:
+            pass
+    return fams
+
+
+def remove_user_font(family: str) -> bool:
+    """ユーザーが追加したフォントを登録解除してファイルごと削除する。"""
+    path = _USER_FONTS.get(family)
+    if not path:
+        return False
+    fid = _USER_FONT_IDS.pop(path, None)
+    if fid is not None:
+        try:
+            QFontDatabase.removeApplicationFont(fid)
+        except Exception:
+            pass
+    try:
+        if os.path.isfile(path):
+            os.remove(path)
+    except Exception:
+        return False
+    for fam in [f for f, p in _USER_FONTS.items() if p == path]:
+        _USER_FONTS.pop(fam, None)
+    return True
+
+
+
+
+# ════════════════════════════════════════════════
 #  QApplication サブクラス — macOS ファイルオープンイベント / マルチウィンドウ対応
 # ════════════════════════════════════════════════
 class MDApplication(QApplication):
@@ -460,6 +636,9 @@ class MDApplication(QApplication):
         super().__init__(argv)
         self._windows: List["MDViewerPro"] = []
         self.setQuitOnLastWindowClosed(False)
+        # ユーザーが追加したフォントは、ウィンドウを作る前に登録しておく
+        # (QFontDatabase は QGuiApplication 生成後でないと使えない)
+        load_user_fonts()
         self._dock_menu: Optional[object] = None
         self._setup_dock_menu()
 
@@ -824,12 +1003,28 @@ class _HTML2MD(HTMLParser):
         tag = tag.lower()
         attrs_d = dict(attrs)
         self._stack.append(tag)
-        # エディタが注入する制御要素(コピーボタン・テーブル操作ボタン・改ページ等)は除外
         cls = attrs_d.get('class', '') or ''
-        if self._skip_at is None and any(
-            c in cls for c in ('mdv-copy-btn', 'mdv-table-ctrl', 'pg-brk', 'mdv-toc')
-        ):
-            self._skip_at = len(self._stack)
+        cls_set = set(cls.split())
+        if self._skip_at is None:
+            # 数式・フロントマターは表示用に組版された HTML なので、
+            # 中身ではなく原文 (data-tex / data-fm) から元の記法を復元する。
+            if 'mdv-math' in cls_set:
+                tex = attrs_d.get('data-tex', '') or ''
+                if attrs_d.get('data-display', '0') == '1':
+                    self.parts.append('\n\n$$' + tex + '$$\n\n')
+                else:
+                    self.parts.append('$' + tex + '$')
+                self._skip_at = len(self._stack)
+                return
+            if 'mdv-fm' in cls_set:
+                fm = attrs_d.get('data-fm', '') or ''
+                self.parts.append('---\n' + fm + '\n---\n\n')
+                self._skip_at = len(self._stack)
+                return
+            # エディタが注入する制御要素(コピーボタン・テーブル操作ボタン・
+            # 改ページ線・オーバーレイ目次)は出力しない
+            if cls_set & {'mdv-copy-btn', 'mdv-table-ctrl', 'pg-brk', 'mdv-toc'}:
+                self._skip_at = len(self._stack)
         if self._skip_at is not None:
             return
         if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
@@ -1129,6 +1324,870 @@ def _sanitize_html(html: str) -> str:
 
 
 # ════════════════════════════════════════════════
+#  LaTeX 数式レンダラ (標準ライブラリのみ・完全オフライン)
+#
+#  KaTeX/MathJax のような外部 JS は使わない。数式は Python 側で
+#  HTML + CSS に組版し、`.mdv-math` の中に埋め込む。
+#  ・追加依存やネットワークアクセスが発生しない
+#  ・PDF/HTML 書き出しにもそのまま乗る
+#  ・サニタイザを通した後に差し込むため、生成 HTML が壊されない
+#  対応範囲は実用的なサブセット (詳細は README / 設計ドキュメント)。
+# ════════════════════════════════════════════════
+
+# 数式退避用プレースホルダ。markdown / サニタイザ / html.escape の
+# いずれも書き換えない私用領域 (Private Use Area) の文字を使う。
+_MATH_PH_OPEN  = "\ue000"
+_MATH_PH_CLOSE = "\ue001"
+_MATH_PH_RE = re.compile(_MATH_PH_OPEN + r'(\d+)' + _MATH_PH_CLOSE)
+
+# ─── 記号テーブル ──────────────────────────────
+_TEX_SYMBOLS = {
+    # ギリシャ文字 (小文字)
+    'alpha': 'α', 'beta': 'β', 'gamma': 'γ', 'delta': 'δ', 'epsilon': 'ϵ',
+    'varepsilon': 'ε', 'zeta': 'ζ', 'eta': 'η', 'theta': 'θ', 'vartheta': 'ϑ',
+    'iota': 'ι', 'kappa': 'κ', 'lambda': 'λ', 'mu': 'μ', 'nu': 'ν', 'xi': 'ξ',
+    'omicron': 'ο', 'pi': 'π', 'varpi': 'ϖ', 'rho': 'ρ', 'varrho': 'ϱ',
+    'sigma': 'σ', 'varsigma': 'ς', 'tau': 'τ', 'upsilon': 'υ', 'phi': 'ϕ',
+    'varphi': 'φ', 'chi': 'χ', 'psi': 'ψ', 'omega': 'ω',
+    # ギリシャ文字 (大文字)
+    'Gamma': 'Γ', 'Delta': 'Δ', 'Theta': 'Θ', 'Lambda': 'Λ', 'Xi': 'Ξ',
+    'Pi': 'Π', 'Sigma': 'Σ', 'Upsilon': 'Υ', 'Phi': 'Φ', 'Psi': 'Ψ',
+    'Omega': 'Ω',
+    # 二項演算子
+    'times': '×', 'div': '÷', 'pm': '±', 'mp': '∓', 'cdot': '⋅', 'ast': '∗',
+    'star': '⋆', 'circ': '∘', 'bullet': '∙', 'oplus': '⊕', 'ominus': '⊖',
+    'otimes': '⊗', 'oslash': '⊘', 'odot': '⊙', 'dagger': '†', 'ddagger': '‡',
+    'amalg': '⨿', 'uplus': '⊎', 'sqcup': '⊔', 'sqcap': '⊓', 'wr': '≀',
+    'triangleleft': '◁', 'triangleright': '▷', 'bigtriangleup': '△',
+    'bigtriangledown': '▽',
+    # 関係子
+    'leq': '≤', 'le': '≤', 'geq': '≥', 'ge': '≥', 'neq': '≠', 'ne': '≠',
+    'equiv': '≡', 'approx': '≈', 'sim': '∼', 'simeq': '≃', 'cong': '≅',
+    'propto': '∝', 'll': '≪', 'gg': '≫', 'prec': '≺', 'succ': '≻',
+    'subset': '⊂', 'supset': '⊃', 'subseteq': '⊆', 'supseteq': '⊇',
+    'sqsubseteq': '⊑', 'sqsupseteq': '⊒', 'in': '∈', 'notin': '∉', 'ni': '∋',
+    'mid': '∣', 'nmid': '∤', 'perp': '⊥', 'parallel': '∥', 'models': '⊨',
+    'vdash': '⊢', 'dashv': '⊣', 'doteq': '≐', 'asymp': '≍', 'bowtie': '⋈',
+    'lneq': '⪇', 'gneq': '⪈', 'coloneqq': '≔',
+    # 集合・論理
+    'cup': '∪', 'cap': '∩', 'setminus': '∖', 'emptyset': '∅',
+    'varnothing': '∅', 'forall': '∀', 'exists': '∃', 'nexists': '∄',
+    'neg': '¬', 'lnot': '¬', 'land': '∧', 'wedge': '∧', 'lor': '∨',
+    'vee': '∨', 'complement': '∁',
+    # 矢印
+    'to': '→', 'rightarrow': '→', 'leftarrow': '←', 'gets': '←',
+    'leftrightarrow': '↔', 'Rightarrow': '⇒', 'Leftarrow': '⇐',
+    'Leftrightarrow': '⇔', 'mapsto': '↦', 'implies': '⟹', 'impliedby': '⟸',
+    'iff': '⟺', 'uparrow': '↑', 'downarrow': '↓', 'updownarrow': '↕',
+    'longrightarrow': '⟶', 'longleftarrow': '⟵', 'hookrightarrow': '↪',
+    'nearrow': '↗', 'searrow': '↘', 'swarrow': '↙', 'nwarrow': '↖',
+    # その他
+    'infty': '∞', 'partial': '∂', 'nabla': '∇', 'angle': '∠',
+    'therefore': '∴', 'because': '∵', 'cdots': '⋯', 'ldots': '…',
+    'dots': '…', 'dotsc': '…', 'vdots': '⋮', 'ddots': '⋱',
+    'prime': '′', 'degree': '°', 'hbar': 'ℏ', 'ell': 'ℓ', 'Re': 'ℜ',
+    'Im': 'ℑ', 'aleph': 'ℵ', 'wp': '℘', 'surd': '√', 'top': '⊤',
+    'bot': '⊥', 'flat': '♭', 'natural': '♮', 'sharp': '♯', 'clubsuit': '♣',
+    'diamondsuit': '♢', 'heartsuit': '♡', 'spadesuit': '♠',
+    'checkmark': '✓', 'square': '□', 'blacksquare': '■', 'triangle': '△',
+    'S': '§', 'P': '¶', 'copyright': '©', 'pounds': '£',
+    'langle': '⟨', 'rangle': '⟩', 'lfloor': '⌊', 'rfloor': '⌋',
+    'lceil': '⌈', 'rceil': '⌉', 'backslash': '\\',
+}
+
+# 上下に添字を積む大型演算子 (display 時)
+_TEX_BIGOPS_STACK = {
+    'sum': '∑', 'prod': '∏', 'coprod': '∐', 'bigcup': '⋃', 'bigcap': '⋂',
+    'bigoplus': '⨁', 'bigotimes': '⨂', 'bigodot': '⨀', 'bigvee': '⋁',
+    'bigwedge': '⋀', 'bigsqcup': '⨆', 'biguplus': '⨄',
+}
+# 添字を右に付ける大型演算子 (積分系)
+_TEX_BIGOPS_SIDE = {
+    'int': '∫', 'oint': '∮', 'iint': '∬', 'iiint': '∭', 'oiint': '∯',
+}
+# 立体で組む関数名 (添字は右)
+_TEX_FUNCS = (
+    'arccos', 'arcsin', 'arctan', 'arg', 'cos', 'cosh', 'cot', 'coth',
+    'csc', 'deg', 'det', 'dim', 'exp', 'gcd', 'hom', 'ker', 'lg', 'ln',
+    'log', 'sec', 'sin', 'sinh', 'tan', 'tanh', 'Pr',
+)
+# 立体で組み、display では上下に添字を積む関数名
+_TEX_FUNCS_LIMITS = ('lim', 'limsup', 'liminf', 'max', 'min', 'sup', 'inf',
+                     'argmax', 'argmin')
+
+# 書体変更コマンド → (CSSクラス, 文字変換テーブル名)
+_TEX_STYLES = {
+    'mathrm': 'mdv-rm', 'textrm': 'mdv-rm', 'text': 'mdv-txt',
+    'mathbf': 'mdv-bf', 'textbf': 'mdv-bf', 'boldsymbol': 'mdv-bf',
+    'bm': 'mdv-bf', 'mathit': 'mdv-it', 'textit': 'mdv-it',
+    'mathsf': 'mdv-sf', 'textsf': 'mdv-sf',
+    'mathtt': 'mdv-tt', 'texttt': 'mdv-tt',
+    'mathbb': 'mdv-bb', 'mathcal': 'mdv-cal', 'mathscr': 'mdv-cal',
+    'mathfrak': 'mdv-frak', 'mathnormal': 'mdv-it',
+}
+# 黒板太字 / 花文字は Unicode の該当文字に置き換える (フォント非依存)
+_TEX_BB = {
+    'A': '𝔸', 'B': '𝔹', 'C': 'ℂ', 'D': '𝔻', 'E': '𝔼', 'F': '𝔽', 'G': '𝔾',
+    'H': 'ℍ', 'I': '𝕀', 'J': '𝕁', 'K': '𝕂', 'L': '𝕃', 'M': '𝕄', 'N': 'ℕ',
+    'O': '𝕆', 'P': 'ℙ', 'Q': 'ℚ', 'R': 'ℝ', 'S': '𝕊', 'T': '𝕋', 'U': '𝕌',
+    'V': '𝕍', 'W': '𝕎', 'X': '𝕏', 'Y': '𝕐', 'Z': 'ℤ',
+}
+_TEX_CAL = {
+    'A': '𝒜', 'B': 'ℬ', 'C': '𝒞', 'D': '𝒟', 'E': 'ℰ', 'F': 'ℱ', 'G': '𝒢',
+    'H': 'ℋ', 'I': 'ℐ', 'J': '𝒥', 'K': '𝒦', 'L': 'ℒ', 'M': 'ℳ', 'N': '𝒩',
+    'O': '𝒪', 'P': '𝒫', 'Q': '𝒬', 'R': 'ℛ', 'S': '𝒮', 'T': '𝒯', 'U': '𝒰',
+    'V': '𝒱', 'W': '𝒲', 'X': '𝒳', 'Y': '𝒴', 'Z': '𝒵',
+}
+# アクセント → (記号, 上に載せるか)
+_TEX_ACCENTS = {
+    'hat': 'ˆ', 'widehat': 'ˆ', 'check': 'ˇ', 'tilde': '˜', 'widetilde': '˜',
+    'acute': '´', 'grave': '`', 'dot': '˙', 'ddot': '¨', 'breve': '˘',
+    'bar': '‾', 'vec': '→', 'overrightarrow': '→', 'mathring': '˚',
+}
+# 空白コマンド → em 単位の幅
+_TEX_SPACES = {
+    ',': 0.167, ':': 0.222, ';': 0.278, '!': -0.167, ' ': 0.333,
+    'quad': 1.0, 'qquad': 2.0, 'thinspace': 0.167, 'enspace': 0.5,
+    'hspace': 0.5,
+}
+# \left \right で使える区切り記号
+_TEX_DELIMS = {
+    '(': 'lparen', ')': 'rparen', '[': 'lbrack', ']': 'rbrack',
+    '\\{': 'lbrace', '\\}': 'rbrace', '|': 'vert', '\\|': 'dvert',
+    '.': 'none', '\\langle': 'langle', '\\rangle': 'rangle',
+    '\\lfloor': 'lfloor', '\\rfloor': 'rfloor',
+    '\\lceil': 'lceil', '\\rceil': 'rceil',
+    '\\vert': 'vert', '\\Vert': 'dvert', '<': 'langle', '>': 'rangle',
+}
+_TEX_DELIM_GLYPH = {
+    'lbrace': '{', 'rbrace': '}', 'langle': '⟨', 'rangle': '⟩',
+    'lfloor': '⌊', 'rfloor': '⌋', 'lceil': '⌈', 'rceil': '⌉',
+}
+# 前後に空きを入れる二項演算子 / 関係子
+_TEX_BINOPS = set('+−-*=<>±×÷≤≥≠≡≈∼≃≅∝≪≫⊂⊃⊆⊇∈∉∋∪∩∖∧∨→←↔⇒⇐⇔↦⟹⟸⟺≺≻⊥∣⊨⊢⋅∗⋆∘∙⊕⊖⊗⊘⊙')
+
+_TEX_TOK_RE = re.compile(r'\\[A-Za-z]+|\\.|\s+|.', re.DOTALL)
+
+
+def _tex_escape(s: str) -> str:
+    return _html_mod.escape(s, quote=True)
+
+
+class _TexNode:
+    """組版済みの部分式。html と、区切り記号の伸縮に使う概算高さ (行数) を持つ。"""
+    __slots__ = ("html", "h", "kind")
+
+    def __init__(self, html: str, h: float = 1.0, kind: str = "ord"):
+        self.html = html
+        self.h = h
+        self.kind = kind
+
+
+class _TexRenderer:
+    """LaTeX 数式の実用的サブセットを HTML + CSS に組版する。
+
+    再帰下降でトークン列を解析する。未対応のコマンドは黙って読み飛ばさず、
+    そのままの文字列として描画して「何が書かれていたか」が失われないようにする。
+    """
+
+    MAX_TOKENS = 20000   # 病的な入力で固まらないための上限
+
+    def __init__(self, tex: str, display: bool):
+        self.toks = _TEX_TOK_RE.findall(tex)[: self.MAX_TOKENS]
+        self.i = 0
+        self.display = display
+
+    # ─── トークン操作 ─────────────────────────
+    def _peek(self, skip_space=True):
+        j = self.i
+        while skip_space and j < len(self.toks) and self.toks[j].isspace():
+            j += 1
+        return self.toks[j] if j < len(self.toks) else None
+
+    def _next(self, skip_space=True):
+        while (skip_space and self.i < len(self.toks)
+               and self.toks[self.i].isspace()):
+            self.i += 1
+        if self.i >= len(self.toks):
+            return None
+        t = self.toks[self.i]
+        self.i += 1
+        return t
+
+    # 式の切れ目になるトークン。`]` は含めない ([0,1] のような通常の
+    # 角括弧まで式の終わりと誤認してしまうため、\sqrt[n] の読み取り側
+    # (read_optional) だけが個別に `]` を停止条件に加える。
+    _STOPPERS = ('}', '\\right', '&', '\\\\', '\\end')
+
+    # ─── 式 (ノードの並び) ────────────────────
+    def parse_expr(self, stop=_STOPPERS) -> _TexNode:
+        parts, h = [], 1.0
+        while True:
+            t = self._peek()
+            if t is None or t in stop:
+                break
+            node = self.parse_atom()
+            if node is None:
+                break
+            parts.append(node.html)
+            h = max(h, node.h)
+        return _TexNode(''.join(parts), h)
+
+    # ─── 添字付きの原子 ──────────────────────
+    def parse_atom(self):
+        base = self.parse_node()
+        if base is None:
+            return None
+        sup = sub = None
+        while True:
+            t = self._peek()
+            if t == '^' and sup is None:
+                self._next()
+                sup = self.read_group()
+            elif t == '_' and sub is None:
+                self._next()
+                sub = self.read_group()
+            else:
+                break
+        if sup is None and sub is None:
+            return base
+        stack = (base.kind == 'bigop' and self.display) or base.kind == 'stack'
+        if stack:
+            rows = []
+            if sup is not None:
+                rows.append(f'<span class="mdv-lim-up">{sup.html}</span>')
+            rows.append(f'<span class="mdv-lim-base">{base.html}</span>')
+            if sub is not None:
+                rows.append(f'<span class="mdv-lim-lo">{sub.html}</span>')
+            html = '<span class="mdv-lim">' + ''.join(rows) + '</span>'
+            return _TexNode(html, base.h + 1.2, 'ord')
+        scripts = []
+        if sup is not None:
+            scripts.append(f'<span class="mdv-sup">{sup.html}</span>')
+        if sub is not None:
+            scripts.append(f'<span class="mdv-sub">{sub.html}</span>')
+        if sup is not None and sub is not None:
+            html = (base.html + '<span class="mdv-scripts">'
+                    + ''.join(scripts) + '</span>')
+        else:
+            html = base.html + ''.join(scripts)
+        return _TexNode(html, base.h + 0.45, 'ord')
+
+    # ─── 引数 ({...} または 1 トークン) ────────
+    def read_group(self) -> _TexNode:
+        t = self._peek()
+        if t is None:
+            return _TexNode('')
+        if t == '{':
+            self._next()
+            node = self.parse_expr()
+            if self._peek() == '}':
+                self._next()
+            return node
+        node = self.parse_node()
+        return node if node is not None else _TexNode('')
+
+    def read_optional(self):
+        """\\sqrt[n]{x} の [n] のような省略可能引数を読む。"""
+        if self._peek() != '[':
+            return None
+        self._next()
+        node = self.parse_expr(stop=(']', '}', '\\end'))
+        if self._peek() == ']':
+            self._next()
+        return node
+
+    # ─── 単一ノード ─────────────────────────
+    def parse_node(self):
+        t = self._next()
+        if t is None:
+            return None
+        if t.isspace():
+            return _TexNode('')
+        if t == '{':
+            node = self.parse_expr()
+            if self._peek() == '}':
+                self._next()
+            return node
+        if t in ('}', '&', '\\\\'):
+            return _TexNode('')
+        if t.startswith('\\'):
+            return self.parse_command(t)
+        return self.parse_char(t)
+
+    # ─── 通常の文字 ─────────────────────────
+    def parse_char(self, c):
+        if c.isalpha():
+            # 変数はイタリック (LaTeX と同じ組版規則)
+            return _TexNode(f'<i class="mdv-var">{_tex_escape(c)}</i>')
+        if c == "'":
+            return _TexNode('<span class="mdv-sup">′</span>')
+        if c == '-':
+            return _TexNode('<span class="mdv-bin">−</span>')
+        if c in _TEX_BINOPS:
+            return _TexNode(f'<span class="mdv-bin">{_tex_escape(c)}</span>')
+        if c in ',;':
+            return _TexNode(f'{_tex_escape(c)}<span class="mdv-sp-punct"></span>')
+        if c in '()[]|':
+            return _TexNode(f'<span class="mdv-open">{_tex_escape(c)}</span>')
+        return _TexNode(_tex_escape(c))
+
+    # ─── コマンド ───────────────────────────
+    def parse_command(self, tok):
+        name = tok[1:]
+
+        # エスケープされた記号
+        if name in ('{', '}', '$', '%', '&', '#', '_'):
+            return _TexNode(_tex_escape(name))
+        if tok == '\\\\':
+            return _TexNode('<br>')
+
+        # 空白
+        if name in _TEX_SPACES:
+            w = _TEX_SPACES[name]
+            return _TexNode(f'<span style="display:inline-block;width:{w}em"></span>')
+
+        # 分数
+        if name in ('frac', 'dfrac', 'tfrac', 'cfrac'):
+            num, den = self.read_group(), self.read_group()
+            cls = 'mdv-frac mdv-frac-t' if name == 'tfrac' else 'mdv-frac'
+            html = (f'<span class="{cls}">'
+                    f'<span class="mdv-frac-n">{num.html}</span>'
+                    f'<span class="mdv-frac-d">{den.html}</span></span>')
+            return _TexNode(html, num.h + den.h + 0.2)
+        if name == 'binom':
+            top, bot = self.read_group(), self.read_group()
+            inner = (f'<span class="mdv-frac mdv-frac-nb">'
+                     f'<span class="mdv-frac-n">{top.html}</span>'
+                     f'<span class="mdv-frac-d">{bot.html}</span></span>')
+            return self._fence('lparen', 'rparen',
+                               _TexNode(inner, top.h + bot.h + 0.2))
+        # 根号
+        if name == 'sqrt':
+            idx = self.read_optional()
+            body = self.read_group()
+            h = body.h
+            idx_html = (f'<span class="mdv-sqrt-idx">{idx.html}</span>'
+                        if idx is not None else '')
+            html = (f'<span class="mdv-sqrt">{idx_html}'
+                    f'<span class="mdv-sqrt-sign" style="transform:scaleY({h:.2f})">'
+                    f'√</span>'
+                    f'<span class="mdv-sqrt-body">{body.html}</span></span>')
+            return _TexNode(html, h + 0.2)
+        # 上線 / 下線
+        if name in ('overline', 'underline'):
+            body = self.read_group()
+            cls = 'mdv-over' if name == 'overline' else 'mdv-under'
+            return _TexNode(f'<span class="{cls}">{body.html}</span>', body.h + 0.15)
+        # アクセント
+        if name in _TEX_ACCENTS:
+            body = self.read_group()
+            mark = _TEX_ACCENTS[name]
+            cls = 'mdv-acc-wide' if name in ('vec', 'overrightarrow',
+                                             'widehat', 'widetilde') else 'mdv-acc-m'
+            html = (f'<span class="mdv-acc"><span class="{cls}">'
+                    f'{_tex_escape(mark)}</span>{body.html}</span>')
+            return _TexNode(html, body.h + 0.15)
+        # 書体
+        if name in _TEX_STYLES:
+            cls = _TEX_STYLES[name]
+            body = self.read_group_raw() if name in ('text', 'textrm', 'textbf',
+                                                     'textit', 'textsf', 'texttt') \
+                else self.read_group()
+            inner = body.html
+            if name in ('mathbb',):
+                inner = self._map_letters(inner, _TEX_BB)
+            elif name in ('mathcal', 'mathscr'):
+                inner = self._map_letters(inner, _TEX_CAL)
+            return _TexNode(f'<span class="{cls}">{inner}</span>', body.h)
+        if name == 'operatorname':
+            body = self.read_group_raw()
+            return _TexNode(f'<span class="mdv-fn">{body.html}</span>')
+        # 大型演算子
+        if name in _TEX_BIGOPS_STACK:
+            return _TexNode(
+                f'<span class="mdv-bigop">{_TEX_BIGOPS_STACK[name]}</span>',
+                1.4, 'bigop')
+        if name in _TEX_BIGOPS_SIDE:
+            return _TexNode(
+                f'<span class="mdv-bigop mdv-bigop-int">'
+                f'{_TEX_BIGOPS_SIDE[name]}</span>', 1.4, 'ord')
+        # 関数名
+        if name in _TEX_FUNCS:
+            return _TexNode(f'<span class="mdv-fn">{name}</span>')
+        if name in _TEX_FUNCS_LIMITS:
+            return _TexNode(f'<span class="mdv-fn">{name}</span>', 1.0, 'bigop')
+        # 区切り記号の伸縮
+        if name == 'left':
+            return self.parse_left()
+        if name == 'right':
+            return _TexNode('')
+        if name in ('bigl', 'bigr', 'Bigl', 'Bigr', 'biggl', 'biggr'):
+            nxt = self._next()
+            return self._delim_node(nxt or '', 1.4)
+        # 環境
+        if name == 'begin':
+            return self.parse_environment()
+        if name == 'end':
+            self.read_group_raw()
+            return _TexNode('')
+        # 表示に影響しない指示は無視
+        if name in ('displaystyle', 'textstyle', 'scriptstyle', 'limits',
+                    'nolimits', 'nonumber', 'notag', 'label', 'mathstrut',
+                    'strut', 'phantom'):
+            if name in ('label', 'phantom'):
+                self.read_group_raw()
+            return _TexNode('')
+        # 記号テーブル
+        if name in _TEX_SYMBOLS:
+            sym = _TEX_SYMBOLS[name]
+            cls = 'mdv-bin' if sym in _TEX_BINOPS else 'mdv-sym'
+            return _TexNode(f'<span class="{cls}">{_tex_escape(sym)}</span>')
+        # 未知のコマンドはそのまま見せる (黙って消さない)
+        return _TexNode(f'<span class="mdv-unknown">{_tex_escape(tok)}</span>')
+
+    def read_group_raw(self) -> _TexNode:
+        """\\text{...} のように中身をそのままの文字列として扱う引数を読む。"""
+        if self._peek() != '{':
+            node = self.parse_node()
+            return node if node is not None else _TexNode('')
+        self._next(skip_space=False)
+        # '{' の直後からは空白も意味を持つ
+        while self.i < len(self.toks) and self.toks[self.i].isspace():
+            self.i += 1
+        buf, depth = [], 1
+        while self.i < len(self.toks):
+            t = self.toks[self.i]
+            self.i += 1
+            if t == '{':
+                depth += 1
+            elif t == '}':
+                depth -= 1
+                if depth == 0:
+                    break
+            buf.append(t)
+        return _TexNode(_tex_escape(''.join(buf)))
+
+    @staticmethod
+    def _map_letters(html: str, table: dict) -> str:
+        """タグを壊さないよう、タグの外側の A-Z だけを置き換える。"""
+        out, in_tag = [], False
+        for ch in html:
+            if ch == '<':
+                in_tag = True
+            elif ch == '>':
+                in_tag = False
+            if not in_tag and ch in table:
+                out.append(table[ch])
+            else:
+                out.append(ch)
+        return ''.join(out)
+
+    # ─── \left ... \right ───────────────────
+    def parse_left(self):
+        ldelim = self._next() or '.'
+        inner = self.parse_expr(stop=('\\right', '\\end'))
+        rdelim = '.'
+        if self._peek() == '\\right':
+            self._next()
+            rdelim = self._next() or '.'
+        return self._fence(_TEX_DELIMS.get(ldelim, 'none'),
+                           _TEX_DELIMS.get(rdelim, 'none'), inner)
+
+    def _delim_node(self, delim_tok: str, h: float):
+        kind = _TEX_DELIMS.get(delim_tok, 'none')
+        return _TexNode(self._delim_html(kind, h, left=True), h)
+
+    @staticmethod
+    def _delim_html(kind: str, h: float, left: bool) -> str:
+        if kind == 'none':
+            return ''
+        # 括弧・角括弧・縦棒は CSS の枠線で描き、flex の stretch で自動的に伸びる
+        if kind in ('lparen', 'rparen', 'lbrack', 'rbrack', 'vert', 'dvert'):
+            return f'<span class="mdv-d mdv-d-{kind}"></span>'
+        # 波括弧などのグリフは高さに応じて縦方向に拡大する
+        glyph = _TEX_DELIM_GLYPH.get(kind, '')
+        scale = max(1.0, min(4.0, h))
+        return (f'<span class="mdv-d-glyph" style="transform:scaleY({scale:.2f})">'
+                f'{_tex_escape(glyph)}</span>')
+
+    def _fence(self, lkind, rkind, inner: _TexNode) -> _TexNode:
+        html = ('<span class="mdv-fence">'
+                + self._delim_html(lkind, inner.h, True)
+                + f'<span class="mdv-fb">{inner.html}</span>'
+                + self._delim_html(rkind, inner.h, False)
+                + '</span>')
+        return _TexNode(html, inner.h)
+
+    # ─── \begin{...} ... \end{...} ──────────
+    _ENV_FENCE = {
+        'pmatrix': ('lparen', 'rparen'), 'bmatrix': ('lbrack', 'rbrack'),
+        'Bmatrix': ('lbrace', 'rbrace'), 'vmatrix': ('vert', 'vert'),
+        'Vmatrix': ('dvert', 'dvert'), 'matrix': ('none', 'none'),
+        'smallmatrix': ('none', 'none'), 'array': ('none', 'none'),
+        'cases': ('lbrace', 'none'),
+        'aligned': ('none', 'none'), 'align': ('none', 'none'),
+        'align*': ('none', 'none'), 'aligned*': ('none', 'none'),
+        'gathered': ('none', 'none'), 'gather': ('none', 'none'),
+        'split': ('none', 'none'),
+    }
+
+    def parse_environment(self):
+        env_node = self.read_group_raw()
+        env = env_node.html.strip()
+        if env == 'array':
+            self.read_group_raw()      # 列指定 (l/c/r) は読み捨てる
+        if env not in self._ENV_FENCE:
+            # 未知の環境は中身だけ描画する
+            body = self.parse_expr(stop=('\\end',))
+            if self._peek() == '\\end':
+                self._next()
+                self.read_group_raw()
+            return body
+        rows, row = [], []
+        while True:
+            cell = self.parse_expr(stop=('&', '\\\\', '\\end', '}'))
+            row.append(cell)
+            t = self._peek()
+            if t == '&':
+                self._next()
+                continue
+            if t == '\\\\':
+                self._next()
+                rows.append(row)
+                row = []
+                continue
+            break
+        if self._peek() == '\\end':
+            self._next()
+            self.read_group_raw()
+        if row and (len(row) > 1 or row[0].html.strip()):
+            rows.append(row)
+        if not rows:
+            rows = [[_TexNode('')]]
+
+        ncol = max(len(r) for r in rows)
+        cells, h = [], 0.0
+        align_mode = env in ('cases', 'aligned', 'align', 'align*',
+                             'aligned*', 'split')
+        for r in rows:
+            rh = max((c.h for c in r), default=1.0)
+            h += rh
+            for ci in range(ncol):
+                c = r[ci] if ci < len(r) else _TexNode('')
+                if align_mode:
+                    just = 'right' if (ci == 0 and env != 'cases') else 'left'
+                else:
+                    just = 'center'
+                cells.append(f'<span class="mdv-mc" style="justify-self:{just}">'
+                             f'{c.html}</span>')
+        gap = '.2em 1.1em' if env == 'cases' else '.25em .8em'
+        grid = (f'<span class="mdv-mtx" style="grid-template-columns:'
+                f'repeat({ncol},auto);gap:{gap}">' + ''.join(cells) + '</span>')
+        lk, rk = self._ENV_FENCE[env]
+        return self._fence(lk, rk, _TexNode(grid, max(1.0, h * 1.15)))
+
+
+def _render_tex(tex: str, display: bool) -> str:
+    """LaTeX 断片を HTML に変換する。失敗しても元の記述を必ず残す。"""
+    try:
+        node = _TexRenderer(tex, display).parse_expr(stop=())
+        inner = node.html
+        if not inner.strip():
+            raise ValueError("empty")
+    except Exception:
+        inner = f'<span class="mdv-tex-raw">{_tex_escape(tex)}</span>'
+    cls = "mdv-math mdv-math-display" if display else "mdv-math"
+    # data-tex に原文を持たせ、MD編集モードの HTML→Markdown 逆変換で
+    # 元の $...$ 記法を復元できるようにする。
+    return (f'<span class="{cls}" data-tex="{_tex_escape(tex)}" '
+            f'data-display="{"1" if display else "0"}" '
+            f'contenteditable="false">{inner}</span>')
+
+
+# ─── Markdown 変換前の数式退避 ──────────────────
+def _split_code_fences(text: str):
+    """(is_code, chunk) のリストに分割する。chunk は改行で連結すると原文に戻る。"""
+    lines = text.split('\n')
+    out, buf = [], []
+    i, n = 0, len(lines)
+    while i < n:
+        m = re.match(r'^(`{3,}|~{3,})', lines[i])
+        if m:
+            marker = m.group(1)
+            close_re = re.compile(r'^' + re.escape(marker) + r'[ \t]*$')
+            j = i + 1
+            while j < n and not close_re.match(lines[j]):
+                j += 1
+            if j < n:
+                if buf:
+                    out.append((False, '\n'.join(buf)))
+                    buf = []
+                out.append((True, '\n'.join(lines[i:j + 1])))
+                i = j + 1
+                continue
+        buf.append(lines[i])
+        i += 1
+    if buf:
+        out.append((False, '\n'.join(buf)))
+    return out
+
+
+def _find_inline_math_close(s: str, start: int):
+    """`$` で開いたインライン数式の閉じ位置を返す。見つからなければ -1。
+
+    `$5 と $10` のような通貨表記を数式と誤認しないよう、TeX 互換の規則
+    (開き `$` の直後と閉じ `$` の直前が空白でないこと) を課す。
+    空行やコードスパンをまたぐものも数式とはみなさない。"""
+    n = len(s)
+    if start + 1 >= n or s[start + 1].isspace() or s[start + 1] == '$':
+        return -1
+    j = start + 1
+    while j < n:
+        c = s[j]
+        if c == '\\':          # \$ 等のエスケープは 2 文字まとめて読み飛ばす
+            j += 2
+            continue
+        if c == '`':
+            # コードスパンの中の `$` を閉じ記号として拾わない。
+            # 例: 「金額の $10 です。`$x$` も…」の `$x$` に食い付いて
+            #     間の日本語まで数式として組んでしまうのを防ぐ。
+            return -1
+        if c == '\n' and j + 1 < n and s[j + 1] == '\n':
+            return -1          # 空行をまたぐものは数式とみなさない
+        if c == '$':
+            return -1 if s[j - 1].isspace() else j
+        j += 1
+    return -1
+
+
+def _extract_math(text: str):
+    """Markdown 変換前に数式をプレースホルダへ退避する。
+
+    コードフェンス内・インラインコード内の `$` は数式として扱わない。
+    戻り値: (置換後テキスト, [(display, tex), ...])"""
+    store: List[tuple] = []
+
+    def ph(display, tex):
+        if not tex.strip():
+            return None
+        store.append((display, tex))
+        return f"{_MATH_PH_OPEN}{len(store) - 1}{_MATH_PH_CLOSE}"
+
+    def scan(s: str) -> str:
+        out, i, n = [], 0, len(s)
+        while i < n:
+            c = s[i]
+            if c == '\\' and i + 1 < n:
+                nxt = s[i + 1]
+                if nxt in '([':
+                    end = '\\)' if nxt == '(' else '\\]'
+                    j = s.find(end, i + 2)
+                    if j != -1:
+                        p = ph(nxt == '[', s[i + 2:j])
+                        if p:
+                            out.append(p)
+                            i = j + 2
+                            continue
+                out.append(s[i:i + 2])
+                i += 2
+                continue
+            if c == '`':
+                k = i
+                while k < n and s[k] == '`':
+                    k += 1
+                run = s[i:k]
+                j = s.find(run, k)
+                if j != -1:
+                    out.append(s[i:j + len(run)])
+                    i = j + len(run)
+                    continue
+                out.append(run)
+                i = k
+                continue
+            if c == '$':
+                if s.startswith('$$', i):
+                    j = s.find('$$', i + 2)
+                    if j != -1:
+                        p = ph(True, s[i + 2:j])
+                        if p:
+                            out.append(p)
+                            i = j + 2
+                            continue
+                else:
+                    j = _find_inline_math_close(s, i)
+                    if j != -1:
+                        p = ph(False, s[i + 1:j])
+                        if p:
+                            out.append(p)
+                            i = j + 1
+                            continue
+            out.append(c)
+            i += 1
+        return ''.join(out)
+
+    chunks = [c if is_code else scan(c) for is_code, c in _split_code_fences(text)]
+    return '\n'.join(chunks), store
+
+
+def _restore_math(html: str, store: List[tuple]) -> str:
+    """サニタイズ後の HTML にレンダリング済みの数式を差し込む。"""
+    if not store:
+        return html
+
+    def sub(m):
+        idx = int(m.group(1))
+        if idx >= len(store):
+            return ''
+        display, tex = store[idx]
+        return _render_tex(tex, display)
+
+    return _MATH_PH_RE.sub(sub, html)
+
+
+# ════════════════════════════════════════════════
+#  YAML — フロントマター解析 (最小サブセット / 依存追加なし)
+# ════════════════════════════════════════════════
+def _split_front_matter(text: str):
+    """先頭の YAML フロントマターを切り出す。
+
+    戻り値: (front_matter本文 or None, 残りの本文, 本文の開始行番号)
+    `---` で始まり `---` / `...` で閉じるブロックのみを対象とする。"""
+    if not text.startswith('---'):
+        return None, text, 0
+    lines = text.split('\n')
+    if lines[0].strip() != '---':
+        return None, text, 0
+    for i in range(1, len(lines)):
+        if lines[i].strip() in ('---', '...'):
+            fm = '\n'.join(lines[1:i])
+            body = '\n'.join(lines[i + 1:])
+            return fm, body, i + 1
+    return None, text, 0
+
+
+def _parse_simple_yaml(text: str):
+    """フロントマター表示用の最小 YAML パーサ。
+
+    マッピング / ネスト / 並び / 引用文字列 / コメントを扱う。
+    アンカーやフロースタイル等の高度な記法は文字列として素通しする
+    (表示専用のため、厳密な YAML 準拠より壊れないことを優先する)。"""
+    def scalar(v: str):
+        v = v.strip()
+        if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
+            return v[1:-1]
+        return v
+
+    def skip_blank(lines, i):
+        while i < len(lines) and (not lines[i].strip()
+                                  or lines[i].strip().startswith('#')):
+            i += 1
+        return i
+
+    def indent_of(line):
+        return len(line) - len(line.lstrip(' '))
+
+    def parse_child(lines, i, parent_indent, allow_same_indent_list):
+        """入れ子ブロックを読む。子の字下げ幅は決め打ちせず、実際の
+        次行から判定する (YAML は 2 スペース以外の字下げも許すため)。
+        マッピングの値が並びの場合、YAML では親と同じ字下げで
+        `- item` を並べる書き方も正しいので、その場合だけ同じ深さを許す。"""
+        j = skip_blank(lines, i)
+        if j >= len(lines):
+            return '', j
+        ni = indent_of(lines[j])
+        if ni > parent_indent:
+            return parse_block(lines, j, ni)
+        if (allow_same_indent_list and ni == parent_indent
+                and lines[j].strip().startswith('- ')):
+            return parse_block(lines, j, ni)
+        return '', i
+
+    def parse_block(lines, start, indent):
+        """(値, 次に読む行) を返す。"""
+        items, mapping = [], {}
+        i = start
+        while i < len(lines):
+            raw = lines[i]
+            if not raw.strip() or raw.strip().startswith('#'):
+                i += 1
+                continue
+            cur = indent_of(raw)
+            if cur < indent:
+                break
+            if cur > indent:
+                i += 1
+                continue
+            s = raw.strip()
+            if s.startswith('- '):
+                val = s[2:].strip()
+                m = re.match(r'^([^:#]+):\s*(.*)$', val)
+                if m and not val.startswith(('"', "'")):
+                    sub = {m.group(1).strip(): scalar(m.group(2))}
+                    nested, i = parse_child(lines, i + 1, cur, False)
+                    if isinstance(nested, dict):
+                        sub.update(nested)
+                    items.append(sub)
+                    continue
+                items.append(scalar(val))
+                i += 1
+                continue
+            m = re.match(r'^([^:#]+):\s*(.*)$', s)
+            if not m:
+                items.append(scalar(s))
+                i += 1
+                continue
+            key, val = m.group(1).strip(), m.group(2).strip()
+            if val and not val.startswith('#'):
+                mapping[key] = scalar(val)
+                i += 1
+                continue
+            child, i = parse_child(lines, i + 1, cur, True)
+            mapping[key] = child if child not in ({}, []) else ''
+        if items and not mapping:
+            return items, i
+        return mapping, i
+
+    lines = [ln.rstrip() for ln in text.split('\n')]
+    try:
+        value, _ = parse_block(lines, 0, 0)
+    except Exception:
+        return {}
+    return value
+
+
+def _front_matter_html(fm_text: str, title: str) -> str:
+    """フロントマターを畳めるメタ情報パネルとして描画する。"""
+    data = _parse_simple_yaml(fm_text)
+
+    def render(v, depth=0):
+        if isinstance(v, dict):
+            rows = []
+            for k, sv in v.items():
+                rows.append(
+                    f'<div class="mdv-fm-row" style="padding-left:{depth * 14}px">'
+                    f'<span class="mdv-fm-key">{_tex_escape(str(k))}</span>'
+                    f'<span class="mdv-fm-val">{render(sv, depth + 1)}</span>'
+                    f'</div>')
+            return ''.join(rows)
+        if isinstance(v, list):
+            if all(not isinstance(x, (dict, list)) for x in v):
+                return ' '.join(
+                    f'<span class="mdv-fm-tag">{_tex_escape(str(x))}</span>'
+                    for x in v)
+            return ''.join(f'<div>{render(x, depth)}</div>' for x in v)
+        return _tex_escape(str(v))
+
+    body = render(data) if data else (
+        f'<pre class="mdv-fm-raw">{_tex_escape(fm_text)}</pre>')
+    # data-fm に原文を持たせ、MD編集モードの HTML→Markdown 逆変換で
+    # 元の `---` ブロックをそのまま復元できるようにする。
+    return (f'<div class="mdv-fm" data-fm="{_tex_escape(fm_text)}" '
+            f'contenteditable="false"><div class="mdv-fm-title">'
+            f'{_tex_escape(title)}</div>{body}</div>')
+
+
+# ════════════════════════════════════════════════
 #  SafeWebLoader
 # ════════════════════════════════════════════════
 class SafeWebLoader:
@@ -1217,13 +2276,31 @@ class SettingsDialog(QDialog):
         root = QVBoxLayout(self)
         root.setSpacing(14)
 
-        # フォント
+        # フォント (推奨 / 追加したフォント / システムフォント)
+        self._t = t
         fg = QGroupBox(t["font_label"])
         fl = QVBoxLayout(fg)
-        self._font_cb = QFontComboBox()
-        self._font_cb.setCurrentFont(QFont(font_family))
+        self._font_cb = QComboBox()
+        self._font_cb.setMaxVisibleItems(20)
         fl.addWidget(self._font_cb)
+
+        btn_row = QHBoxLayout()
+        self._font_add_btn = QPushButton(t.get("font_add", "Add Font..."))
+        self._font_add_btn.clicked.connect(self._on_add_font)
+        btn_row.addWidget(self._font_add_btn)
+        self._font_del_btn = QPushButton(t.get("font_remove", "Remove"))
+        self._font_del_btn.clicked.connect(self._on_remove_font)
+        btn_row.addWidget(self._font_del_btn)
+        fl.addLayout(btn_row)
+
+        hint = QLabel(t.get("font_hint", ""))
+        hint.setWordWrap(True)
+        hint.setObjectName("fontHint")
+        fl.addWidget(hint)
         root.addWidget(fg)
+
+        self._font_cb.currentIndexChanged.connect(self._on_font_changed)
+        self._populate_fonts(font_family)
 
         # 言語
         lg = QGroupBox(t.get("lang_label", "Language"))
@@ -1281,8 +2358,93 @@ class SettingsDialog(QDialog):
         self._t_light = t["light"]
         self._plugin_themes = plugin_themes
 
+    # ─── フォント一覧 ─────────────────────────
+    def _add_header(self, label):
+        """選択できない見出し行をコンボボックスに追加する。"""
+        self._font_cb.addItem(f"── {label} ──", None)
+        idx = self._font_cb.count() - 1
+        item = self._font_cb.model().item(idx)
+        if item is not None:
+            item.setEnabled(False)
+
+    def _populate_fonts(self, current: str):
+        t = self._t
+        cb = self._font_cb
+        cb.blockSignals(True)
+        cb.clear()
+        try:
+            installed = sorted(set(QFontDatabase.families()))
+        except Exception:
+            installed = []
+
+        self._add_header(t.get("font_recommended", "Recommended"))
+        for label, candidates in RECOMMENDED_FONTS:
+            fam = next((c for c in candidates if c in installed), None)
+            if fam:
+                cb.addItem(label if label == fam else f"{label}  ({fam})", fam)
+            else:
+                cb.addItem(label + t.get("font_not_installed", ""), None)
+                item = cb.model().item(cb.count() - 1)
+                if item is not None:
+                    item.setEnabled(False)
+
+        if _USER_FONTS:
+            self._add_header(t.get("font_user", "Added"))
+            for fam in sorted(_USER_FONTS):
+                cb.addItem(fam, fam)
+
+        self._add_header(t.get("font_system", "System"))
+        for fam in installed:
+            cb.addItem(fam, fam)
+
+        # 現在のフォントを選択 (推奨欄よりシステム欄の実名を優先しない)
+        target = -1
+        for i in range(cb.count()):
+            if cb.itemData(i) == current:
+                target = i
+                break
+        cb.setCurrentIndex(target if target >= 0 else 0)
+        cb.blockSignals(False)
+        self._on_font_changed()
+
+    def _current_font_family(self):
+        return self._font_cb.itemData(self._font_cb.currentIndex())
+
+    def _on_font_changed(self, _idx=None):
+        fam = self._current_font_family()
+        self._font_del_btn.setEnabled(bool(fam) and fam in _USER_FONTS)
+
+    def _on_add_font(self):
+        t = self._t
+        path, _ = QFileDialog.getOpenFileName(
+            self, t.get("font_add_title", "Choose a font file"),
+            os.path.expanduser("~"),
+            "Fonts (*.ttf *.otf *.ttc *.otc);;All Files (*)")
+        if not path:
+            return
+        fams = add_user_font(path)
+        if not fams:
+            QMessageBox.warning(self, t.get("font_add_error", "Error"),
+                                t.get("font_add_invalid", ""))
+            return
+        self._populate_fonts(fams[0])
+
+    def _on_remove_font(self):
+        t = self._t
+        fam = self._current_font_family()
+        if not fam or fam not in _USER_FONTS:
+            return
+        if QMessageBox.question(
+                self, t.get("font_remove_title", "Remove Font"),
+                t.get("font_remove_msg", "Remove \"{name}\"?").format(name=fam),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        ) != QMessageBox.StandardButton.Yes:
+            return
+        remove_user_font(fam)
+        self._populate_fonts("Helvetica Neue")
+
     def get_result(self):
-        font = self._font_cb.currentFont().family()
+        font = self._current_font_family() or "Helvetica Neue"
         lang = LANGS[self._lang_cb.currentText()]
         bold = self._bold_cb.isChecked()
         idx  = self._theme_cb.currentIndex()
@@ -1524,6 +2686,15 @@ class PdfExportDialog(QDialog):
 #  PianoBtn
 # ════════════════════════════════════════════════
 class PianoBtn(QPushButton):
+    """ツールバーのボタン。
+
+    ウィンドウ幅が狭くなってラベルがボタン幅に収まらなくなったとき、
+    そのボタンだけフォントを 1px ずつ縮めて枠内に収める。ボタンごとに
+    文字数が違うため、ウィンドウ幅による一律のサイズ変更だけでは
+    「戻る」は余るのに「PDF書き出し」は溢れる、という状態になってしまう。"""
+
+    MIN_FONT_PX = 8
+
     def __init__(self, label="", parent=None):
         super().__init__(label, parent)
         sp = self.sizePolicy()
@@ -1531,6 +2702,76 @@ class PianoBtn(QPushButton):
         sp.setHorizontalPolicy(QSizePolicy.Policy.Expanding)
         self.setSizePolicy(sp)
         self.setProperty("active", False)
+        self._base_px = 0        # ウィンドウ幅から決まる基準サイズ (px)
+        self._pad_px = 12        # 左右パディング + 枠線の合計 (px)
+        self._min_hint_w = 24    # レイアウトに申告する最小幅 (px)
+        self._applied_px = -1
+
+    def set_fit_metrics(self, base_px, pad_px, min_hint_w):
+        self._base_px = int(base_px)
+        self._pad_px = int(pad_px)
+        self._min_hint_w = int(min_hint_w)
+        self._applied_px = -1
+        self.updateGeometry()
+        self._fit_text()
+
+    def setText(self, text):
+        super().setText(text)
+        self.updateGeometry()
+        self._fit_text()
+
+    def _hint_width(self, px):
+        """基準フォントサイズでのラベル幅。実際に適用中のフォントではなく
+        基準サイズで計算するのが要点で、こうしないと
+        「文字を縮める → サイズヒントが縮む → 幅が変わる → また縮める」
+        という発振が起きてレイアウトが収束しない。"""
+        f = QFont(self.font())
+        f.setBold(True)
+        f.setPixelSize(px)
+        return QFontMetrics(f).horizontalAdvance(self.text()) + self._pad_px
+
+    def sizeHint(self):
+        s = super().sizeHint()
+        if self._base_px <= 0:
+            return s
+        return QSize(self._hint_width(self._base_px), s.height())
+
+    def minimumSizeHint(self):
+        # QPushButton の既定の最小幅はラベル全体が入る幅。そのままだと
+        # ボタンが縮まず、ツールバーがウィンドウ幅を超えて文字が切れる。
+        # 文字はこちら側で縮めるので、レイアウトには小さい最小幅を返す。
+        s = super().minimumSizeHint()
+        base_w = (self._hint_width(self._base_px)
+                  if self._base_px > 0 else s.width())
+        return QSize(min(base_w, self._min_hint_w), s.height())
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._fit_text()
+
+    def _fit_text(self):
+        if self._base_px <= 0:
+            return
+        text = self.text()
+        avail = self.width() - self._pad_px
+        if not text or avail <= 0:
+            return
+        f = QFont(self.font())
+        f.setBold(True)          # スタイルシート側で bold 指定のため合わせる
+        px = self._base_px
+        while px > self.MIN_FONT_PX:
+            f.setPixelSize(px)
+            if QFontMetrics(f).horizontalAdvance(text) <= avail:
+                break
+            px -= 1
+        if px == self._applied_px:
+            return
+        self._applied_px = px
+        # 親 (QMainWindow) の "QPushButton#mainBtn{font-size:...}" を上書きするには
+        # 同じセレクタで自ウィジェットに指定する。Qt はウィジェット自身の
+        # スタイルシートを継承したものより優先する。
+        name = self.objectName() or "mainBtn"
+        self.setStyleSheet(f"QPushButton#{name}{{font-size:{px}px;}}")
 
     def set_active(self, on):
         if self.property("active") != on:
@@ -1571,10 +2812,14 @@ class MDViewerPro(QMainWindow):
         self._plugin_themes: Dict[str, dict] = {}
         self._image_cache: Dict[str, str] = {}
         self._readonly_file    = False
+        # "md" | "yaml" — YAML ファイルは全文を YAML として構文強調表示する
+        self.doc_kind          = "md"
         self._saved_scroll_y   = 0
         self._restore_scroll_pending = False
+        # モード切替時に持ち回るスクロールアンカー (行番号, 行内の位置の割合)
+        self._pending_anchor: Optional[tuple] = None
         self._initial_file: Optional[str] = None
-        self._show_toc         = False
+        self._show_toc         = bool(_s.get("show_toc", True))
         self._pdf_embed_images = _s.get("pdf_embed_images", True)
 
         # UI スケール管理 (空文字で初回強制適用)
@@ -1583,10 +2828,7 @@ class MDViewerPro(QMainWindow):
         # プラグインテーマ読み込み
         self._plugin_themes = load_plugin_themes()
 
-        af = QFont(self.ui_font_family if self.ui_font_family else "Helvetica Neue")
-        af.setPointSize(15)
-        af.setBold(True)
-        QApplication.setFont(af)
+        self._apply_app_font()
 
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
@@ -1598,8 +2840,6 @@ class MDViewerPro(QMainWindow):
         self._resize_timer.setInterval(80)
         self._resize_timer.timeout.connect(self._apply_responsive_style)
 
-        self._startup_fallback = QTimer(self)  # 後方互換: stop() 呼び出し用に保持
-        self._startup_fallback.setSingleShot(True)
         self._startup_done = False
 
         self._build_ui()
@@ -1619,6 +2859,13 @@ class MDViewerPro(QMainWindow):
         QTimer.singleShot(0, self._finish_deferred_init)
 
         # MDApplication の管理リストへの登録は MDApplication.new_window() で行う
+
+    def _apply_app_font(self):
+        """UI 全体の既定フォントを設定に合わせる。"""
+        af = QFont(self.ui_font_family if self.ui_font_family else "Helvetica Neue")
+        af.setPointSize(15)
+        af.setBold(True)
+        QApplication.setFont(af)
 
     def _finish_deferred_init(self):
         """QWebEngineView の生成・WebChannel 配線・スタートアップダイアログ表示。
@@ -2001,9 +3248,26 @@ class MDViewerPro(QMainWindow):
 
     def _get_ui_scale_cat(self):
         w = self.width()
-        if w >= 1100: return "large"
+        if w >= 1100:  return "large"
         elif w >= 780: return "medium"
-        else:          return "small"
+        elif w >= 620: return "small"
+        else:          return "xsmall"
+
+    # ウィンドウ幅の段階ごとの寸法。btn_pad/fmt_pad は左右パディング (px)。
+    # min_w はスタイルシートの min-width になり、実際のボタン最小幅は
+    # min_w + btn_pad*2。ここが大きいとボタンが縮まず、ツールバー全体が
+    # ウィンドウ幅を超えて文字が枠外へ切れてしまうため、狭い段階では
+    # 十分小さくしておく (実際の文字サイズは PianoBtn が個別に詰める)。
+    _UI_SIZE_TABLE = {
+        "large":  {"tb_fs": 17, "btn_pad": 16, "fmt_fs": 15, "fmt_pad": 13,
+                   "lbl_fs": 15, "min_w": 44, "slider_w": 120, "val_w": 48},
+        "medium": {"tb_fs": 14, "btn_pad": 11, "fmt_fs": 13, "fmt_pad": 9,
+                   "lbl_fs": 13, "min_w": 28, "slider_w": 100, "val_w": 44},
+        "small":  {"tb_fs": 12, "btn_pad": 6,  "fmt_fs": 11, "fmt_pad": 5,
+                   "lbl_fs": 11, "min_w": 26, "slider_w": 80,  "val_w": 40},
+        "xsmall": {"tb_fs": 11, "btn_pad": 4,  "fmt_fs": 10, "fmt_pad": 3,
+                   "lbl_fs": 10, "min_w": 22, "slider_w": 58,  "val_w": 34},
+    }
 
     def _apply_responsive_style(self):
         cat = self._get_ui_scale_cat()
@@ -2015,8 +3279,10 @@ class MDViewerPro(QMainWindow):
             tb_h, fmt_h = TB_H, FMT_H
         elif cat == "medium":
             tb_h, fmt_h = 58, 44
-        else:
+        elif cat == "small":
             tb_h, fmt_h = 46, 36
+        else:
+            tb_h, fmt_h = 40, 32
 
         self._main_tb.setFixedHeight(tb_h)
         self._fmt_tb.setFixedHeight(fmt_h)
@@ -2024,16 +3290,17 @@ class MDViewerPro(QMainWindow):
         self._apply_theme(refresh=False)
 
     def _ui_sizes(self):
-        cat = self._get_ui_scale_cat()
-        if cat == "large":
-            return {"tb_fs": 17, "btn_pad": "0 16px", "fmt_fs": 15,
-                    "fmt_pad": "0 13px", "lbl_fs": 15, "min_w": 60}
-        elif cat == "medium":
-            return {"tb_fs": 14, "btn_pad": "0 11px",  "fmt_fs": 13,
-                    "fmt_pad": "0 9px",  "lbl_fs": 13, "min_w": 48}
-        else:
-            return {"tb_fs": 12, "btn_pad": "0 7px",  "fmt_fs": 11,
-                    "fmt_pad": "0 5px",  "lbl_fs": 11, "min_w": 36}
+        return self._UI_SIZE_TABLE[self._get_ui_scale_cat()]
+
+    def _apply_btn_fit_metrics(self, sz):
+        """各ボタンに基準フォントサイズと余白を伝え、幅に合わせて詰めさせる。"""
+        for b in self.findChildren(PianoBtn):
+            if b.objectName() == "fmtBtn":
+                b.set_fit_metrics(sz["fmt_fs"], sz["fmt_pad"] * 2 + 4,
+                                  max(12, sz["min_w"] - 14))
+            else:
+                b.set_fit_metrics(sz["tb_fs"], sz["btn_pad"] * 2 + 4,
+                                  sz["min_w"])
 
     # ════════════════════════════════════════════
     #  HTML ビルダー
@@ -2383,6 +3650,134 @@ class MDViewerPro(QMainWindow):
             "img{max-width:100%;border-radius:4px}"
             ".task-list-item{list-style:none;margin-left:-1.4em}"
             ".task-list-item input[type='checkbox']{margin-right:6px;vertical-align:middle}"
+            + self._math_css() + self._front_matter_css()
+        )
+
+    def _math_css(self):
+        """LaTeX 数式の組版用 CSS。
+
+        数式は Computer Modern 系 (Latin Modern / CMU) を優先し、
+        無ければ一般的なセリフ体にフォールバックする。本文フォントの
+        設定に引きずられて数式だけ崩れることがないよう独立指定にする。"""
+        return (
+            ".mdv-math{font-family:'Latin Modern Math','Latin Modern Roman',"
+            "'CMU Serif','Computer Modern','STIX Two Math','Times New Roman',"
+            "'Hiragino Mincho ProN',serif;font-weight:400;line-height:1.2;"
+            "white-space:nowrap;}"
+            ".mdv-math-display{display:block;text-align:center;margin:18px 0;"
+            "font-size:1.15em;overflow-x:auto;overflow-y:hidden;}"
+            ".mdv-math .mdv-var{font-style:italic;}"
+            ".mdv-math .mdv-rm,.mdv-math .mdv-txt{font-style:normal;}"
+            # 関数名は立体。直後の引数との間に LaTeX と同じ細い空きを入れる
+            ".mdv-math .mdv-fn{font-style:normal;margin-right:.16em;}"
+            ".mdv-math .mdv-txt{white-space:pre-wrap;}"
+            ".mdv-math .mdv-bf{font-weight:700;}"
+            ".mdv-math .mdv-it{font-style:italic;}"
+            ".mdv-math .mdv-sf{font-family:system-ui,sans-serif;font-style:normal;}"
+            ".mdv-math .mdv-tt{font-family:'Menlo','Monaco',monospace;font-style:normal;}"
+            ".mdv-math .mdv-bb,.mdv-math .mdv-cal,.mdv-math .mdv-frak"
+            "{font-style:normal;}"
+            ".mdv-math .mdv-bin{margin:0 .22em;}"
+            ".mdv-math .mdv-sp-punct{display:inline-block;width:.17em;}"
+            # 上付き / 下付き
+            ".mdv-math .mdv-sup,.mdv-math .mdv-sub{font-size:.72em;"
+            "line-height:1;display:inline-block;}"
+            ".mdv-math .mdv-sup{vertical-align:.62em;}"
+            ".mdv-math .mdv-sub{vertical-align:-.34em;}"
+            ".mdv-math .mdv-scripts{display:inline-flex;flex-direction:column;"
+            "vertical-align:middle;align-items:flex-start;line-height:1;}"
+            ".mdv-math .mdv-scripts>.mdv-sup,.mdv-math .mdv-scripts>.mdv-sub"
+            "{vertical-align:baseline;}"
+            # 分数
+            ".mdv-math .mdv-frac{display:inline-flex;flex-direction:column;"
+            "vertical-align:middle;text-align:center;margin:0 .18em;"
+            "position:relative;top:-.05em;}"
+            ".mdv-math .mdv-frac-n{padding:0 .3em .1em .3em;"
+            "border-bottom:.055em solid currentColor;}"
+            ".mdv-math .mdv-frac-d{padding:.1em .3em 0 .3em;}"
+            ".mdv-math .mdv-frac-t{font-size:.85em;}"
+            ".mdv-math .mdv-frac-nb>.mdv-frac-n{border-bottom:none;}"
+            # 根号
+            ".mdv-math .mdv-sqrt{display:inline-flex;align-items:flex-start;"
+            "margin:0 .1em;}"
+            ".mdv-math .mdv-sqrt-sign{display:inline-block;transform-origin:top;}"
+            ".mdv-math .mdv-sqrt-idx{font-size:.6em;align-self:flex-start;"
+            "margin-right:-.35em;position:relative;top:-.15em;}"
+            ".mdv-math .mdv-sqrt-body{border-top:.055em solid currentColor;"
+            "padding:.14em .2em 0 .1em;margin-left:-.06em;}"
+            # 上線 / 下線 / アクセント
+            ".mdv-math .mdv-over{border-top:.055em solid currentColor;"
+            "padding-top:.12em;display:inline-block;}"
+            ".mdv-math .mdv-under{border-bottom:.055em solid currentColor;"
+            "padding-bottom:.06em;display:inline-block;}"
+            ".mdv-math .mdv-acc{display:inline-block;position:relative;}"
+            ".mdv-math .mdv-acc>.mdv-acc-m,.mdv-math .mdv-acc>.mdv-acc-wide"
+            "{position:absolute;left:0;right:0;top:-.58em;text-align:center;"
+            "line-height:1;pointer-events:none;}"
+            ".mdv-math .mdv-acc>.mdv-acc-m{font-size:.95em;}"
+            ".mdv-math .mdv-acc>.mdv-acc-wide{font-size:.7em;top:-.5em;}"
+            # 大型演算子と上下の添字
+            ".mdv-math .mdv-bigop{font-size:1.5em;line-height:1;"
+            "vertical-align:-.22em;margin:0 .08em;}"
+            ".mdv-math .mdv-bigop-int{font-size:1.7em;vertical-align:-.3em;}"
+            ".mdv-math .mdv-lim{display:inline-flex;flex-direction:column;"
+            "align-items:center;vertical-align:middle;line-height:1.05;"
+            "margin:0 .12em;}"
+            ".mdv-math .mdv-lim-up,.mdv-math .mdv-lim-lo{font-size:.68em;}"
+            # 伸縮する区切り記号 (flex の stretch で自動的に高さが揃う)
+            ".mdv-math .mdv-fence{display:inline-flex;align-items:stretch;"
+            "vertical-align:middle;}"
+            ".mdv-math .mdv-fence>.mdv-fb{display:inline-flex;"
+            "align-items:center;padding:0 .1em;}"
+            ".mdv-math .mdv-d{flex:0 0 auto;align-self:stretch;width:.3em;}"
+            # 括弧は半楕円 (border-radius の水平/垂直を別指定) で描くことで
+            # 高さが変わっても丸括弧らしい曲線になる
+            ".mdv-math .mdv-d-lparen{border:.07em solid currentColor;"
+            "border-right:0;border-radius:100% 0 0 100%/50% 0 0 50%;"
+            "margin-right:.05em;}"
+            ".mdv-math .mdv-d-rparen{border:.07em solid currentColor;"
+            "border-left:0;border-radius:0 100% 100% 0/0 50% 50% 0;"
+            "margin-left:.05em;}"
+            ".mdv-math .mdv-d-lbrack{border:.07em solid currentColor;"
+            "border-right:0;margin-right:.05em;}"
+            ".mdv-math .mdv-d-rbrack{border:.07em solid currentColor;"
+            "border-left:0;margin-left:.05em;}"
+            ".mdv-math .mdv-d-vert{width:0;border-left:.06em solid currentColor;"
+            "margin:0 .22em;}"
+            ".mdv-math .mdv-d-dvert{width:.14em;"
+            "border-left:.06em solid currentColor;"
+            "border-right:.06em solid currentColor;margin:0 .22em;}"
+            ".mdv-math .mdv-d-glyph{display:inline-block;align-self:center;"
+            "transform-origin:center;font-weight:300;margin:0 .1em;}"
+            # 行列 / 場合分け
+            ".mdv-math .mdv-mtx{display:inline-grid;align-items:center;"
+            "vertical-align:middle;}"
+            ".mdv-math .mdv-mc{display:inline-block;}"
+            ".mdv-math .mdv-unknown,.mdv-math .mdv-tex-raw"
+            "{font-family:'Menlo','Monaco',monospace;font-size:.9em;"
+            "font-style:normal;opacity:.8;}"
+        )
+
+    def _front_matter_css(self):
+        p = self._palette
+        return (
+            f".mdv-fm{{background:{p['bg3']};border:1px solid {p['border']};"
+            f"border-left:4px solid {p['accent']};border-radius:0 6px 6px 0;"
+            f"padding:10px 16px 12px 16px;margin:0 0 20px 0;font-size:.9em;}}"
+            f".mdv-fm-title{{color:{p['heading']};font-weight:700;"
+            f"font-size:.92em;letter-spacing:.04em;text-transform:uppercase;"
+            f"margin-bottom:6px;opacity:.85;}}"
+            ".mdv-fm-row{display:flex;gap:10px;align-items:baseline;"
+            "padding:2px 0;flex-wrap:wrap;}"
+            f".mdv-fm-key{{color:{p['accent']};font-weight:700;"
+            f"min-width:110px;flex:0 0 auto;}}"
+            f".mdv-fm-val{{color:{p['text']};flex:1 1 auto;"
+            f"word-break:break-word;}}"
+            f".mdv-fm-tag{{display:inline-block;background:{p['bg2']};"
+            f"border:1px solid {p['border']};border-radius:10px;"
+            f"padding:0 9px;margin:1px 3px 1px 0;font-size:.9em;}}"
+            f".mdv-fm-raw{{background:none;border:none;padding:0;margin:0;"
+            f"white-space:pre-wrap;color:{p['text_dim']};}}"
         )
 
     def _page_break_js(self, page_height_mm):
@@ -2578,25 +3973,51 @@ class MDViewerPro(QMainWindow):
         else:
             _exts = ["tables", "fenced_code", "codehilite"]
             _cfg = {"codehilite": {"guess_lang": False, "noclasses": True}}
+
+        # ── YAML ドキュメントは全文を yaml コードブロックとして描画する ──
+        if self.doc_kind == "yaml":
+            fm_text, md_text, body_line_off = None, "```yaml\n" + text + "\n```", 0
+        else:
+            # ── YAML フロントマターを本文から切り離す ──
+            #    (切り離さないと `---` が水平線、`key: value` が段落として
+            #     描画されてしまい、目次の Setext 見出し判定も誤作動する)
+            fm_text, md_text, body_line_off = _split_front_matter(text)
+
+        # ── LaTeX 数式を退避 (Markdown が `_`/`\` を書き換えるのを防ぐ) ──
+        md_source, math_store = _extract_math(md_text)
+
         try:
-            body = markdown.markdown(text, extensions=_exts, extension_configs=_cfg)
+            body = markdown.markdown(md_source, extensions=_exts, extension_configs=_cfg)
         except Exception:
             try:
-                body = markdown.markdown(text, extensions=["tables", "fenced_code"])
+                body = markdown.markdown(md_source, extensions=["tables", "fenced_code"])
             except Exception:
-                body = markdown.markdown(text)
+                body = markdown.markdown(md_source)
         # Markdown 由来の生 HTML/JavaScript を無害化 (信頼済みの自前スクリプト/CSS は
         # この body の外側で付加されるためサニタイズ対象外)。
         body = _sanitize_html(body)
         body = self._render_checklist(body)
+        # 数式 HTML はサニタイズ後に差し込む (自前生成なので無害化の対象外。
+        # 先に差し込むと <span> の属性やクラスが落とされてしまう)。
+        body = _restore_math(body, math_store)
         body = self._embed_remote_images(body)
         if strip_images:
             body = re.sub(r'<img[^>]*>', '', body)
-        if sync_lines and not editable:
-            try:
-                body = self._tag_src_lines(body, self._split_source_blocks(text))
-            except Exception:
-                pass
+
+        # ── 行 ⇔ 表示要素の対応付け ──
+        #    TXT編集の行ハイライトに加え、モード切替時のスクロール位置の
+        #    引き継ぎ (_capture_scroll_anchor / _restore_scroll_anchor) でも使うため
+        #    全モードで付与する。
+        if fm_text is not None:
+            body = _front_matter_html(fm_text, self._t("front_matter")) + body
+        try:
+            starts = [s + body_line_off
+                      for s in self._split_source_blocks(md_text)]
+            if fm_text is not None:
+                starts.insert(0, 0)   # フロントマターのパネルは 0 行目に対応
+            body = self._tag_src_lines(body, starts)
+        except Exception:
+            pass
 
         if self.page_mode == "a4":
             t, r, b, l = self.a4_margins
@@ -2717,9 +4138,6 @@ class MDViewerPro(QMainWindow):
             '</body></html>'
         )
 
-    def _build_txt_html(self, text):
-        return self._build_md_html(text, editable=False)
-
     def _html_to_markdown(self, html_content: str) -> str:
         processed = html_content
         for url, data_uri in self._image_cache.items():
@@ -2758,9 +4176,9 @@ class MDViewerPro(QMainWindow):
 
         sz = self._ui_sizes()
         tb_fs   = sz["tb_fs"]
-        btn_pad = sz["btn_pad"]
+        btn_pad = f"0 {sz['btn_pad']}px"
         fmt_fs  = sz["fmt_fs"]
-        fmt_pad = sz["fmt_pad"]
+        fmt_pad = f"0 {sz['fmt_pad']}px"
         lbl_fs  = sz["lbl_fs"]
         min_w   = sz["min_w"]
 
@@ -2836,6 +4254,8 @@ class MDViewerPro(QMainWindow):
             f"QComboBox QAbstractItemView{{background-color:{p['bg2']};color:{p['text']};"
             f"border:1px solid {p['sep']};selection-background-color:{p['select']};}}"
             f"QLabel{{font-weight:bold;font-size:{lbl_fs}px;background:transparent;border:none;}}"
+            f"QLabel#fontHint{{color:{p['text_dim']};font-weight:normal;"
+            f"font-size:{max(10, lbl_fs - 2)}px;padding-top:4px;}}"
             f"QCheckBox{{font-size:{lbl_fs}px;font-weight:bold;color:{p['text']};}}"
             f"QDialogButtonBox QPushButton{{background-color:{p['btn']};color:{p['text']};"
             f"border:1px solid {p['sep']};border-radius:4px;padding:6px 20px;"
@@ -2848,6 +4268,14 @@ class MDViewerPro(QMainWindow):
         self._md_editor.setStyleSheet(editor_ss)
         # padding:14px の代わりに document margin を使う（| 文字の座標ズレを防ぐ）
         self._md_editor.document().setDocumentMargin(16)
+        # スケールスライダ周りも幅の段階に合わせて詰める
+        # (これを固定のままにすると狭いウィンドウでボタンを押し出してしまう)
+        self._scale_slider.setFixedWidth(sz["slider_w"])
+        self._scale_val_lbl.setFixedWidth(sz["val_w"])
+        # 最も狭い段階では「スケール」の見出しを畳む。スライダーと
+        # パーセント表示だけで意味が通り、その分をボタンに回せる。
+        self._scale_lbl.setVisible(self._get_ui_scale_cat() != "xsmall")
+        self._apply_btn_fit_metrics(sz)
         if hasattr(self, "_loader"):
             self._loader.set_background(p["bg"])
         self._sync_tb_labels()
@@ -2871,13 +4299,21 @@ class MDViewerPro(QMainWindow):
         if self._toc_panel.isVisible():
             self._rebuild_toc_list()
 
+    def _mode_available(self, mode):
+        """そのモードに切り替えられるか。
+
+        読み取り専用ファイルは編集不可。YAML ドキュメントは Markdown の
+        リッチテキスト編集 (MD編集) が意味を持たないため TXT編集のみとする。"""
+        if self._readonly_file and mode in ("md", "txt"):
+            return False
+        if self.doc_kind == "yaml" and mode == "md":
+            return False
+        return True
+
     def _refresh_btn_states(self):
         for k, b in self._mode_btns.items():
             b.set_active(k == self.edit_mode)
-            if self._readonly_file and k in ("md", "txt"):
-                b.setEnabled(False)
-            else:
-                b.setEnabled(True)
+            b.setEnabled(self._mode_available(k))
         for k, b in self._layout_btns.items():
             b.set_active(k == self.page_mode)
         self._back_btn.setEnabled(self.edit_mode != "view")
@@ -2991,36 +4427,151 @@ class MDViewerPro(QMainWindow):
     # ════════════════════════════════════════════
     #  モード切替
     # ════════════════════════════════════════════
+    # ─── モード切替時のスクロール位置の引き継ぎ ─────────────
+    #  すべての表示要素には data-src-line (元テキストの行番号) が付いている。
+    #  「画面最上部に見えている要素の行番号 + その要素内での位置の割合」を
+    #  アンカーとして持ち回ることで、閲覧 ⇔ MD編集 ⇔ TXT編集 のどの向きの
+    #  切替でも、今見ている場所をほぼそのまま引き継げる。
+
+    _JS_CAPTURE_ANCHOR = (
+        "(function(){"
+        "var w=document.querySelector('.wrap');if(!w)return '';"
+        "var els=w.querySelectorAll('[data-src-line]');"
+        "var best=null,br=null;"
+        "for(var i=0;i<els.length;i++){"
+        "var r=els[i].getBoundingClientRect();"
+        "if(r.bottom>0){best=els[i];br=r;break;}}"
+        "if(!best)return '';"
+        "var f=br.height>0?Math.max(0,Math.min(1,(-br.top)/br.height)):0;"
+        "return (parseInt(best.getAttribute('data-src-line'),10)||0)+':'+f.toFixed(4);"
+        "})()"
+    )
+
+    @staticmethod
+    def _js_restore_anchor(line, frac):
+        return (
+            "(function(){"
+            "var w=document.querySelector('.wrap');if(!w)return;"
+            "var els=w.querySelectorAll('[data-src-line]');"
+            "if(!els.length)return;"
+            f"var line={int(line)},frac={float(frac):.4f};"
+            "var t=els[0];"
+            "for(var i=0;i<els.length;i++){"
+            "var ln=parseInt(els[i].getAttribute('data-src-line'),10);"
+            "if(ln<=line){t=els[i];}else{break;}}"
+            "var r=t.getBoundingClientRect();"
+            "var sy=window.pageYOffset||document.documentElement.scrollTop||0;"
+            "window.scrollTo(0,Math.max(0,r.top+sy+frac*r.height));"
+            "})()"
+        )
+
+    @staticmethod
+    def _parse_anchor(raw):
+        """JS が返す "line:frac" 文字列を (line, frac) に変換する。"""
+        try:
+            line_s, frac_s = str(raw).split(':')
+            return int(line_s), float(frac_s)
+        except Exception:
+            return None
+
+    def _editor_anchor(self):
+        """TXT編集モードのエディタから、最上部に見えている行を取得する。"""
+        try:
+            return self._md_editor.firstVisibleBlock().blockNumber(), 0.0
+        except Exception:
+            return None
+
+    def _arm_anchor_restore(self):
+        """次のプレビュー読み込み完了時に一度だけスクロール位置を復元する。"""
+        try:
+            self._preview_web.loadFinished.disconnect(self._on_load_restore_anchor)
+        except Exception:
+            pass
+        self._preview_web.loadFinished.connect(self._on_load_restore_anchor)
+
+    def _on_load_restore_anchor(self, ok):
+        try:
+            self._preview_web.loadFinished.disconnect(self._on_load_restore_anchor)
+        except Exception:
+            pass
+        anchor = self._pending_anchor
+        self._pending_anchor = None
+        if not ok or anchor is None:
+            return
+        line, frac = anchor
+        js = self._js_restore_anchor(line, frac)
+        # レイアウト確定 (画像・フォントの反映) を待ってからスクロールする
+        QTimer.singleShot(30, lambda: self._preview_web.page().runJavaScript(js))
+
+    def _scroll_editor_to_anchor(self, anchor):
+        """TXT編集モードのエディタを、指定行が最上部に来るようスクロールする。"""
+        if anchor is None:
+            return
+        line, frac = anchor
+        doc = self._md_editor.document()
+        if doc.blockCount() == 0:
+            return
+        block = doc.findBlockByNumber(max(0, min(int(line), doc.blockCount() - 1)))
+        if not block.isValid():
+            return
+        cur = QTextCursor(block)
+        self._md_editor.setTextCursor(cur)
+        self._md_editor.ensureCursorVisible()
+        # ensureCursorVisible() は「見える所まで」しか動かさないため、
+        # 対象行が最上部に来るよう残りの差分だけ追加でスクロールする。
+        vs = self._md_editor.verticalScrollBar()
+        lh = max(1, self._md_editor.fontMetrics().lineSpacing())
+        delta = self._md_editor.cursorRect().top() // lh
+        if delta:
+            vs.setValue(vs.value() + int(delta))
+
     def _set_mode(self, mode):
-        if self._readonly_file and mode in ("md", "txt"):
+        if not self._mode_available(mode):
             return
         if self.edit_mode == mode:
             return
         self._timer.stop()
         if self.edit_mode == "md":
             self._pending_mode = mode
-            # コピーボタン等を除去してからinnerHTMLを取得（テーブル変換の精度向上）
+            # コピーボタン等を除去してからinnerHTMLを取得（テーブル変換の精度向上）。
+            # 同時にスクロールアンカーも取得し、往復の runJavaScript を 1 回で済ませる。
             self._preview_web.page().runJavaScript(
                 "(function(){"
                 "var w=document.querySelector('.wrap');"
                 "if(!w)return '';"
+                "var a=" + self._JS_CAPTURE_ANCHOR + ";"
                 "var c=w.cloneNode(true);"
                 "c.querySelectorAll('.mdv-copy-btn,.pg-brk,.mdv-table-ctrl').forEach(function(el){el.remove();});"
-                "return c.innerHTML;"
+                "return a+'\\u0001'+c.innerHTML;"
                 "})()",
-                lambda html: self._finish_mode_switch_from_md(html, mode)
+                lambda res: self._finish_mode_switch_from_md(res, mode)
             )
-        else:
+        elif self.edit_mode == "txt":
             self._save_buf()
-            self._do_set_mode(mode)
+            self._do_set_mode(mode, anchor=self._editor_anchor())
+        else:
+            self._preview_web.page().runJavaScript(
+                self._JS_CAPTURE_ANCHOR,
+                lambda raw: self._do_set_mode(mode, anchor=self._parse_anchor(raw))
+            )
 
-    def _finish_mode_switch_from_md(self, html_content, mode):
+    def _finish_mode_switch_from_md(self, res, mode):
+        anchor, html_content = None, ""
+        if res:
+            raw, sep, html_content = str(res).partition('\x01')
+            if sep:
+                anchor = self._parse_anchor(raw)
+            else:                       # 区切りが無い = HTML のみ
+                html_content = raw
         if html_content:
             self._content_text = self._html_to_markdown(html_content)
-        self._do_set_mode(mode)
+        self._do_set_mode(mode, anchor=anchor)
 
-    def _do_set_mode(self, mode):
+    def _do_set_mode(self, mode, anchor=None):
         self.edit_mode = mode
+        self._pending_anchor = anchor
+        if anchor is not None:
+            self._arm_anchor_restore()
         idx = 1 if mode == "txt" else 0
         self._editor_stack.setCurrentIndex(idx)
         # 閲覧・MD編集モードではエディタ欄が空のまま残るため隠す
@@ -3043,11 +4594,17 @@ class MDViewerPro(QMainWindow):
         self._refresh_btn_states()
         self._refresh_view()
 
+        if mode == "txt" and anchor is not None:
+            # スプリッターのサイズ確定後でないとエディタの表示行数が
+            # 決まらないため、次のイベントループで位置を合わせる。
+            QTimer.singleShot(0, lambda a=anchor: self._scroll_editor_to_anchor(a))
+
     def _toggle_toc(self):
         self._show_toc = not self._show_toc
         self._toc_btn.set_active(self._show_toc)
         self._update_toc_panel_visibility()
         self._update_splitter_sizes()
+        self._save_app_settings()   # 次回起動時も同じ状態で開く
         self._refresh_view()
 
     # ─── 見出し(TOC)パネル ─────────────────────────
@@ -3115,6 +4672,13 @@ class MDViewerPro(QMainWindow):
         lines = text.split("\n")
         n = len(lines)
 
+        # ── 0th pass: YAML フロントマターは走査対象から外す ──
+        # 閉じの `---` を Setext 見出し(下線 `-`)と誤認して、直前の
+        # `key: value` 行が見出しとして目次に紛れ込むのを防ぐ。
+        # 行番号は本文と同じ絶対値のまま扱う (目次のジャンプ先に使うため)。
+        _fm, _body, fm_end = _split_front_matter(text)
+        skip_until = fm_end if _fm is not None else 0
+
         # ── 1st pass: 実際に閉じているフェンスの行範囲だけを求める ──
         # python-markdown は「行頭(インデントなし)で始まり、開始と全く同じ記号列で
         # 閉じられた」フェンスのみをコードブロックとして扱う。閉じていないフェンスや
@@ -3122,7 +4686,7 @@ class MDViewerPro(QMainWindow):
         # 見出しとして描画される。これらを誤ってスキップすると見出しを取りこぼし、
         # TOC のジャンプ先がずれる。
         fenced = [False] * n
-        i = 0
+        i = skip_until
         while i < n:
             m_open = re.match(r'^(`{3,}|~{3,})', lines[i])
             if m_open:
@@ -3138,10 +4702,40 @@ class MDViewerPro(QMainWindow):
                     continue
             i += 1
 
+        # ── 1.5th pass: 字下げコードブロック (4スペース/タブ) も除外する ──
+        # 空行の後に 4 スペース以上下げて始まる行は、Markdown ではコードブロックに
+        # なる。ここを見落とすと、コード中の `---` を下線形式の見出しと誤認して
+        # 直前の行が目次に紛れ込む (段落の直後の字下げ行は継続行なので対象外)。
+        i = skip_until
+        prev_blank = True
+        while i < n:
+            if fenced[i]:
+                prev_blank = False
+                i += 1
+                continue
+            expanded = lines[i].expandtabs(4)
+            if prev_blank and expanded.strip() and expanded[:4] == "    ":
+                j = i
+                while j < n and not fenced[j]:
+                    e = lines[j].expandtabs(4)
+                    if e.strip() and e[:4] != "    ":
+                        break
+                    fenced[j] = True
+                    j += 1
+                # 末尾の空行はコードブロックに含めない
+                while j - 1 > i and not lines[j - 1].strip():
+                    fenced[j - 1] = False
+                    j -= 1
+                i = j
+                prev_blank = False
+                continue
+            prev_blank = not lines[i].strip()
+            i += 1
+
         # ── 2nd pass: 見出しを抽出 ──
         prev_text = None
         prev_line_no = None
-        i = 0
+        i = skip_until
         while i < n:
             line = lines[i]
             stripped = line.strip()
@@ -3285,6 +4879,7 @@ class MDViewerPro(QMainWindow):
             "last_pdf_dir":     self._last_pdf_dir,
             "pdf_embed_images": self._pdf_embed_images,
             "window_geometry":  geom_b64,
+            "show_toc":         self._show_toc,
         })
 
     def _open_settings(self):
@@ -3297,11 +4892,15 @@ class MDViewerPro(QMainWindow):
         )
         if dlg.exec():
             fam, lang, theme, bold = dlg.get_result()
+            changed_font = (fam != self.ui_font_family)
             self.ui_font_family = fam
             changed_lang = (lang != self.lang)
             self.lang      = lang
             self.bold_mode = bold
             self.current_theme = theme
+            if changed_font:
+                # 再起動しなくても UI 全体に反映されるようにする
+                self._apply_app_font()
             if changed_lang:
                 self.menuBar().clear()
                 self._build_menu()
@@ -3571,26 +5170,6 @@ class MDViewerPro(QMainWindow):
     # ════════════════════════════════════════════
     #  スタートアップ
     # ════════════════════════════════════════════
-    def _on_initial_load_finished(self, ok):
-        if not self._startup_done:
-            self._startup_fallback.stop()
-            self._startup_done = True
-            try:
-                self._preview_web.loadFinished.disconnect(self._on_initial_load_finished)
-            except Exception:
-                pass
-            QTimer.singleShot(0, self._startup_open)
-
-    def _ensure_startup(self):
-        """フォールバック: loadFinished が発火しない場合"""
-        if not self._startup_done:
-            self._startup_done = True
-            try:
-                self._preview_web.loadFinished.disconnect(self._on_initial_load_finished)
-            except Exception:
-                pass
-            self._startup_open()
-
     def _startup_open(self):
         """スタートアップダイアログ（新規作成 or ファイルを開く）"""
         # コマンドライン / Apple Events 経由でファイルが指定された場合はダイアログをスキップ
@@ -3618,7 +5197,7 @@ class MDViewerPro(QMainWindow):
         elif result and dlg.action == StartupDialog.ACTION_OPEN:
             path, _ = QFileDialog.getOpenFileName(
                 self, self._t("open"), os.path.expanduser("~"),
-                "Markdown / Text (*.md *.txt);;All Files (*)"
+                OPEN_FILTER
             )
             if path:
                 self._load_file(path)
@@ -3638,6 +5217,7 @@ class MDViewerPro(QMainWindow):
         if not self._maybe_save():
             return
         self._readonly_file = False
+        self.doc_kind = "md"
         self._content_text = ""
         self.current_file_path = None
         self.is_modified = False
@@ -3665,6 +5245,8 @@ class MDViewerPro(QMainWindow):
                 QMessageBox.warning(self, self._t("read_error"), str(e))
                 return
         self._content_text = text
+        # YAML ファイルは Markdown ではなく YAML として構文強調表示する
+        self.doc_kind = "yaml" if path.lower().endswith(YAML_EXTS) else "md"
         self._md_editor.blockSignals(True)
         self._md_editor.setPlainText(text)
         self._md_editor.blockSignals(False)
@@ -3688,7 +5270,7 @@ class MDViewerPro(QMainWindow):
         self._readonly_file = False
         path, _ = QFileDialog.getOpenFileName(
             self, self._t("open"), os.path.expanduser("~"),
-            "Markdown / Text (*.md *.txt);;All Files (*)"
+            OPEN_FILTER
         )
         if path:
             self._load_file(path)
@@ -3702,13 +5284,21 @@ class MDViewerPro(QMainWindow):
     def file_save_as(self) -> bool:
         path, _ = QFileDialog.getSaveFileName(
             self, self._t("save_as"), os.path.expanduser("~"),
-            "Markdown (*.md);;Text (*.txt);;All Files (*)"
+            SAVE_FILTER
         )
         if path:
             self._save_buf()
             ok = self._write(path)
             if ok:
                 self.current_file_path = path
+                # 拡張子が変わったら描画の種類も追従させる
+                new_kind = "yaml" if path.lower().endswith(YAML_EXTS) else "md"
+                if new_kind != self.doc_kind:
+                    self.doc_kind = new_kind
+                    if not self._mode_available(self.edit_mode):
+                        self._do_set_mode("txt")
+                    self._refresh_btn_states()
+                    self._refresh_view()
                 self._update_title()
             return ok
         return False
@@ -3908,7 +5498,6 @@ class MDViewerPro(QMainWindow):
     def closeEvent(self, event):
         self._timer.stop()
         self._resize_timer.stop()
-        self._startup_fallback.stop()
         if self._maybe_save():
             self._save_app_settings()
             worker = getattr(self, "_img_worker", None)
