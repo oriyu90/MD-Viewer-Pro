@@ -1,34 +1,340 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box;margin:0;padding:0}html,body{background:#000000;color:#c0c0c0;font-family:'Helvetica Neue', '-apple-system', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;font-size:20px;line-height:1.8;font-weight:600;}h1{font-size:37px;color:#7ab8f5;margin:28px 0 16px}h2{font-size:28px;color:#7ab8f5;margin:22px 0 12px}h3{font-size:23px;color:#7ab8f5;margin:18px 0 10px}h4,h5,h6{color:#7ab8f5;margin:14px 0 8px}p{margin:10px 0}a{color:#4a9eff;text-decoration:none}a:hover{text-decoration:underline}code{background:#1c1c1c;color:#e06c75;padding:2px 6px;border-radius:3px;font-family:'Menlo','Monaco',monospace;font-size:.88em}pre{position:relative;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:6px;padding:16px;overflow-x:auto;margin:14px 0}pre code{background:none;padding:0;color:#c0c0c0}.mdv-copy-btn{position:absolute;top:6px;right:8px;padding:2px 10px;font-size:11px;line-height:1.5;cursor:pointer;border:1px solid #2a2a2a;border-radius:4px;background:rgba(50,50,50,0.85);color:#aaaaaa;font-family:system-ui,sans-serif;user-select:none;opacity:.75;z-index:10;transition:opacity .15s}.mdv-copy-btn:hover{opacity:1;color:#c0c0c0}blockquote{border-left:4px solid #4a9eff;background:#1c1c1c;margin:14px 0;padding:10px 18px;border-radius:0 4px 4px 0;color:#484848}table{border-collapse:collapse;width:100%;margin:16px 0}th,td{border:1px solid #2a2a2a;padding:9px 14px;text-align:left}th{background:#1c1c1c;color:#7ab8f5;font-weight:700}tr:nth-child(even){background:#0d0d0d}ul,ol{padding-left:1.7em;margin:10px 0}li{margin:4px 0}hr{border:none;border-top:1px solid #2a2a2a;margin:24px 0}img{max-width:100%;border-radius:4px}.task-list-item{list-style:none;margin-left:-1.4em}.task-list-item input[type='checkbox']{margin-right:6px;vertical-align:middle}.mdv-math{font-family:'Latin Modern Math','Latin Modern Roman','CMU Serif','Computer Modern','STIX Two Math','Times New Roman','Hiragino Mincho ProN',serif;font-weight:400;line-height:1.2;white-space:nowrap;}.mdv-math-display{display:block;text-align:center;margin:18px 0;font-size:1.15em;overflow-x:auto;overflow-y:hidden;}.mdv-math .mdv-var{font-style:italic;}.mdv-math .mdv-rm,.mdv-math .mdv-txt{font-style:normal;}.mdv-math .mdv-fn{font-style:normal;margin-right:.16em;}.mdv-math .mdv-txt{white-space:pre-wrap;}.mdv-math .mdv-bf{font-weight:700;}.mdv-math .mdv-it{font-style:italic;}.mdv-math .mdv-sf{font-family:system-ui,sans-serif;font-style:normal;}.mdv-math .mdv-tt{font-family:'Menlo','Monaco',monospace;font-style:normal;}.mdv-math .mdv-bb,.mdv-math .mdv-cal,.mdv-math .mdv-frak{font-style:normal;}.mdv-math .mdv-bin{margin:0 .22em;}.mdv-math .mdv-sp-punct{display:inline-block;width:.17em;}.mdv-math .mdv-sup,.mdv-math .mdv-sub{font-size:.72em;line-height:1;display:inline-block;}.mdv-math .mdv-sup{vertical-align:.62em;}.mdv-math .mdv-sub{vertical-align:-.34em;}.mdv-math .mdv-scripts{display:inline-flex;flex-direction:column;vertical-align:middle;align-items:flex-start;line-height:1;}.mdv-math .mdv-scripts>.mdv-sup,.mdv-math .mdv-scripts>.mdv-sub{vertical-align:baseline;}.mdv-math .mdv-frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 .18em;position:relative;top:-.05em;}.mdv-math .mdv-frac-n{padding:0 .3em .1em .3em;border-bottom:.055em solid currentColor;}.mdv-math .mdv-frac-d{padding:.1em .3em 0 .3em;}.mdv-math .mdv-frac-t{font-size:.85em;}.mdv-math .mdv-frac-nb>.mdv-frac-n{border-bottom:none;}.mdv-math .mdv-sqrt{display:inline-flex;align-items:flex-start;margin:0 .1em;}.mdv-math .mdv-sqrt-sign{display:inline-block;transform-origin:top;}.mdv-math .mdv-sqrt-idx{font-size:.6em;align-self:flex-start;margin-right:-.35em;position:relative;top:-.15em;}.mdv-math .mdv-sqrt-body{border-top:.055em solid currentColor;padding:.14em .2em 0 .1em;margin-left:-.06em;}.mdv-math .mdv-over{border-top:.055em solid currentColor;padding-top:.12em;display:inline-block;}.mdv-math .mdv-under{border-bottom:.055em solid currentColor;padding-bottom:.06em;display:inline-block;}.mdv-math .mdv-acc{display:inline-block;position:relative;}.mdv-math .mdv-acc>.mdv-acc-m,.mdv-math .mdv-acc>.mdv-acc-wide{position:absolute;left:0;right:0;top:-.58em;text-align:center;line-height:1;pointer-events:none;}.mdv-math .mdv-acc>.mdv-acc-m{font-size:.95em;}.mdv-math .mdv-acc>.mdv-acc-wide{font-size:.7em;top:-.5em;}.mdv-math .mdv-bigop{font-size:1.5em;line-height:1;vertical-align:-.22em;margin:0 .08em;}.mdv-math .mdv-bigop-int{font-size:1.7em;vertical-align:-.3em;}.mdv-math .mdv-lim{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.05;margin:0 .12em;}.mdv-math .mdv-lim-up,.mdv-math .mdv-lim-lo{font-size:.68em;}.mdv-math .mdv-fence{display:inline-flex;align-items:stretch;vertical-align:middle;}.mdv-math .mdv-fence>.mdv-fb{display:inline-flex;align-items:center;padding:0 .1em;}.mdv-math .mdv-d{flex:0 0 auto;align-self:stretch;width:.3em;}.mdv-math .mdv-d-lparen{border:.07em solid currentColor;border-right:0;border-radius:100% 0 0 100%/50% 0 0 50%;margin-right:.05em;}.mdv-math .mdv-d-rparen{border:.07em solid currentColor;border-left:0;border-radius:0 100% 100% 0/0 50% 50% 0;margin-left:.05em;}.mdv-math .mdv-d-lbrack{border:.07em solid currentColor;border-right:0;margin-right:.05em;}.mdv-math .mdv-d-rbrack{border:.07em solid currentColor;border-left:0;margin-left:.05em;}.mdv-math .mdv-d-vert{width:0;border-left:.06em solid currentColor;margin:0 .22em;}.mdv-math .mdv-d-dvert{width:.14em;border-left:.06em solid currentColor;border-right:.06em solid currentColor;margin:0 .22em;}.mdv-math .mdv-d-glyph{display:inline-block;align-self:center;transform-origin:center;font-weight:300;margin:0 .1em;}.mdv-math .mdv-mtx{display:inline-grid;align-items:center;vertical-align:middle;}.mdv-math .mdv-mc{display:inline-block;}.mdv-math .mdv-unknown,.mdv-math .mdv-tex-raw{font-family:'Menlo','Monaco',monospace;font-size:.9em;font-style:normal;opacity:.8;}.mdv-fm{background:#1c1c1c;border:1px solid #2a2a2a;border-left:4px solid #4a9eff;border-radius:0 6px 6px 0;padding:10px 16px 12px 16px;margin:0 0 20px 0;font-size:.9em;}.mdv-fm-title{color:#7ab8f5;font-weight:700;font-size:.92em;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px;opacity:.85;}.mdv-fm-row{display:flex;gap:10px;align-items:baseline;padding:2px 0;flex-wrap:wrap;}.mdv-fm-key{color:#4a9eff;font-weight:700;min-width:110px;flex:0 0 auto;}.mdv-fm-val{color:#c0c0c0;flex:1 1 auto;word-break:break-word;}.mdv-fm-tag{display:inline-block;background:#111111;border:1px solid #2a2a2a;border-radius:10px;padding:0 9px;margin:1px 3px 1px 0;font-size:.9em;}.mdv-fm-raw{background:none;border:none;padding:0;margin:0;white-space:pre-wrap;color:#484848;}.wrap{padding:32px 48px;max-width:920px;margin:0 auto;}@media print{@page{margin:0;}body{background:#000000!important;}.wrap{background:#000000!important;}}</style></head><body><div class="wrap"><h1 data-src-line="0">最高に使いやすいを求めたMD編集ソフト作った</h1>
-<hr data-src-line="2" />
-<p data-src-line="4">私は今、MD Viewer Proを制作しています。</p>
-<p data-src-line="6">完全無料のMarkdownという形式のドキュメントを編集するオープンソースソフトです。</p>
-<p data-src-line="8">ここで配信しています。dmgをDLしてお使いください。</p>
-<p data-src-line="10">https://github.com/oriyu90/MD-Viewer-Pro/releases</p>
-<h2 data-src-line="12">そもそもなんで作ったの？</h2>
-<hr data-src-line="14" />
-<p data-src-line="16">私は普段Macを使っているので、標準搭載されているテキストエディットを文章の原案だったり、下書きだったりを作るときにちょこちょこ使っています。</p>
-<p data-src-line="18">ですが、webサイトからコピーした文章の形式がcmd + vだとそのまま貼り付けられてしまうので、見にくくなったりフォントが変わったりするところに不満が出てきました。</p>
-<p data-src-line="20">（これに関してはプレーンテキストで貼り付けを覚えレバいいだけですが、めんどくさく忘れそうなのでハナから覚える気はありません。）</p>
-<p data-src-line="22">さらに、Windowサイズを覚えてくれないところにも不満です。</p>
-<p data-src-line="24">ということで、AIでサクッと代替アプリを作ってみました。それが MD Viewer Proです。</p>
-<p data-src-line="26">私はTXT形式自体にはこだわりがなく、TXTのように扱えるならいいってだけだったので軽量なのに文字の大きさを変えれたり、AIの出力の標準フォーマット的になっている、</p>
-<h2 data-src-line="28">「MarkDown形式」</h2>
-<p data-src-line="30">を採用しています。</p>
-<p data-src-line="32">なのでAIの回答をそのままはっつけても綺麗にみられる。
-しかもMD特有の編集(型)を使ってなかったらtxtに拡張子を変えても大丈夫。
-そんな形式です。</p>
-<p data-src-line="36">まあ個人のフラストレーションから生まれたアプリです。</p>
-<h2 data-src-line="38">何使って作ってるの？</h2>
-<hr data-src-line="40" />
-<p data-src-line="42">python使ってます。開発期間の短縮です。</p>
-<p data-src-line="44">あと、Claude codeにコーディング、アプリリリースはお願いしています。</p>
-<p data-src-line="46">ですがリリース作成までにちゃんと一回自分で使って監査してます。</p>
-<p data-src-line="48">まあそんな感じですね。</p>
-<h2 data-src-line="50">伝えたいポイント</h2>
-<hr data-src-line="52" />
-<p data-src-line="54">このアプリ、私が普段使いする前提なのでとにかくユーザーフレンドリーに作っていってます。不満があれば即AIに修正依頼って感じで初回リリースまでも色々と細かく修正してきました。</p>
-<p data-src-line="56">最近も色々修正して、LateXに対応したり編集画面の警備んバグ修正をしてきました。</p>
-<p data-src-line="58">ぜひ、使ってみてください！</p>
-<p data-src-line="60">ちなみにですがこのサイト、MD Viewer Proで作成しました。</p>
-<p data-src-line="62">編集者: Yuki_Orita</p>
-<p data-src-line="64">ホームページ: https://oriyu90.github.io/official/</p></div><script>function _mdvCopy(btn){var pre=btn.parentElement;var code=pre.querySelector("code");var src=code?code:pre;var text=(src.textContent||"").replace(/\n$/,"");if(typeof _mdvClipboard!=="undefined"&&_mdvClipboard){_mdvClipboard.copyText(text);}else{var ta=document.createElement("textarea");ta.value=text;ta.style.cssText="position:fixed;top:-9999px;left:-9999px;";document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand("copy");}catch(e){}document.body.removeChild(ta);}var orig=btn.textContent;btn.textContent="✓";btn.style.opacity="1";setTimeout(function(){btn.textContent=orig;btn.style.opacity="";},1500);}window.addEventListener("load",function(){document.querySelectorAll("pre").forEach(function(p){if(p.querySelector(".mdv-copy-btn"))return;var b=document.createElement("button");b.className="mdv-copy-btn";b.textContent="copy";b.setAttribute("type","button");b.onclick=function(e){e.stopPropagation();_mdvCopy(this);};p.appendChild(b);});});</script><script src="qrc:///qtwebchannel/qwebchannel.js"></script><script>var _mdvClipboard=null;document.addEventListener("DOMContentLoaded",function(){if(typeof QWebChannel==="undefined"||typeof qt==="undefined")return;new QWebChannel(qt.webChannelTransport,function(ch){_mdvClipboard=ch.objects.clipboard;});});</script><script>document.addEventListener("copy",function(e){var t=window.getSelection().toString();if(t&&e.clipboardData){e.clipboardData.setData("text/plain",t);e.preventDefault();}},true);</script></body></html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MD Viewer Pro - 究極のMarkdownエディタ</title>
+    <meta name="description" content="MD Viewer Proは、Macユーザーのための軽量かつAIフレンドリーなオープンソースMarkdownエディタです。テキストエディットの不満を解消し、使いやすさを追求しました。">
+    <meta name="keywords" content="MD Viewer Pro, Markdown, エディタ, オープンソース, Mac, 編集ソフト, Yuki_Orita">
+    <meta name="author" content="Yuki_Orita">
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "MD Viewer Pro",
+      "operatingSystem": "macOS",
+      "applicationCategory": "TextEditor",
+      "author": {
+        "@type": "Person",
+        "name": "Yuki_Orita",
+        "url": "https://oriyu90.github.io/official/"
+      },
+      "url": "https://github.com/oriyu90/MD-Viewer-Pro",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "JPY"
+      }
+    }
+    </script>
+
+    <style>
+        /* CSSカスタムプロパティ (ライトテーマのデフォルト) */
+        :root {
+            --bg-color: #f9f9f9;
+            --text-color: #333333;
+            --container-bg: #ffffff;
+            --primary-color: #007aff;
+            --border-color: #e5e5e5;
+            --code-bg: #f1f1f1;
+            --footer-text: #777777;
+        }
+
+        /* ダークテーマの定義 */
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --container-bg: #1e1e1e;
+            --primary-color: #4da6ff;
+            --border-color: #333333;
+            --code-bg: #2d2d2d;
+            --footer-text: #aaaaaa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 40px;
+            background-color: var(--container-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            transition: background-color 0.3s;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        p {
+            margin-bottom: 16px;
+        }
+
+        .btn-download {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: opacity 0.2s;
+        }
+
+        .btn-download:hover {
+            opacity: 0.8;
+        }
+
+        .highlight {
+            background-color: var(--code-bg);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            color: var(--footer-text);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+
+        footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        /* テーマ切り替えボタン */
+        .theme-toggle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+        
+        .theme-toggle:hover {
+            background-color: var(--code-bg);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px;
+                padding: 20px;
+            }
+            .theme-toggle {
+                position: relative;
+                margin-top: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <button class="theme-toggle" id="themeToggle">🌓 Theme</button>
+            <h1 data-i18n="title">最高に使いやすいを求めたMD編集ソフト作った</h1>
+            <p data-i18n="intro1">私は今、MD Viewer Proを制作しています。</p>
+            <p data-i18n="intro2">完全無料のMarkdownという形式のドキュメントを編集するオープンソースソフトです。</p>
+            <a href="https://github.com/oriyu90/MD-Viewer-Pro/releases" target="_blank" rel="noopener noreferrer" class="btn-download" data-i18n="download">ここで配信しています。dmgをDLしてお使いください。</a>
+        </header>
+
+        <section>
+            <h2 data-i18n="h2_1">そもそもなんで作ったの？</h2>
+            <p data-i18n="p2_1">私は普段Macを使っているので、標準搭載されているテキストエディットを文章の原案だったり、下書きだったりを作るときにちょこちょこ使っています。</p>
+            <p data-i18n="p2_2">ですが、webサイトからコピーした文章の形式が<span class="highlight">cmd + v</span>だとそのまま貼り付けられてしまうので、見にくくなったりフォントが変わったりするところに不満が出てきました。</p>
+            <p data-i18n="p2_3">（これに関してはプレーンテキストで貼り付けを覚えればいいだけですが、めんどくさく忘れそうなのでハナから覚える気はありません。）</p>
+            <p data-i18n="p2_4">さらに、Windowサイズを覚えてくれないところにも不満です。</p>
+            <p data-i18n="p2_5">ということで、AIでサクッと代替アプリを作ってみました。それが <strong>MD Viewer Pro</strong> です。</p>
+            <p data-i18n="p2_6">私はTXT形式自体にはこだわりがなく、TXTのように扱えるならいいってだけだったので軽量なのに文字の大きさを変えれたり、AIの出力の標準フォーマット的になっている、<strong>「MarkDown形式」</strong>を採用しています。</p>
+            <p data-i18n="p2_7">なのでAIの回答をそのままはっつけても綺麗にみられる。<br>しかもMD特有の編集(型)を使ってなかったらtxtに拡張子を変えても大丈夫。<br>そんな形式です。</p>
+            <p data-i18n="p2_8">まあ個人のフラストレーションから生まれたアプリです。</p>
+        </section>
+
+        <section>
+            <h2 data-i18n="h2_2">何使って作ってるの？</h2>
+            <p data-i18n="p3_1">python使ってます。開発期間の短縮です。</p>
+            <p data-i18n="p3_2">あと、Claude codeにコーディング、アプリリリースはお願いしています。</p>
+            <p data-i18n="p3_3">ですがリリース作成までにちゃんと一回自分で使って監査してます。</p>
+            <p data-i18n="p3_4">まあそんな感じですね。</p>
+        </section>
+
+        <section>
+            <h2 data-i18n="h2_3">伝えたいポイント</h2>
+            <p data-i18n="p4_1">このアプリ、私が普段使いする前提なのでとにかくユーザーフレンドリーに作っていってます。不満があれば即AIに修正依頼って感じで初回リリースまでも色々と細かく修正してきました。</p>
+            <p data-i18n="p4_2">最近も色々修正して、LateXに対応したり編集画面の軽微なバグ修正をしてきました。</p>
+            <p data-i18n="p4_3">ぜひ、使ってみてください！</p>
+        </section>
+
+        <footer>
+            <p><span data-i18n="author">編集者: Yuki_Orita</span> | <a href="https://oriyu90.github.io/official/" target="_blank" rel="noopener noreferrer" data-i18n="website">ホームページ</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // --- 言語データ ---
+        const translations = {
+            ja: {
+                title: "最高に使いやすいを求めたMD編集ソフト作った",
+                intro1: "私は今、MD Viewer Proを制作しています。",
+                intro2: "完全無料のMarkdownという形式のドキュメントを編集するオープンソースソフトです。",
+                download: "ここで配信しています。dmgをDLしてお使いください。",
+                h2_1: "そもそもなんで作ったの？",
+                p2_1: "私は普段Macを使っているので、標準搭載されているテキストエディットを文章の原案だったり、下書きだったりを作るときにちょこちょこ使っています。",
+                p2_2: "ですが、webサイトからコピーした文章の形式が <span class=\"highlight\">cmd + v</span> だとそのまま貼り付けられてしまうので、見にくくなったりフォントが変わったりするところに不満が出てきました。",
+                p2_3: "（これに関してはプレーンテキストで貼り付けを覚えればいいだけですが、めんどくさく忘れそうなのでハナから覚える気はありません。）",
+                p2_4: "さらに、Windowサイズを覚えてくれないところにも不満です。",
+                p2_5: "ということで、AIでサクッと代替アプリを作ってみました。それが <strong>MD Viewer Pro</strong> です。",
+                p2_6: "私はTXT形式自体にはこだわりがなく、TXTのように扱えるならいいってだけだったので軽量なのに文字の大きさを変えれたり、AIの出力の標準フォーマット的になっている、<strong>「MarkDown形式」</strong>を採用しています。",
+                p2_7: "なのでAIの回答をそのままはっつけても綺麗にみられる。<br>しかもMD特有の編集(型)を使ってなかったらtxtに拡張子を変えても大丈夫。<br>そんな形式です。",
+                p2_8: "まあ個人のフラストレーションから生まれたアプリです。",
+                h2_2: "何使って作ってるの？",
+                p3_1: "python使ってます。開発期間の短縮です。",
+                p3_2: "あと、Claude codeにコーディング、アプリリリースはお願いしています。",
+                p3_3: "ですがリリース作成までにちゃんと一回自分で使って監査してます。",
+                p3_4: "まあそんな感じですね。",
+                h2_3: "伝えたいポイント",
+                p4_1: "このアプリ、私が普段使いする前提なのでとにかくユーザーフレンドリーに作っていってます。不満があれば即AIに修正依頼って感じで初回リリースまでも色々と細かく修正してきました。",
+                p4_2: "最近も色々修正して、LateXに対応したり編集画面の軽微なバグ修正をしてきました。",
+                p4_3: "ぜひ、使ってみてください！",
+                author: "編集者: Yuki_Orita",
+                website: "ホームページ"
+            },
+            en: {
+                title: "I Built the Most User-Friendly MD Editing Software",
+                intro1: "I am currently developing MD Viewer Pro.",
+                intro2: "It's a completely free, open-source software for editing Markdown documents.",
+                download: "Download the .dmg file here.",
+                h2_1: "Why did I build it?",
+                p2_1: "I usually use a Mac, so I often use the built-in TextEdit for drafting and outlining documents.",
+                p2_2: "However, when copying from websites using <span class=\"highlight\">cmd + v</span>, the original formatting is pasted along with it, messing up the font and readability.",
+                p2_3: "(I know I could just memorize 'Paste as Plain Text', but it's tedious and I don't want to bother.)",
+                p2_4: "Furthermore, I was annoyed that it doesn't remember the window size.",
+                p2_5: "So, I quickly created an alternative app using AI. That app is <strong>MD Viewer Pro</strong>.",
+                p2_6: "I don't have a strong preference for the TXT format itself. I just wanted something that acts like TXT but allows resizing text and uses the AI-standard format: <strong>Markdown</strong>.",
+                p2_7: "This means you can paste AI responses directly and they look great.<br>Plus, if you aren't using MD-specific formatting, you can safely change the extension to .txt.<br>It's that versatile.",
+                p2_8: "Basically, it's an app born from personal frustration.",
+                h2_2: "What is it built with?",
+                p3_1: "I use Python to shorten development time.",
+                p3_2: "I also rely on Claude Code for coding and app releases.",
+                p3_3: "However, before creating a release, I always audit it myself.",
+                p3_4: "So, that's about it.",
+                h2_3: "Key Points",
+                p4_1: "Since I built this for my own daily use, it's highly user-friendly. Any complaints I had were immediately sent as fix requests to the AI, resulting in many fine-tuned adjustments.",
+                p4_2: "Recently, I added LaTeX support and fixed minor bugs in the editing screen.",
+                p4_3: "Please give it a try!",
+                author: "Editor: Yuki_Orita",
+                website: "Website"
+            },
+            fr: {
+                title: "J'ai créé le logiciel d'édition MD le plus convivial",
+                intro1: "Je développe actuellement MD Viewer Pro.",
+                intro2: "Il s'agit d'un logiciel open source entièrement gratuit pour éditer des documents Markdown.",
+                download: "Téléchargez le fichier .dmg ici.",
+                h2_1: "Pourquoi l'ai-je créé ?",
+                p2_1: "J'utilise généralement un Mac, je me sers donc souvent de TextEdit pour rédiger des brouillons.",
+                p2_2: "Cependant, lors de la copie depuis des sites Web avec <span class=\"highlight\">cmd + v</span>, le formatage d'origine est conservé, ce qui gâche la police et la lisibilité.",
+                p2_3: "(Je sais que je pourrais mémoriser 'Coller en texte brut', mais c'est fastidieux et je n'en ai pas envie.)",
+                p2_4: "De plus, j'étais agacé qu'il ne mémorise pas la taille de la fenêtre.",
+                p2_5: "J'ai donc rapidement créé une application alternative avec l'IA. Cette application est <strong>MD Viewer Pro</strong>.",
+                p2_6: "Je n'ai pas de préférence pour le format TXT en soi. Je voulais juste un format léger comme le TXT, mais qui permette de redimensionner le texte et utilise le standard de l'IA : le <strong>Markdown</strong>.",
+                p2_7: "Cela signifie que vous pouvez coller les réponses de l'IA et elles sont superbes.<br>De plus, sans formatage MD spécifique, vous pouvez changer l'extension en .txt en toute sécurité.",
+                p2_8: "En gros, c'est une application née d'une frustration personnelle.",
+                h2_2: "Avec quoi est-il construit ?",
+                p3_1: "J'utilise Python pour réduire le temps de développement.",
+                p3_2: "Je m'appuie également sur Claude Code pour le codage et les versions.",
+                p3_3: "Cependant, avant de créer une version, je la vérifie toujours moi-même.",
+                p3_4: "Voilà, c'est à peu près tout.",
+                h2_3: "Points clés",
+                p4_1: "Comme je l'ai créé pour mon usage quotidien, il est très convivial. Le moindre problème a été immédiatement envoyé à l'IA pour correction, ce qui a permis de nombreux ajustements.",
+                p4_2: "Récemment, j'ai ajouté la prise en charge de LaTeX et corrigé des bugs mineurs.",
+                p4_3: "N'hésitez pas à l'essayer !",
+                author: "Éditeur : Yuki_Orita",
+                website: "Site Web"
+            }
+        };
+
+        // --- 多言語設定ロジック ---
+        // ブラウザの言語設定を取得 (例: "ja-JP" -> "ja")
+        let userLang = (navigator.language || navigator.userLanguage).slice(0, 2);
+        
+        // サポートしていない言語の場合は英語(en)にフォールバック
+        if (!['ja', 'en', 'fr'].includes(userLang)) {
+            userLang = 'en';
+        }
+
+        // HTML要素を翻訳データで置換
+        document.documentElement.lang = userLang;
+        document.title = translations[userLang].title + " - MD Viewer Pro";
+        
+        const i18nElements = document.querySelectorAll('[data-i18n]');
+        i18nElements.forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (translations[userLang][key]) {
+                el.innerHTML = translations[userLang][key];
+            }
+        });
+
+        // --- テーマ切り替えロジック ---
+        const themeToggle = document.getElementById('themeToggle');
+        
+        // システムのカラーテーマを取得
+        const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+        
+        // 初期状態の設定
+        if (prefersDarkScheme.matches) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+
+        // ボタンでの手動切り替え
+        themeToggle.addEventListener('click', () => {
+            let currentTheme = document.documentElement.getAttribute('data-theme');
+            if (currentTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        });
+    </script>
+</body>
+</html>
