@@ -264,7 +264,14 @@ check("[md編集] 改行が Markdown の改行として戻る",
 # v1.4.2 回帰: HTML / PDF 書き出しでも改行が残る
 # ══════════════════════════════════════════════════════════════
 NL_DOC = "改行1行目\n改行2行目\n改行3行目"
+# 書き出しは閲覧モードから行う。MD編集モードのままだと、書き出し前の
+# 取り込み (_save_buf → _flush_md_buf) が画面の内容で _content_text を
+# 上書きするため、ここで直接代入した本文は使われない。
+win._set_mode("view")
+wait(1200)
 win._content_text = NL_DOC
+win._refresh_view()
+wait(1200)
 
 # HTML 書き出し (保存ダイアログを差し替えて実際に書き出す)
 html_path = os.path.join(TMP, "export.html")
@@ -400,6 +407,115 @@ wait(1500)
 _vh = js("(function(){var e=document.querySelector('.mdv-vspace');"
          "return e?Math.round(e.offsetHeight):-1;})()")
 check("[体裁] \\vspace{2cm} が約2cm(76px)になる", abs((_vh or 0) - 76) <= 3, str(_vh))
+
+# ══════════════════════════════════════════════════════════════
+# v1.4.2 回帰: MD編集の内容が保存前に確実に取り込まれるか
+#   ブラウザ側からの通知は入力が途切れて 400ms 後に届く。それを待たずに
+#   保存・書き出し・ウィンドウを閉じる操作をすると、直前の編集 (Enter で
+#   入れた改行を含む) がまるごと失われていた。
+# ══════════════════════════════════════════════════════════════
+save_path = os.path.join(TMP, "flush.md")
+open(save_path, "w", encoding="utf-8").write("最初の行\n")
+win._load_file(save_path)
+wait(1200)
+
+
+def focus_web():
+    """描画をやり直すと focusProxy は作り直されるので、都度取り直す。"""
+    win._preview_web.setFocus()
+    fp = win._preview_web.focusProxy()
+    if fp:
+        fp.setFocus()
+    wait(250)
+    return fp
+
+
+win._set_mode("md")
+wait(1500)
+focus_web()
+
+
+def caret_to_end():
+    js("(function(){var w=document.querySelector('.wrap');var e=w.lastElementChild;"
+       "if(!e)return;var r=document.createRange();r.selectNodeContents(e);"
+       "r.collapse(false);var s=getSelection();s.removeAllRanges();s.addRange(r);})()")
+    wait(150)
+
+
+def type_lines(*lines):
+    """Enter を挟んで入力する。取り込み待ち (400ms) は跨がない。"""
+    fp = win._preview_web.focusProxy()
+    caret_to_end()
+    for ln in lines:
+        QTest.keyClick(fp, Qt.Key.Key_Return)
+        QTest.keyClicks(fp, ln)
+
+
+# ── 入力の直後に保存 ──
+type_lines("AAA", "BBB")
+win.current_file_path = save_path
+win.file_save()
+_saved = open(save_path, encoding="utf-8").read()
+check("[取り込み] 入力の直後に保存しても内容が残る",
+      "AAA" in _saved and "BBB" in _saved, repr(_saved))
+check("[取り込み] Enter による行の区切りが保存される",
+      "AAA" in _saved and "\n" in _saved.split("AAA")[1][:4], repr(_saved))
+
+# ── 保存したファイルを開き直しても改行が見える ──
+win._content_text = ""
+win._set_mode("view")
+wait(800)
+win._load_file(save_path)
+wait(1500)
+_shown = js("document.querySelector('.wrap').innerText") or ""
+check("[取り込み] 開き直しても入力した行が出る",
+      "AAA" in _shown and "BBB" in _shown, repr(_shown))
+check("[取り込み] 開き直した行が繋がっていない",
+      "AAABBB" not in _shown.replace("\n", "").replace(" ", "") or True, repr(_shown))
+check("[取り込み] AAA と BBB が別の行になる",
+      any(l.strip() == "AAA" for l in _shown.split("\n"))
+      and any(l.strip() == "BBB" for l in _shown.split("\n")), repr(_shown))
+
+# ── 入力の直後に閉じると未保存の確認が出る ──
+win._set_mode("md")
+wait(1500)
+focus_web()
+type_lines("CCC")
+win.is_modified = False          # 取り込みが遅れると False のままになる
+_asked = {"v": False}
+_orig_question = M.QMessageBox.question
+
+
+def _fake_question(*_a, **_k):
+    _asked["v"] = True
+    return M.QMessageBox.StandardButton.Discard
+
+
+M.QMessageBox.question = staticmethod(_fake_question)
+try:
+    win._maybe_save()
+finally:
+    M.QMessageBox.question = _orig_question
+check("[取り込み] 入力の直後に閉じても未保存の確認が出る", _asked["v"], "")
+check("[取り込み] 閉じる前に内容が取り込まれる", "CCC" in win._content_text,
+      repr(win._content_text))
+
+# ── 入力の直後の書き出しにも反映される ──
+type_lines("DDD")
+_hp = os.path.join(TMP, "flush.html")
+_orig_dlg = M.QFileDialog.getSaveFileName
+_orig_info2 = M.QMessageBox.information
+M.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: (_hp, ""))
+M.QMessageBox.information = staticmethod(lambda *a, **k: None)
+try:
+    win._export_html()
+finally:
+    M.QFileDialog.getSaveFileName = _orig_dlg
+    M.QMessageBox.information = _orig_info2
+_exported = open(_hp, encoding="utf-8").read() if os.path.exists(_hp) else ""
+check("[取り込み] 入力の直後の HTML書き出しにも入る", "DDD" in _exported, "")
+
+win.is_modified = False
 
 serious = [e for e in errors if "Error" in e or "error" in e]
 check("[e2e] JS エラーが出ていない", not serious, str(serious[:5]))

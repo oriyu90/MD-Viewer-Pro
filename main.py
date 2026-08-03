@@ -45,7 +45,7 @@ from PySide6.QtGui import (
     QFileOpenEvent, QFontMetrics, QFontDatabase,
 )
 from PySide6.QtCore import (
-    Qt, QMarginsF, QTimer, QUrl, QSizeF, QObject, Slot, QEvent, Signal,
+    Qt, QMarginsF, QTimer, QUrl, QSizeF, QObject, Slot, QEvent, Signal, QEventLoop,
     QByteArray, QThread, QSize,
 )
 from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -3111,6 +3111,8 @@ class MDViewerPro(QMainWindow):
         self._plugin_themes: Dict[str, dict] = {}
         self._image_cache: Dict[str, str] = {}
         self._readonly_file    = False
+        # MD編集モードの内容取り込み中フラグ (入れ子のイベントループの再入防止)
+        self._md_flushing      = False
         # "md" | "yaml" — YAML ファイルは全文を YAML として構文強調表示する
         self.doc_kind          = "md"
         self._saved_scroll_y   = 0
@@ -4590,10 +4592,14 @@ class MDViewerPro(QMainWindow):
                 'var br=ch.objects.bridge;'
                 'var w=document.querySelector(".wrap");'
                 'if(w){'
-                'var tmr=null;'
+                # タイマーは window に持たせる。保存や書き出しの直前に
+                # Python 側 (_JS_GRAB_WRAP) から解除して、取り込んだ後に
+                # 古い内容が遅れて届くのを防ぐため。
+                'window._mdvTmr=null;'
                 'w.addEventListener("input",function(){'
-                'clearTimeout(tmr);'
-                'tmr=setTimeout(function(){br.contentChanged(w.innerHTML);},400);'
+                'clearTimeout(window._mdvTmr);'
+                'window._mdvTmr=setTimeout('
+                'function(){br.contentChanged(w.innerHTML);},400);'
                 '});}'
             )
         webchannel_js = (
@@ -4937,6 +4943,59 @@ class MDViewerPro(QMainWindow):
         "})()"
     )
 
+    # MD編集モードの編集内容 (.wrap の中身) を取り出す JS。
+    # エディタが差し込む制御要素は Markdown に残さないよう複製から除く。
+    # 保留中の反映タイマーもここで解除し、取り込んだ後に古い内容が
+    # 遅れて届いて上書きされないようにする。
+    _JS_GRAB_WRAP = (
+        "(function(){"
+        "try{clearTimeout(window._mdvTmr);}catch(e){}"
+        "var w=document.querySelector('.wrap');if(!w)return '';"
+        "var c=w.cloneNode(true);"
+        "c.querySelectorAll('.mdv-copy-btn,.pg-brk,.mdv-table-ctrl')"
+        ".forEach(function(el){el.remove();});"
+        "return c.innerHTML;})()"
+    )
+
+    def _flush_md_buf(self) -> None:
+        """MD編集モードの編集内容を _content_text に取り込む (同期)。
+
+        ブラウザ側からの通知は入力が途切れて 400ms 後に届く。保存や
+        書き出しがその前に走ると、直前の編集 (Enter で入れた改行など) が
+        ファイルに入らないまま書かれてしまう。閉じるときの確認も
+        「変更なし」と誤判定して黙って捨ててしまう。ここで待ち合わせる。"""
+        web = getattr(self, "_preview_web", None)
+        if web is None or self._md_flushing:
+            return
+        self._md_flushing = True
+        box, loop = {}, QEventLoop()
+
+        def done(html):
+            box["html"] = html
+            loop.quit()
+
+        guard = QTimer(self)
+        guard.setSingleShot(True)
+        guard.timeout.connect(loop.quit)
+        try:
+            web.page().runJavaScript(self._JS_GRAB_WRAP, done)
+            guard.start(self._MD_FLUSH_TIMEOUT_MS)
+            loop.exec()
+        finally:
+            guard.stop()
+            self._md_flushing = False
+        html = box.get("html")
+        if not html:
+            return
+        text = self._html_to_markdown(html)
+        if text != self._content_text:
+            self._content_text = text
+            self.is_modified = True
+            self._update_title()
+
+    # 取り込みの待ち時間の上限 (描画側が応答しなくても固まらないための保険)
+    _MD_FLUSH_TIMEOUT_MS = 2000
+
     @staticmethod
     def _js_restore_anchor(line, frac):
         return (
@@ -5043,12 +5102,8 @@ class MDViewerPro(QMainWindow):
             # 同時にスクロールアンカーも取得し、往復の runJavaScript を 1 回で済ませる。
             self._preview_web.page().runJavaScript(
                 "(function(){"
-                "var w=document.querySelector('.wrap');"
-                "if(!w)return '';"
                 "var a=" + self._JS_CAPTURE_ANCHOR + ";"
-                "var c=w.cloneNode(true);"
-                "c.querySelectorAll('.mdv-copy-btn,.pg-brk,.mdv-table-ctrl').forEach(function(el){el.remove();});"
-                "return a+'\\u0001'+c.innerHTML;"
+                "return a+'\\u0001'+" + self._JS_GRAB_WRAP + ";"
                 "})()",
                 lambda res: self._finish_mode_switch_from_md(res, mode)
             )
@@ -5345,8 +5400,11 @@ class MDViewerPro(QMainWindow):
         self._set_mode("view")
 
     def _save_buf(self):
+        """保存・書き出しの前に、編集中の内容を _content_text へ確定させる。"""
         if self.edit_mode == "txt":
             self._content_text = self._md_editor.toPlainText()
+        elif self.edit_mode == "md":
+            self._flush_md_buf()
 
     def _set_layout(self, layout):
         self.page_mode = layout
@@ -5850,6 +5908,10 @@ class MDViewerPro(QMainWindow):
         return True
 
     def _maybe_save(self) -> bool:
+        # MD編集モードの未反映の編集を先に取り込む。これをしないと、
+        # 入力直後に閉じたときに「変更なし」と判定して黙って捨ててしまう。
+        if not self._readonly_file and self.edit_mode == "md":
+            self._flush_md_buf()
         if self._readonly_file or not self.is_modified:
             return True
         r = QMessageBox.question(
