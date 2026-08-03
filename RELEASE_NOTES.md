@@ -55,6 +55,13 @@
     書式を「置き換える」ようにし、「本文」はすべての記号を一度に外すようにしました。
     同じ書式のボタンをもう一度押すと本文に戻ります。
     過去のバージョンで記号が積み重なってしまった行も、「本文」を一度押せば戻ります。
+- **MD編集で入力した直後に保存すると、その編集が保存されない問題**: MD編集モードの
+  内容は、入力が途切れてから少し遅れて内部に取り込まれる作りになっていました。
+  そのため、文字を打ってすぐに保存すると直前の編集がファイルに入らず、
+  **Enter で入れた改行ごと消えて**しまい、開き直すと改行されていない状態に
+  なっていました。保存・PDF / HTML 書き出しの直前に必ず取り込むようにしました。
+  あわせて、入力した直後にウィンドウを閉じると「変更あり」と判定されず、
+  確認も出ないまま編集が捨てられていた問題も直しました。
 - **改行の扱いを詳細設定で切り替えられるようにしました**: 詳細設定に「改行の扱い」を
   追加しました。既定はオン（書いたとおりに改行する）で、オフにすると素の Markdown
   仕様どおりの表示に戻せます。設定は次回起動時にも引き継がれます。
@@ -120,6 +127,13 @@
     removes every marker at once. Pressing the same format button again returns the
     line to body text. Lines that accumulated markers in earlier versions are fixed
     by a single press of Body.
+- **Edits made just before saving were lost in MD Edit**: MD Edit content was only
+  picked up a moment after you stopped typing. Saving right after typing therefore
+  wrote the file without your most recent edits — **including the line breaks you
+  had just entered** — so reopening the file showed no break. The content is now
+  captured synchronously before saving and before PDF / HTML export. Closing the
+  window right after typing also failed to register as "modified" and discarded
+  the edits without asking; that is fixed too.
 - **A setting to choose how line breaks are handled**: Settings now has a
   "Line Breaks" section. It is on by default (render what you typed); turning it
   off restores standard Markdown rendering. The choice is remembered.
