@@ -55,6 +55,12 @@
     書式を「置き換える」ようにし、「本文」はすべての記号を一度に外すようにしました。
     同じ書式のボタンをもう一度押すと本文に戻ります。
     過去のバージョンで記号が積み重なってしまった行も、「本文」を一度押せば戻ります。
+- **MD編集で Enter を押して入れた空行が、保存すると消える問題**: 段落と段落の間を
+  もう少し空けようと Enter を押しても、保存して開き直すと元に戻っていました。
+  空行は Markdown の仕様上そのままでは表現できない（連続した空行は無視される）ため、
+  空行を表す `<br>` の行として保存するようにしました。開き直しても同じ空行が残り、
+  編集と保存を繰り返しても増えたり減ったりしません。
+  ※ このためファイルの中に `<br>` という行が入ります。
 - **MD編集で入力した直後に保存すると、その編集が保存されない問題**: MD編集モードの
   内容は、入力が途切れてから少し遅れて内部に取り込まれる作りになっていました。
   そのため、文字を打ってすぐに保存すると直前の編集がファイルに入らず、
@@ -127,6 +133,12 @@
     removes every marker at once. Pressing the same format button again returns the
     line to body text. Lines that accumulated markers in earlier versions are fixed
     by a single press of Body.
+- **Blank lines added with Enter in MD Edit disappeared on save**: pressing Enter to
+  put more space between paragraphs had no effect once the file was saved and
+  reopened. A blank line cannot be expressed in plain Markdown (consecutive blank
+  lines are ignored), so it is now written as a `<br>` line. The blank line survives
+  reopening and does not grow or shrink across repeated edits. Note that this puts a
+  literal `<br>` line into the file.
 - **Edits made just before saving were lost in MD Edit**: MD Edit content was only
   picked up a moment after you stopped typing. Saving right after typing therefore
   wrote the file without your most recent edits — **including the line breaks you
