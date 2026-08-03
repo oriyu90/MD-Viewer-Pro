@@ -1,5 +1,88 @@
 # Release Notes / 更新履歴
 
+## v1.4.2
+
+書き心地まわりの不具合をまとめて直したバグ修正リリースです。新機能はありません。
+
+### 日本語
+
+#### 修正
+
+- **改行が無視される問題**: 文章を書いて改行しても、閲覧モードでは前の行に
+  つながって表示されていました。空行を入れないと改行できない状態で、v1.4.1 で
+  編集して保存した文書を開き直すと、書いたはずの改行が消えてしまっていました。
+  Enter で入れた改行をそのまま改行として表示するようにしました。
+  行の途中の折り返しではなく、書いた行のとおりに表示されます。
+  コードブロック・表の中は今までどおりで、変わりません。
+- **HTML / PDF に書き出すと改行が消える問題**: 上と同じ原因です。書き出しは
+  閲覧モードと同じ描画を使っているため、こちらも一緒に直っています。
+  画面で見えているとおりに書き出されます。
+- **見出しで改行すると次の行も見出しになる問題**（MD編集）: H1 / H2 / H3 に
+  した行で Enter を押すと、続きの行まで見出しの書式のままになり、本文に
+  戻せなくなることがありました。見出しの行で改行したときは、新しくできる行を
+  必ず本文にするようにしました。行末・行の途中・行頭のどこで改行しても同じです。
+  中身が空の見出しで Enter を押した場合は、その行自体が本文に戻ります。
+- **見出しにした直後に「本文」を押しても戻らない問題**: 何も入力していない行を
+  H1 / H2 / H3 にしてから、そのまま「本文」を押しても書式が戻りませんでした。
+  - MD編集: 空の見出しや、ツールバーを押してカーソルの選択が外れた状態でも
+    確実に本文へ戻るようにしました。
+  - TXT編集: 見出しボタンが行頭の記号を「足すだけ」だったため、H1 のあと H2 を
+    押すと `## # 本文` のように記号が積み重なり、「本文」を押しても 1 段しか
+    外れませんでした。見出し・引用・箇条書き・番号付きのボタンは、いま付いている
+    書式を「置き換える」ようにし、「本文」はすべての記号を一度に外すようにしました。
+    同じ書式のボタンをもう一度押すと本文に戻ります。
+    過去のバージョンで記号が積み重なってしまった行も、「本文」を一度押せば戻ります。
+
+#### あわせて直したもの
+
+- **MD編集で開くと引用が本文になってしまう問題**: 引用を含む文書を MD編集モードで
+  開いて保存すると、2 行目以降の `>` が失われて引用が崩れていました。
+- **MD編集で開くたびに箇条書きの行間が広がる問題**: 項目の間に空行が入り、
+  編集を繰り返すうちに箇条書きが崩れていました。入れ子の箇条書きの階層も
+  保たれるようにしました。
+- **TXT編集で、折り返した長い行の途中に書式記号が入る問題**: 画面の折り返し位置を
+  行頭と見なしていたため、長い行では `#` が行の途中に入ってしまうことがありました。
+
+---
+
+### English
+
+#### Fixes
+
+- **Line breaks were ignored**: pressing Enter did not produce a line break in
+  View mode — the next line was joined onto the previous one, and a blank line was
+  the only way to break text. Documents written and saved with v1.4.1 lost their
+  line breaks when reopened. Line breaks you type are now rendered as line breaks.
+  Code blocks and tables are unaffected.
+- **HTML / PDF export dropped line breaks**: same root cause — export uses the same
+  rendering as View mode, so it is fixed as well. Exports now match what you see.
+- **Pressing Enter in a heading kept the heading format** (MD Edit): after making a
+  line H1 / H2 / H3, the following line stayed a heading and could not be turned
+  back into body text. A line created by pressing Enter inside a heading is now
+  always body text, whether the caret is at the end, in the middle, or at the start.
+  Pressing Enter in an empty heading turns that line back into body text.
+- **The Body button did nothing right after applying a heading**: applying H1 / H2 /
+  H3 to a line and pressing Body without typing anything left the format in place.
+  - MD Edit: now works reliably for empty headings and when the selection has been
+    lost because focus moved to the toolbar.
+  - TXT Edit: heading buttons only ever *prepended* their marker, so H1 followed by
+    H2 produced `## # text` and Body stripped just one level. Heading, quote, list
+    and numbered-list buttons now *replace* the current block format, and Body
+    removes every marker at once. Pressing the same format button again returns the
+    line to body text. Lines that accumulated markers in earlier versions are fixed
+    by a single press of Body.
+
+#### Also fixed
+
+- **Blockquotes were flattened into body text** when a document was opened in MD Edit
+  and saved: the `>` marker was lost from every line after the first.
+- **Bulleted lists grew looser on every MD Edit round trip**, eventually breaking
+  apart. Nested list levels are now preserved too.
+- **TXT Edit inserted format markers mid-line on long wrapped lines**, because the
+  visual wrap position was treated as the start of the line.
+
+---
+
 ## v1.4.1
 
 ### 日本語

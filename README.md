@@ -2,8 +2,8 @@
 
 A simple and fast Markdown viewer built with Python and PySide6 (Qt for Python).
 
-**Current version / 現在のバージョン: v1.4.1**
-See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.4.1).
+**Current version / 現在のバージョン: v1.4.2**
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.4.2).
 更新履歴は [RELEASE_NOTES.md](RELEASE_NOTES.md) をご覧ください。
 
 ---
@@ -72,6 +72,33 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 * ユーザーフォントの追加・削除
 * PDF / HTML 書き出し
 * プラグインテーマ対応
+
+---
+
+### 改行の扱い
+
+本アプリは **Enter で入れた改行を、そのまま改行として表示します**（v1.4.2 以降）。
+
+素の Markdown では、単一の改行は無視されて前の行につながり、改行するには
+行末に半角スペースを 2 つ置くか空行を入れる必要があります。文章を書くときの
+感覚と合わないため、書いたとおりに表示する方式にしています。
+Obsidian や Typora などのエディタと同じ考え方です。
+
+* 空行を 1 行入れると、これまでどおり段落の区切りになります。
+* コードブロック・表の中は Markdown の記法どおりで、変わりません。
+* 閲覧モード・MD編集・TXT編集のプレビュー・PDF / HTML 書き出しのすべてで
+  同じように表示されます。
+
+---
+
+### 書式ボタンの動き
+
+見出し・引用・箇条書き・番号付きのボタンは、**いま付いている書式を置き換えます**。
+H1 の行で H2 を押すと H2 になり、記号が積み重なることはありません。
+同じボタンをもう一度押すと本文に戻ります。「本文」ボタンは、行頭に付いている
+書式をすべて外して本文に戻します。
+
+MD編集モードで見出しの行を改行すると、新しくできる行は必ず本文になります。
 
 ---
 
@@ -196,6 +223,33 @@ To open the app:
 * Add and remove your own fonts
 * Export to PDF / HTML
 * Plugin theme support
+
+---
+
+### How line breaks are handled
+
+**A line break you type with Enter is rendered as a line break** (since v1.4.2).
+
+In plain Markdown a single newline is ignored and joined onto the previous line;
+breaking a line requires two trailing spaces or a blank line. That does not match
+how people actually write, so the app renders what you typed — the same convention
+used by editors such as Obsidian and Typora.
+
+* A blank line still starts a new paragraph, as before.
+* Code blocks and tables follow standard Markdown and are unchanged.
+* View mode, MD Edit, the TXT Edit preview, and PDF / HTML export all render
+  identically.
+
+---
+
+### How the format buttons behave
+
+The heading, quote, bullet and numbered-list buttons **replace** the current block
+format. Pressing H2 on an H1 line gives you an H2 — markers never stack up.
+Pressing the same button again returns the line to body text. The Body button
+strips every marker at the start of the line.
+
+In MD Edit, pressing Enter inside a heading always produces a body-text line.
 
 ---
 

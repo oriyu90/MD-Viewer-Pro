@@ -1,19 +1,20 @@
-"""v1.4.1 統合テスト (実 WebEngine / オフスクリーン).
+"""v1.4.2 統合テスト (実 WebEngine / オフスクリーン).
 
 実際に QWebEngineView を動かし、数式・フロントマターの描画、
 モード切替時のスクロール引き継ぎ、MD編集の往復変換、YAML ファイルの
 取り扱いを確認する。ブラウザ側の JS も含めて通しで検証する点が、
 イベントループを回さない test_qt_widgets.py との違い。
 """
-import os, sys, shutil, tempfile, faulthandler
+import os, sys, json, shutil, tempfile, faulthandler
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 # リポジトリ内の相対位置から main.py を解決する (資料箱/tests/ から 2 つ上)
 sys.path.insert(0, os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
 faulthandler.dump_traceback_later(120, exit=True)
 
-from PySide6.QtCore import QTimer, QEventLoop
+from PySide6.QtCore import QTimer, QEventLoop, Qt
 from PySide6.QtWidgets import QApplication
+from PySide6.QtTest import QTest
 import main as M
 
 FAIL, PASS = [], 0
@@ -132,6 +133,157 @@ check("[e2e] YAML がコードとして描画される",
       (js("document.querySelectorAll('.wrap pre').length") or 0) >= 1,
       str(js("document.querySelectorAll('.wrap pre').length")))
 check("[e2e] YAML で MD編集が無効", not win._mode_btns["md"].isEnabled(), "")
+
+# ══════════════════════════════════════════════════════════════
+# v1.4.2 回帰: MD編集モードの見出し操作 (ブラウザ側の挙動)
+# ══════════════════════════════════════════════════════════════
+win._load_file(path)
+wait(1200)
+win._set_mode("md")
+wait(1500)
+
+_fp = win._preview_web.focusProxy()
+
+
+def md_set(html):
+    """.wrap の中身を差し替え、キャレットを置き直す。"""
+    js("(function(){document.querySelector('.wrap').innerHTML=%s;})()" % json.dumps(html))
+    wait(150)
+
+
+def md_caret(js_code):
+    js(js_code)
+    wait(150)
+
+
+def md_tags():
+    return js("(function(){var w=document.querySelector('.wrap');"
+              "return Array.prototype.map.call(w.children,function(e){"
+              "return e.tagName+'{'+(e.textContent||'').replace(/\\n/g,'')+'}';"
+              "}).join(' ');})()")
+
+
+def press_enter():
+    if _fp:
+        QTest.keyClick(_fp, Qt.Key.Key_Return)
+    wait(350)
+
+
+CARET_END = ('(function(){var h=document.querySelector(".wrap %s");'
+             'var r=document.createRange();r.selectNodeContents(h);r.collapse(false);'
+             'var s=getSelection();s.removeAllRanges();s.addRange(r);})()')
+CARET_AT = ('(function(){var h=document.querySelector(".wrap %s");'
+            'var r=document.createRange();r.setStart(h.firstChild,%d);r.collapse(true);'
+            'var s=getSelection();s.removeAllRanges();s.addRange(r);})()')
+CARET_IN_EMPTY = ('(function(){var h=document.querySelector(".wrap %s");'
+                  'var r=document.createRange();r.setStart(h,0);r.collapse(true);'
+                  'var s=getSelection();s.removeAllRanges();s.addRange(r);})()')
+
+win._preview_web.setFocus()
+if _fp:
+    _fp.setFocus()
+wait(300)
+
+# ── 見出しの行末で改行 → 新しい行は本文 ──
+md_set("<h1>見出し</h1>")
+md_caret(CARET_END % "h1")
+press_enter()
+check("[md編集] 見出しの行末で改行すると本文になる",
+      md_tags() == "H1{見出し} P{}", md_tags())
+
+# ── 見出しの行中で改行 → 後半は本文 (v1.4.1 は見出しが複製されていた) ──
+md_set("<h2>ABCDEF</h2>")
+md_caret(CARET_AT % ("h2", 3))
+press_enter()
+check("[md編集] 見出しの行中で改行すると後半が本文になる",
+      md_tags() == "H2{ABC} P{DEF}", md_tags())
+
+# ── 見出しの行頭で改行 → 空の本文行が上に入り、見出しは残る ──
+md_set("<h3>ABCDEF</h3>")
+md_caret(CARET_AT % ("h3", 0))
+press_enter()
+check("[md編集] 見出しの行頭で改行すると本文行が上に入る",
+      md_tags() == "P{} H3{ABCDEF}", md_tags())
+
+# ── 空の見出しで改行 → その行自体が本文に戻る ──
+md_set("<p>本文</p><h1><br></h1>")
+md_caret(CARET_IN_EMPTY % "h1")
+press_enter()
+check("[md編集] 空の見出しで改行すると本文に戻る",
+      md_tags() == "P{本文} P{}", md_tags())
+
+# ── 本文ボタン: 何も書いていない見出しでも本文に戻る ──
+for _name, _html in (("<br>あり", "<h1><br></h1>"), ("完全に空", "<h1></h1>")):
+    md_set(_html)
+    md_caret(CARET_IN_EMPTY % "h1")
+    js("window._mdvBody();")
+    wait(300)
+    check(f"[md編集] 空の見出し({_name})に本文ボタンが効く",
+          md_tags() == "P{}", md_tags())
+
+# ── 本文ボタン: 選択が失われていても効く (ツールバーへフォーカスが移った状態) ──
+md_set("<h1>見出し</h1>")
+md_caret('(function(){getSelection().removeAllRanges();})()')
+js("window._mdvBody();")
+wait(300)
+check("[md編集] 選択が失われても本文ボタンが効く",
+      md_tags() == "P{見出し}", md_tags())
+
+# ── 見出しボタン → 本文ボタン の往復 ──
+md_set("<p>本文</p>")
+md_caret(CARET_END % "p")
+js("window._mdvBlock('h2');")
+wait(300)
+check("[md編集] 本文→H2", md_tags() == "H2{本文}", md_tags())
+js("window._mdvBody();")
+wait(300)
+check("[md編集] H2→本文", md_tags() == "P{本文}", md_tags())
+
+# ── 表のセル内 Enter は従来どおり <br> (見出し処理に横取りされない) ──
+md_set("<table><tbody><tr><td>セル</td></tr></tbody></table>")
+md_caret(CARET_END % "td")
+press_enter()
+check("[md編集] 表セル内の改行は <br> のまま",
+      (js("document.querySelectorAll('.wrap td br').length") or 0) == 1,
+      js("document.querySelector('.wrap td').innerHTML"))
+
+# ── 改行が Markdown へ往復すること ──
+md_set("<p>行1<br>行2</p>")
+wait(150)
+check("[md編集] 改行が Markdown の改行として戻る",
+      win._html_to_markdown(js("document.querySelector('.wrap').innerHTML") or "")
+      == "行1\n行2",
+      repr(win._html_to_markdown(js("document.querySelector('.wrap').innerHTML") or "")))
+
+# ══════════════════════════════════════════════════════════════
+# v1.4.2 回帰: HTML / PDF 書き出しでも改行が残る
+# ══════════════════════════════════════════════════════════════
+NL_DOC = "改行1行目\n改行2行目\n改行3行目"
+win._content_text = NL_DOC
+
+# HTML 書き出し (保存ダイアログを差し替えて実際に書き出す)
+html_path = os.path.join(TMP, "export.html")
+_orig_save = M.QFileDialog.getSaveFileName
+M.QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: (html_path, ""))
+_orig_info = M.QMessageBox.information
+M.QMessageBox.information = staticmethod(lambda *a, **k: None)
+try:
+    win._export_html()
+finally:
+    M.QFileDialog.getSaveFileName = _orig_save
+    M.QMessageBox.information = _orig_info
+
+exported = open(html_path, encoding="utf-8").read() if os.path.exists(html_path) else ""
+check("[書き出し] HTML が生成される", bool(exported), html_path)
+check("[書き出し] HTML に改行が <br> として残る", exported.count("<br") >= 2,
+      str(exported.count("<br")))
+check("[書き出し] HTML の本文が欠けない",
+      all(s in exported for s in ("改行1行目", "改行2行目", "改行3行目")), "")
+
+# PDF 書き出しが使う HTML (印刷用パレット・画像除去の経路) も同じであること
+pdf_html = win._build_md_html(win._content_text, editable=False, strip_images=True)
+check("[書き出し] PDF 用 HTML にも改行が残る", pdf_html.count("<br") >= 2,
+      str(pdf_html.count("<br")))
 
 serious = [e for e in errors if "Error" in e or "error" in e]
 check("[e2e] JS エラーが出ていない", not serious, str(serious[:5]))

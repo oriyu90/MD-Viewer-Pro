@@ -1,4 +1,4 @@
-"""v1.4.1 純粋関数 回帰テストハーネス.
+"""v1.4.2 純粋関数 回帰テストハーネス.
 
 main.py から対象関数のソースを抽出して実行し、markdown ライブラリの
 実出力と突き合わせる。Qt に依存しない部分のみを対象とする。
@@ -511,6 +511,161 @@ check("[yaml] HTML→MD でブロックが戻る",
 _heads = _extract_headings(FM_DOC)
 check("[yaml] 目次にフロントマターが混ざらない",
       [t for _, t, _ in _heads] == ["Body"], _heads)
+
+
+# ══════════════════════════════════════════════════════════════
+# v1.4.2 回帰: 改行の保持 と HTML→Markdown 往復
+# ══════════════════════════════════════════════════════════════
+# アプリ本体と同じ拡張構成 (_build_md_html 参照)
+MD_EXTS = ["tables", "fenced_code", "nl2br"]
+
+
+def render(md_text):
+    """閲覧 / HTML書き出し / PDF書き出しと同じ描画パイプライン。"""
+    return _sanitize_html(markdown.markdown(md_text, extensions=MD_EXTS))
+
+
+def roundtrip(md_text):
+    """MD編集モードの往復 (Markdown → HTML → Markdown)。"""
+    return _html_to_md(render(md_text))
+
+
+# ── 単一改行が本文として保持されるか (v1.4.1 では消えていた) ──
+_nl_doc = "こんにちは\n今日はいい天気です\nさようなら"
+_nl_html = render(_nl_doc)
+check("[改行] 単一改行が <br> になる", _nl_html.count("<br") == 2, _nl_html)
+check("[改行] 段落が分割されない", _nl_html.count("<p>") == 1, _nl_html)
+check("[改行] 本文が失われない",
+      all(s in _nl_html for s in ("こんにちは", "今日はいい天気です", "さようなら")), _nl_html)
+
+# 見出し・コード・表の中では改行を <br> にしない
+check("[改行] コードブロック内は <br> にしない",
+      "<br" not in render("```\na\nb\n```"), render("```\na\nb\n```"))
+_tbl_html = render("| a | b |\n| --- | --- |\n| 1 | 2 |")
+check("[改行] 表の行を <br> で壊さない",
+      "<br" not in _tbl_html and "<table>" in _tbl_html, _tbl_html)
+
+# ── 往復が安定し、書式が失われないか ──
+ROUNDTRIP_CASES = [
+    ("改行", "行1\n行2\n行3"),
+    ("段落", "段落A\n\n段落B"),
+    ("見出しと本文", "# 見出し\n\n本文1\n本文2"),
+    ("箇条書き", "- a\n- b\n- c"),
+    ("番号付き", "1. one\n2. two"),
+    ("入れ子の箇条書き", "- a\n    - a1\n    - a2\n- b"),
+    ("チェックボックス", "- [ ] todo\n- [x] done"),
+    ("引用", "> 引用1\n> 引用2"),
+    ("複数段落の引用", "> 引用1\n> 引用2\n\n> 別の引用"),
+    ("表", "| a | b |\n| --- | --- |\n| 1 | 2 |"),
+    ("コード", "```python\nx = 1\ny = 2\n```"),
+    ("水平線", "1. a\n2. b\n\n---\n\n最後"),
+    ("強調とリンク", "- [リンク](http://example.com) と *強調*\n- 次"),
+    ("混在", "# H\n\n本文1\n本文2\n\n- x\n    - y\n- z\n\n> 引用\n\n| a | b |\n"
+             "| --- | --- |\n| 1 | 2 |"),
+]
+for _name, _src in ROUNDTRIP_CASES:
+    _r1 = roundtrip(_src)
+    _r2 = roundtrip(_r1)
+    check(f"[往復] {_name}: 2周目で変化しない", _r1 == _r2, f"{_r1!r} -> {_r2!r}")
+
+# 個別に「壊れていないこと」を明示的に押さえる
+check("[往復] 改行が段落に化けない", roundtrip("行1\n行2") == "行1\n行2",
+      repr(roundtrip("行1\n行2")))
+check("[往復] 箇条書きが loose 化しない", roundtrip("- a\n- b") == "- a\n- b",
+      repr(roundtrip("- a\n- b")))
+check("[往復] 引用符が各行に残る", roundtrip("> 引用1\n> 引用2") == "> 引用1\n> 引用2",
+      repr(roundtrip("> 引用1\n> 引用2")))
+check("[往復] 入れ子リストの階層が保たれる",
+      roundtrip("- a\n    - a1\n- b") == "- a\n    - a1\n- b",
+      repr(roundtrip("- a\n    - a1\n- b")))
+check("[往復] 表がそのまま戻る",
+      roundtrip("| a | b |\n| --- | --- |\n| 1 | 2 |")
+      == "| a | b |\n| --- | --- |\n| 1 | 2 |",
+      repr(roundtrip("| a | b |\n| --- | --- |\n| 1 | 2 |")))
+check("[往復] コードの言語指定が残る",
+      roundtrip("```python\nx = 1\n```") == "```python\nx = 1\n```",
+      repr(roundtrip("```python\nx = 1\n```")))
+# 表セル内の改行は <br> のまま (Markdown の表は複数行にできないため)
+check("[往復] 表セル内の <br> を保持",
+      "<br>" in roundtrip("| a | b |\n| --- | --- |\n| 1<br>2 | 3 |"),
+      repr(roundtrip("| a | b |\n| --- | --- |\n| 1<br>2 | 3 |")))
+
+# data-src-line の付与が <br> で狂わないこと (行同期 / スクロール引き継ぎ用)
+_tagged = _tag_src_lines(render("行1\n行2\n\n次の段落\n続き"), [0, 3])
+check("[改行] <br> があっても data-src-line が全ブロックに付く",
+      _tagged.count('data-src-line=') == 2, _tagged)
+
+
+# ══════════════════════════════════════════════════════════════
+# v1.4.2 回帰: TXT編集モードの行頭マーカー処理
+# ══════════════════════════════════════════════════════════════
+_bm = extract("_BLOCK_MARKER_RE = re.compile(", "\nI18N = {")
+exec(_bm, ns)
+_sbm_src = extract("    def _split_block_markers(line: str):", "    def _current_line(self):")
+_sbm_src = "\n".join(l[4:] if l.startswith("    ") else l
+                     for l in _sbm_src.split("\n"))
+exec(_sbm_src, ns)
+_split_block_markers = ns["_split_block_markers"]
+
+
+def body_of(line):
+    """本文ボタン (_md_body) と同じ結果を返す。"""
+    indent, _markers, rest = _split_block_markers(line)
+    return indent + rest
+
+
+def set_block(line, prefix):
+    """見出し/引用ボタン (_md_set_block) と同じ結果を返す。"""
+    indent, markers, rest = _split_block_markers(line)
+    same = (len(markers) == 1 and markers[0].rstrip() == prefix.rstrip())
+    return indent + rest if same else indent + prefix + rest
+
+
+BODY_CASES = [
+    ("見出し", "# 見出し", "見出し"),
+    ("深い見出し", "###### 見出し", "見出し"),
+    ("引用", "> 引用", "引用"),
+    ("箇条書き", "- 項目", "項目"),
+    ("番号付き", "1. 項目", "項目"),
+    ("チェック済み", "- [x] やること", "やること"),
+    ("未チェック", "- [ ] やること", "やること"),
+    ("積み重なった書式", "## # 本文", "本文"),
+    ("引用の中の見出し", "> # 見出し", "見出し"),
+    ("インデント保持", "    ## 本文", "    本文"),
+    ("空の見出し", "# ", ""),
+    ("本文はそのまま", "ただの本文", "ただの本文"),
+    # markdown は空白なしの "#" も見出しとして描画するので本文ボタンでも外す
+    ("空白なしの見出し", "#見出し", "見出し"),
+    ("空白なしの引用", ">引用", "引用"),
+    # 逆に空白のない "-" や "1." は markdown もリストにしないので触らない
+    ("空白なしのハイフンは本文", "-ハイフン", "-ハイフン"),
+    ("空白なしの番号は本文", "1.番号", "1.番号"),
+]
+for _name, _src, _want in BODY_CASES:
+    check(f"[本文] {_name}", body_of(_src) == _want,
+          f"{_src!r} -> {body_of(_src)!r} (期待 {_want!r})")
+
+SET_BLOCK_CASES = [
+    ("本文に H1", "本文", "# ", "# 本文"),
+    ("H1 を H2 に置き換え", "# 本文", "## ", "## 本文"),
+    ("H2 を H1 に置き換え", "## 本文", "# ", "# 本文"),
+    ("同じ書式でトグル解除", "# 本文", "# ", "本文"),
+    ("引用を見出しに置き換え", "> 本文", "## ", "## 本文"),
+    ("見出しを引用に置き換え", "### 本文", "> ", "> 本文"),
+    ("積み重なった書式を1つに", "## # 本文", "# ", "# 本文"),
+    ("インデント保持", "    本文", "## ", "    ## 本文"),
+    ("空行に見出し", "", "# ", "# "),
+]
+for _name, _src, _pre, _want in SET_BLOCK_CASES:
+    check(f"[書式] {_name}", set_block(_src, _pre) == _want,
+          f"{_src!r} +{_pre!r} -> {set_block(_src, _pre)!r} (期待 {_want!r})")
+
+# 書式ボタンを続けて押しても積み重ならない
+_line = "本文"
+for _pre in ("# ", "## ", "### ", "> ", "## "):
+    _line = set_block(_line, _pre)
+check("[書式] 連打しても積み重ならない", _line == "## 本文", repr(_line))
+check("[書式] その後 本文 で必ず戻る", body_of(_line) == "本文", repr(body_of(_line)))
 
 
 # ══════════════════════════════════════════════════════════════

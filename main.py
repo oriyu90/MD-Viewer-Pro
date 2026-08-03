@@ -65,7 +65,7 @@ PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
-APP_VERSION   = "1.4.1"
+APP_VERSION   = "1.4.2"
 
 # 開けるファイルの拡張子 (YAML を含む)
 OPEN_FILTER = ("Markdown / Text / YAML "
@@ -136,6 +136,14 @@ _PALETTE_REQUIRED_KEYS = list(DARK_PALETTE.keys())
 
 # TXT編集モードの行同期プレビュー用: ブロック分割時のリスト項目判定
 _LIST_ITEM_RE = re.compile(r'^\s{0,3}([-*+]|\d+[.)])\s+')
+
+# TXT編集モードの書式ボタン用: 行頭のブロック書式マーカー
+# (見出し / 引用 / 箇条書き / 番号付き / チェックボックス)。
+# インデントを除いた残りの先頭に対して、繰り返し当てて使う。
+# 見出しと引用は markdown 側が空白なしでも解釈する ("#見出し" が <h1> になる)
+# ため、ここでも空白を必須にしない。逆に箇条書き・番号は空白が要るので必須。
+_BLOCK_MARKER_RE = re.compile(
+    r'^(?:#{1,6}[ \t]*|>[ \t]?|[-*+][ \t]+(?:\[[ xX]\][ \t]+)?|\d+\.[ \t]+)')
 
 I18N = {
     "ja": {
@@ -998,6 +1006,15 @@ class _HTML2MD(HTMLParser):
         self._in_thead = False
         self._th_count = 0
         self._skip_at: Optional[int] = None
+        # 直前に <br> を改行として出力したか。markdown が nl2br で出力する
+        # "<br />\n" の実改行を二重に数えないための目印 (handle_data で使う)。
+        self._after_br = False
+        # <blockquote> 開始時点の parts 長。閉じるときに中身を取り出して
+        # 各行へ "> " を付け直すために使う。
+        self._bq_marks: List[int] = []
+        # <li> の行頭マーカー ("- " 等) を出した直後の parts 長。項目の中身が
+        # まだ何も出ていないかの判定に使う (loose list の <p> 対策)。
+        self._li_marks: List[int] = []
 
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
@@ -1027,10 +1044,15 @@ class _HTML2MD(HTMLParser):
                 self._skip_at = len(self._stack)
         if self._skip_at is not None:
             return
+        self._after_br = False
         if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
             self.parts.append('\n\n' + '#' * int(tag[1]) + ' ')
         elif tag == 'p':
-            self.parts.append('\n\n')
+            # loose list (項目間に空行がある箇条書き) では markdown が
+            # <li><p>…</p></li> を出す。この <p> で改段落すると "- " だけの行と
+            # 中身の行に割れてしまうため、項目の先頭にある <p> は境界を出さない。
+            if not (self._li_marks and self._li_marks[-1] == len(self.parts)):
+                self.parts.append('\n\n')
         elif tag == 'div':
             # contenteditable が Enter で生成する <div> は <p> と同じ段落境界として扱う。
             # 単一改行 ('\n') のみだと、往復編集のたびに段落間の空行(段落区切り)が
@@ -1041,6 +1063,7 @@ class _HTML2MD(HTMLParser):
                 self.parts.append('<br>')
             else:
                 self.parts.append('\n')
+                self._after_br = True
         elif tag in ('strong', 'b'):
             self.parts.append('**')
         elif tag in ('em', 'i'):
@@ -1077,15 +1100,22 @@ class _HTML2MD(HTMLParser):
             self._list_depth += 1
             self._ol_counters.append(0)
         elif tag == 'li':
-            indent = '  ' * (self._list_depth - 1)
+            # 入れ子の字下げは 4 文字。Python-Markdown は既定の tab_length=4 で、
+            # 2 文字だと入れ子として読み直してもらえず往復で階層が潰れる。
+            indent = '    ' * (self._list_depth - 1)
             parent = next((t for t in reversed(self._stack[:-1]) if t in ('ul', 'ol')), 'ul')
             if parent == 'ol' and self._ol_counters:
                 self._ol_counters[-1] += 1
                 self.parts.append(f'\n{indent}{self._ol_counters[-1]}. ')
             else:
                 self.parts.append(f'\n{indent}- ')
+            self._li_marks.append(len(self.parts))
         elif tag == 'blockquote':
-            self.parts.append('\n\n> ')
+            # 中身は一旦そのまま貯めておき、閉じるときに各行へ "> " を付ける
+            # (handle_endtag 参照)。開始時に "> " を1つ置くだけだと 2 行目以降に
+            # 引用符が付かず、往復のたびに引用が本文に崩れてしまう。
+            self.parts.append('\n\n')
+            self._bq_marks.append(len(self.parts))
         elif tag == 'hr':
             self.parts.append('\n\n---\n\n')
         elif tag == 'thead':
@@ -1106,10 +1136,19 @@ class _HTML2MD(HTMLParser):
             if len(self._stack) < self._skip_at:
                 self._skip_at = None
             return
+        # <br /> は HTMLParser が開始/終了の両方を呼ぶ (handle_startendtag)。
+        # ここで目印を消すと直後の実改行を取り除けなくなるため除外する。
+        if tag != 'br':
+            self._after_br = False
         if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
             self.parts.append('\n\n')
+        elif tag == 'li':
+            if self._li_marks:
+                self._li_marks.pop()
         elif tag in ('p', 'div'):
-            self.parts.append('\n\n')
+            # 箇条書きの項目内での段落終わりは 1 改行だけにする。空行を入れると
+            # 次の項目との間に空行ができ、往復のたびに loose list 化していく。
+            self.parts.append('\n' if 'li' in self._stack else '\n\n')
         elif tag in ('strong', 'b'):
             self.parts.append('**')
         elif tag in ('em', 'i'):
@@ -1136,22 +1175,47 @@ class _HTML2MD(HTMLParser):
                 self._pending_href = None
         elif tag in ('th', 'td'):
             self.parts.append(' |')
+        elif tag == 'blockquote':
+            if self._bq_marks:
+                start = self._bq_marks.pop()
+                inner = ''.join(self.parts[start:]).strip('\n')
+                # 段落境界の \n\n が重なって 3 連以上になっていると、引用符
+                # だけの行が余分に並んでしまうため先にまとめる。
+                inner = re.sub(r'\n{3,}', '\n\n', inner)
+                del self.parts[start:]
+                if inner:
+                    quoted = '\n'.join(
+                        ('> ' + ln) if ln.strip() else '>'
+                        for ln in inner.split('\n'))
+                    self.parts.append(quoted)
+                self.parts.append('\n\n')
         elif tag == 'thead':
             self._in_thead = False
             if self._th_count > 0:
                 self.parts.append('\n|' + ' --- |' * self._th_count)
-        elif tag == 'ul':
+        elif tag in ('ul', 'ol'):
             self._list_depth = max(0, self._list_depth - 1)
-            self.parts.append('\n')
-        elif tag == 'ol':
-            self._list_depth = max(0, self._list_depth - 1)
-            if self._ol_counters:
+            if tag == 'ol' and self._ol_counters:
                 self._ol_counters.pop()
-            self.parts.append('\n')
+            # 入れ子のリストを閉じたところで改行を足すと、親の次の項目との間に
+            # 空行ができてしまう。ブロックを閉じるのは一番外側のリストだけ。
+            if self._list_depth == 0:
+                self.parts.append('\n')
 
     def handle_data(self, data):
         if self._skip_at is not None:
             return
+        # markdown の nl2br は "<br />\n" を出力する。<br> で既に改行を1つ
+        # 出しているので、直後の実改行はそのまま数えると空行 (段落区切り) に
+        # なってしまう。1つだけ取り除いて「改行のまま」往復させる。
+        if self._after_br and not self._in_pre:
+            self._after_br = False
+            if data.startswith('\n'):
+                data = data[1:]
+                if not data:
+                    return
+        else:
+            self._after_br = False
         # <code> を持たない <pre> の場合はここでフェンスを開く
         if self._in_pre and not self._pre_fence_open:
             self.parts.append('\n\n```\n')
@@ -1159,6 +1223,24 @@ class _HTML2MD(HTMLParser):
         # テーブル要素内の空白のみのデータはMarkdown変換を壊すため無視する
         _TABLE_TAGS = {'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td'}
         if data.strip() == '' and any(t in self._stack for t in _TABLE_TAGS):
+            return
+        # <ul>/<ol> の直下 (項目と項目の間) にある改行・インデントは、markdown が
+        # 整形のために出力しているだけの空白。そのまま拾うと項目間に空行が入り、
+        # 往復のたびに loose list 化して最後は箇条書きが崩れてしまう。
+        if (data.strip() == '' and self._stack
+                and self._stack[-1] in ('ul', 'ol')):
+            return
+        # 同様に、<li> の直後・中身より前にある整形用の空白も落とす
+        # (これを残すと loose list の <p> 判定がずれる)。
+        if (data.strip() == '' and self._li_marks
+                and self._li_marks[-1] == len(self.parts)):
+            return
+        # <li> の直下にある「改行を含む空白だけ」のテキストも落とす。入れ子
+        # リストを閉じた後などに markdown が整形用に入れるもので、残すと親の
+        # 次の項目との間に空行ができて loose list 化する。単語間の空白は改行を
+        # 含まないので、この条件なら巻き込まない。
+        if (data.strip() == '' and '\n' in data
+                and self._stack and self._stack[-1] == 'li'):
             return
         self.parts.append(data)
 
@@ -3093,7 +3175,7 @@ class MDViewerPro(QMainWindow):
                     if _tw == "wrap" and _tp is not None:
                         self._md_wrap(_tp, _tpo or "")
                     elif _tw == "prefix" and _tp is not None:
-                        self._md_prefix(_tp)
+                        self._md_set_block(_tp)
                     elif _tw == "num_toggle":
                         self._md_toggle_ordered()
                     elif _tw == "bullet_toggle":
@@ -3472,6 +3554,66 @@ class MDViewerPro(QMainWindow):
             '})();'
             'w.querySelectorAll("p:empty").forEach(function(e){e.remove();});'
             '};'
+            # ── ブロック操作の共通部品 ──────────────────────────────
+            #    execCommand("formatBlock") は空のブロックや、ツールバーへ
+            #    フォーカスが移って選択が失われた状態では効かないことがある。
+            #    対象ブロックを自前で特定して直接置き換えることで、どの状態
+            #    からでも同じ結果になるようにする。
+            'window._mdvHeadings={H1:1,H2:1,H3:1,H4:1,H5:1,H6:1};'
+            # .wrap 直下まで遡って、そのノードが属するトップレベルブロックを返す
+            'window._mdvTopBlock=function(node){'
+            'var w=document.querySelector(".wrap");if(!w||!node)return null;'
+            'var el=(node.nodeType===3)?node.parentNode:node;'
+            'if(el===w){'
+            # キャレットが .wrap 直下にある場合は子要素側へ寄せる
+            'var s=window.getSelection();'
+            'var i=(s&&s.rangeCount)?s.getRangeAt(0).startOffset:0;'
+            'return w.children[Math.min(i,Math.max(0,w.children.length-1))]||null;'
+            '}'
+            'while(el&&el.parentNode&&el.parentNode!==w)el=el.parentNode;'
+            'return(el&&el.parentNode===w)?el:null;'
+            '};'
+            # 直近にキャレットがあったブロックを覚えておく (ツールバー押下で
+            # Web ビューからフォーカスが外れても対象を見失わないため)
+            'window._mdvLastBlock=null;'
+            'document.addEventListener("selectionchange",function(){'
+            'var w=document.querySelector(".wrap");if(!w)return;'
+            'var s=window.getSelection();if(!s||!s.rangeCount)return;'
+            'if(!w.contains(s.getRangeAt(0).startContainer))return;'
+            'var b=window._mdvTopBlock(s.getRangeAt(0).startContainer);'
+            'if(b)window._mdvLastBlock=b;'
+            '});'
+            # 書式を適用する対象ブロック (選択が失われていれば記憶した位置)
+            'window._mdvTargetBlock=function(){'
+            'var w=document.querySelector(".wrap");if(!w)return null;'
+            'var s=window.getSelection();'
+            'if(s&&s.rangeCount&&w.contains(s.getRangeAt(0).startContainer)){'
+            'var b=window._mdvTopBlock(s.getRangeAt(0).startContainer);'
+            'if(b)return b;'
+            '}'
+            'var last=window._mdvLastBlock;'
+            'if(last&&last.isConnected&&w.contains(last))return last;'
+            'return w.lastElementChild;'
+            '};'
+            # ブロックの先頭 (offset 指定があればその位置) にキャレットを置く
+            'window._mdvCaretTo=function(el,toEnd){'
+            'if(!el)return;'
+            'var s=window.getSelection();if(!s)return;'
+            'var r=document.createRange();'
+            'r.selectNodeContents(el);r.collapse(!toEnd);'
+            's.removeAllRanges();s.addRange(r);'
+            'window._mdvLastBlock=window._mdvTopBlock(el);'
+            '};'
+            # ブロックの中身を保ったままタグだけ差し替える
+            'window._mdvRetag=function(el,tagName){'
+            'if(!el||!el.parentNode)return null;'
+            'if(el.tagName===tagName.toUpperCase())return el;'
+            'var nu=document.createElement(tagName);'
+            'while(el.firstChild)nu.appendChild(el.firstChild);'
+            'if(!nu.firstChild)nu.appendChild(document.createElement("br"));'
+            'el.parentNode.replaceChild(nu,el);'
+            'return nu;'
+            '};'
             # ── 書式コマンド (HR は <p> を後挿入してカーソル位置を安定させる) ──
             'window._mdvExec=function(cmd){'
             'if(cmd==="insertHorizontalRule"){'
@@ -3484,37 +3626,57 @@ class MDViewerPro(QMainWindow):
             'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
             '};'
             'window._mdvBlock=function(tag){'
+            'var w=document.querySelector(".wrap");if(!w)return;'
+            'var s=window.getSelection();'
+            'var multi=!!(s&&s.rangeCount&&!s.getRangeAt(0).collapsed);'
+            'if(multi){'
+            # 複数行にまたがる選択は execCommand の方が自然にまとまる
             'document.execCommand("formatBlock",false,tag);'
+            '}else{'
+            'var b=window._mdvTargetBlock();'
+            'if(b&&b.tagName!=="PRE"&&b.tagName!=="UL"&&b.tagName!=="OL"'
+            '&&b.tagName!=="TABLE"){'
+            'var nu=window._mdvRetag(b,tag);'
+            'window._mdvCaretTo(nu,true);'
+            '}else{'
+            'document.execCommand("formatBlock",false,tag);'
+            '}'
+            '}'
             'window._mdvNormalize();'
-            'var w=document.querySelector(".wrap");'
-            'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
+            'w.dispatchEvent(new Event("input",{bubbles:true}));'
             '};'
             # ── 本文ボタン: 現在ブロックを通常の段落に戻す ──
             #    リスト項目内ではリストそのものを解除し、引用・コードブロック内では
             #    直後に新しい本文段落を作って抜ける
             'window._mdvBody=function(){'
             'var w=document.querySelector(".wrap");if(!w)return;'
-            'var sel=window.getSelection();if(!sel||!sel.rangeCount){w.focus();return;}'
-            'var node=sel.getRangeAt(0).startContainer;'
-            'var el=(node.nodeType===3)?node.parentNode:node;'
-            'var li=el&&el.closest?el.closest("li"):null;'
+            'var sel=window.getSelection();'
+            'var node=(sel&&sel.rangeCount)?sel.getRangeAt(0).startContainer:null;'
+            'var el=(node&&node.nodeType===3)?node.parentNode:node;'
+            'var li=(el&&el.closest&&w.contains(el))?el.closest("li"):null;'
             'if(li&&w.contains(li)){'
             'var listEl=li.closest("ol,ul");'
             'var cmd=(listEl&&listEl.tagName==="OL")?"insertOrderedList":"insertUnorderedList";'
             'document.execCommand(cmd,false,null);'
-            'document.execCommand("formatBlock",false,"p");'
             'window._mdvNormalize();'
+            # リスト解除後に残ったブロックが見出し等なら本文に直す
+            'var after=window._mdvTargetBlock();'
+            'if(after&&after.tagName!=="P"&&after.tagName!=="UL"&&after.tagName!=="OL"){'
+            'window._mdvCaretTo(window._mdvRetag(after,"p"),true);'
+            '}'
             '}else{'
-            'var block=el;'
-            'while(block&&block.parentNode&&block.parentNode!==w){block=block.parentNode;}'
-            'var tag=block&&block.parentNode===w?block.tagName:"";'
-            'if(tag==="PRE"||tag==="BLOCKQUOTE"){'
+            'var block=window._mdvTargetBlock();'
+            'if(block){'
+            'if(block.tagName==="PRE"||block.tagName==="BLOCKQUOTE"){'
+            # コードブロック・引用は中身を壊さず、直後に新しい本文段落を作って抜ける
             'var p=document.createElement("p");p.appendChild(document.createElement("br"));'
             'block.insertAdjacentElement("afterend",p);'
-            'var r=document.createRange();r.setStart(p,0);r.collapse(true);'
-            'sel.removeAllRanges();sel.addRange(r);'
+            'window._mdvCaretTo(p,false);'
             '}else{'
-            'document.execCommand("formatBlock",false,"p");'
+            # 見出し等はタグを直接 <p> に置き換える。空のブロックでも、選択が
+            # 失われていても確実に本文へ戻る (execCommand は両方で失敗する)。
+            'window._mdvCaretTo(window._mdvRetag(block,"p"),true);'
+            '}'
             '}'
             'window._mdvNormalize();'
             '}'
@@ -3529,22 +3691,69 @@ class MDViewerPro(QMainWindow):
             'if(t)document.execCommand("insertText",false,t);'
             'w.dispatchEvent(new Event("input",{bubbles:true}));'
             '},true);'
-            # ── テーブルセル内 Enter → <br> 挿入 ──
+            # ── Enter の扱い ────────────────────────────────────────
+            #    ・テーブルセル内 → <br> を挿入 (セルを割らない)
+            #    ・見出し内       → 新しい行は必ず本文 <p> にする
+            #      (ブラウザ既定は行末でしか見出しから抜けず、行頭・行中で
+            #       改行すると見出しが複製されて本文に戻れなくなる)
             'document.addEventListener("keydown",function(e){'
             'if(e.key!=="Enter"||e.shiftKey)return;'
+            # IME 変換中の Enter は確定操作なので触らない
+            'if(e.isComposing||e.keyCode===229)return;'
             'var sel=window.getSelection();'
             'if(!sel||!sel.rangeCount)return;'
-            'var n=sel.getRangeAt(0).startContainer;'
             'var wrap=document.querySelector(".wrap");'
+            'if(!wrap)return;'
+            'var rng=sel.getRangeAt(0);'
+            'if(!wrap.contains(rng.startContainer))return;'
+            'var n=rng.startContainer;'
             'while(n&&n!==wrap){'
             'if(n.nodeName==="TD"||n.nodeName==="TH"){'
             'e.preventDefault();'
             'document.execCommand("insertHTML",false,"<br>");'
-            'if(wrap)wrap.dispatchEvent(new Event("input",{bubbles:true}));'
+            'wrap.dispatchEvent(new Event("input",{bubbles:true}));'
             'return;'
             '}'
             'n=n.parentNode;'
             '}'
+            'var blk=window._mdvTopBlock(rng.startContainer);'
+            'if(!blk||!window._mdvHeadings[blk.tagName])return;'
+            'e.preventDefault();'
+            'if(!rng.collapsed)rng.deleteContents();'
+            # 中身が空の見出しで改行 → その行自体を本文に戻す
+            # (リストの空項目で Enter を押すとリストを抜けるのと同じ感覚)
+            'if(!blk.textContent&&!blk.querySelector("img")){'
+            'window._mdvCaretTo(window._mdvRetag(blk,"p"),false);'
+            'wrap.dispatchEvent(new Event("input",{bubbles:true}));'
+            'return;'
+            '}'
+            # キャレットから見出し末尾までを切り出して本文段落にする
+            'var tail=document.createRange();'
+            'tail.setStart(rng.startContainer,rng.startOffset);'
+            'tail.setEnd(blk,blk.childNodes.length);'
+            'var frag=tail.extractContents();'
+            'var p=document.createElement("p");'
+            'p.appendChild(frag);'
+            # 見出し側に <br> だけが残ることがあるので掃除する
+            'var only=blk.childNodes.length===1&&blk.firstChild.nodeName==="BR";'
+            'if(only)blk.removeChild(blk.firstChild);'
+            'if(!p.textContent&&!p.querySelector("img"))'
+            'p.innerHTML="<br>";'
+            'if(!blk.textContent&&!blk.querySelector("img")){'
+            # 行頭で改行した場合: 空の本文行を見出しの前に置き、見出しは残す
+            'blk.appendChild(document.createElement("br"));'
+            'var lead=document.createElement("p");'
+            'lead.appendChild(document.createElement("br"));'
+            'blk.parentNode.insertBefore(lead,blk);'
+            'while(p.firstChild)blk.appendChild(p.firstChild);'
+            'if(blk.childNodes.length>1&&blk.firstChild.nodeName==="BR")'
+            'blk.removeChild(blk.firstChild);'
+            'window._mdvCaretTo(blk,false);'
+            '}else{'
+            'blk.insertAdjacentElement("afterend",p);'
+            'window._mdvCaretTo(p,false);'
+            '}'
+            'wrap.dispatchEvent(new Event("input",{bubbles:true}));'
             '},true);'
             # ── テーブルに +列 / +行 ボタンを追加 ──
             'window._mdvSetupTableBtns=function(){'
@@ -3965,13 +4174,14 @@ class MDViewerPro(QMainWindow):
         # codehilite はコードを色付き <span> に変換して言語情報を失わせるため、
         # ビジュアル編集→Markdown 逆変換で言語指定 (```python 等) が壊れる。
         # fenced_code は <code class="language-xxx"> を出力し _HTML2MD が言語を復元できる。
-        # nl2br は使わない: 単一の改行を強制的に <br> にすると、行末2スペース/
-        # 空行で改段落するという本来のMarkdown仕様と異なる表示になってしまうため。
+        # nl2br は必須: 素の Markdown 仕様では単一の改行が段落内で連結されてしまい、
+        # エディタで Enter を押して作った改行が閲覧・HTML/PDF 書き出しで消える
+        # (v1.4.1 の不具合)。<br> は _HTML2MD が改行として復元するため往復も保たれる。
         if editable:
-            _exts = ["tables", "fenced_code"]
+            _exts = ["tables", "fenced_code", "nl2br"]
             _cfg = {}
         else:
-            _exts = ["tables", "fenced_code", "codehilite"]
+            _exts = ["tables", "fenced_code", "codehilite", "nl2br"]
             _cfg = {"codehilite": {"guess_lang": False, "noclasses": True}}
 
         # ── YAML ドキュメントは全文を yaml コードブロックとして描画する ──
@@ -3990,7 +4200,8 @@ class MDViewerPro(QMainWindow):
             body = markdown.markdown(md_source, extensions=_exts, extension_configs=_cfg)
         except Exception:
             try:
-                body = markdown.markdown(md_source, extensions=["tables", "fenced_code"])
+                body = markdown.markdown(md_source,
+                                         extensions=["tables", "fenced_code", "nl2br"])
             except Exception:
                 body = markdown.markdown(md_source)
         # Markdown 由来の生 HTML/JavaScript を無害化 (信頼済みの自前スクリプト/CSS は
@@ -4953,11 +5164,46 @@ class MDViewerPro(QMainWindow):
         self._md_editor.setTextCursor(cur)
         self._md_editor.setFocus()
 
-    def _md_prefix(self, prefix):
+    @staticmethod
+    def _split_block_markers(line: str):
+        """行を (インデント, 行頭マーカーの一覧, 中身) に分解する。
+
+        マーカーは繰り返し剥がす。"## # 見出し" のように過去のバージョンで
+        積み重なってしまった行も、一度で本文に戻せるようにするため。"""
+        indent = re.match(r'^[ \t]*', line).group(0)
+        rest = line[len(indent):]
+        markers = []
+        while True:
+            m = _BLOCK_MARKER_RE.match(rest)
+            if not m:
+                break
+            markers.append(m.group(0))
+            rest = rest[m.end():]
+        return indent, markers, rest
+
+    def _current_line(self):
+        """カーソル行(ブロック)を選択したカーソルと、その行の文字列を返す。
+
+        StartOfLine/EndOfLine は折り返し後の「見た目の行」を指すため、
+        長い行では書式が行の途中に入ってしまう。ブロック単位で扱う。"""
         cur = self._md_editor.textCursor()
-        cur.movePosition(QTextCursor.MoveOperation.StartOfLine)
-        cur.insertText(prefix)
-        cur.movePosition(QTextCursor.MoveOperation.EndOfLine)
+        cur.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+        cur.movePosition(QTextCursor.MoveOperation.EndOfBlock,
+                         QTextCursor.MoveMode.KeepAnchor)
+        return cur, cur.selectedText()
+
+    def _md_set_block(self, prefix):
+        """カーソル行のブロック書式を prefix に「置き換える」。
+
+        v1.4.1 は前に足すだけだったため、H1 の行で H2 を押すと "## # 本文" の
+        ように書式が積み重なり、本文ボタンでも 1 段しか外れなかった。
+        同じ書式をもう一度押したときは解除して本文に戻す。"""
+        cur, line = self._current_line()
+        indent, markers, rest = self._split_block_markers(line)
+        same = (len(markers) == 1 and markers[0].rstrip() == prefix.rstrip())
+        new = indent + rest if same else indent + prefix + rest
+        if new != line:
+            cur.insertText(new)
         self._md_editor.setTextCursor(cur)
         self._md_editor.setFocus()
 
@@ -4970,54 +5216,44 @@ class MDViewerPro(QMainWindow):
     def _md_toggle_ordered(self):
         """現在行の番号付きリスト書式をトグルする。既に番号付きなら解除し、
         付けるときは直前行の番号を見て連番になるようにする。"""
-        cur = self._md_editor.textCursor()
-        cur.movePosition(QTextCursor.MoveOperation.StartOfLine)
-        cur.movePosition(QTextCursor.MoveOperation.EndOfLine,
-                         QTextCursor.MoveMode.KeepAnchor)
-        line = cur.selectedText()
-        m = re.match(r'^(\s*)\d+\.\s+(.*)$', line)
-        if m:
-            cur.insertText(m.group(1) + m.group(2))
+        cur, line = self._current_line()
+        indent, markers, rest = self._split_block_markers(line)
+        if len(markers) == 1 and re.match(r'^\d+\.', markers[0]):
+            new = indent + rest
         else:
-            indent = re.match(r'^(\s*)', line).group(1)
-            content = line[len(indent):]
             n = 1
             prev = cur.block().previous()
             if prev.isValid():
                 pm = re.match(r'^(\s*)(\d+)\.\s+', prev.text())
                 if pm and pm.group(1) == indent:
                     n = int(pm.group(2)) + 1
-            cur.insertText(f"{indent}{n}. {content}")
+            new = f"{indent}{n}. {rest}"
+        if new != line:
+            cur.insertText(new)
         self._md_editor.setTextCursor(cur)
         self._md_editor.setFocus()
 
     def _md_toggle_unordered(self):
         """現在行の箇条書きリスト書式をトグルする。"""
-        cur = self._md_editor.textCursor()
-        cur.movePosition(QTextCursor.MoveOperation.StartOfLine)
-        cur.movePosition(QTextCursor.MoveOperation.EndOfLine,
-                         QTextCursor.MoveMode.KeepAnchor)
-        line = cur.selectedText()
-        m = re.match(r'^(\s*)[-*+]\s+(.*)$', line)
-        if m:
-            cur.insertText(m.group(1) + m.group(2))
+        cur, line = self._current_line()
+        indent, markers, rest = self._split_block_markers(line)
+        if len(markers) == 1 and re.match(r'^[-*+]\s', markers[0]):
+            new = indent + rest
         else:
-            indent = re.match(r'^(\s*)', line).group(1)
-            content = line[len(indent):]
-            cur.insertText(f"{indent}- {content}")
+            new = f"{indent}- {rest}"
+        if new != line:
+            cur.insertText(new)
         self._md_editor.setTextCursor(cur)
         self._md_editor.setFocus()
 
     def _md_body(self):
-        """現在行を本文(通常テキスト)に戻す。見出し/引用/リスト等の行頭マーカーを除去。"""
-        cur = self._md_editor.textCursor()
-        cur.movePosition(QTextCursor.MoveOperation.StartOfLine)
-        cur.movePosition(QTextCursor.MoveOperation.EndOfLine,
-                         QTextCursor.MoveMode.KeepAnchor)
-        line = cur.selectedText()
-        # 行頭の見出し(#)・引用(>)・リスト(- * +)・番号(1.)・チェック等のマーカーを除去
-        new = re.sub(r'^(\s*)(?:#{1,6}\s+|>\s?|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+\.\s+)',
-                     r'\1', line)
+        """現在行を本文(通常テキスト)に戻す。
+
+        見出し/引用/リスト等の行頭マーカーを「すべて」除去する。1 つだけ外す
+        実装だと、書式が積み重なった行 ("## # 本文") が本文に戻らなかった。"""
+        cur, line = self._current_line()
+        indent, markers, rest = self._split_block_markers(line)
+        new = indent + rest
         if new != line:
             cur.insertText(new)
         self._md_editor.setTextCursor(cur)

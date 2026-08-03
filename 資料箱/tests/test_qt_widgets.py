@@ -1,4 +1,4 @@
-"""v1.4.1 Qt ウィジェット層 自動テスト (オフスクリーン).
+"""v1.4.2 Qt ウィジェット層 自動テスト (オフスクリーン).
 
 実際の MDViewerPro を生成し、目次パネル・スプリッター・書式ヘルパ等の
 振る舞いを画面なしで検証する。QWebEngineView は遅延生成のため、
@@ -438,6 +438,80 @@ win._md_editor.setPlainText(ANCHOR_DOC)
 win._md_editor.blockSignals(False)
 check("[anchor] None を渡しても落ちない",
       win._scroll_editor_to_anchor(None) is None, "")
+
+# ══════════════════════════════════════════════════════════════
+# v1.4.2 回帰: TXT編集モードの書式ボタン (エディタ操作を通した確認)
+# ══════════════════════════════════════════════════════════════
+win.edit_mode = "txt"
+ed = win._md_editor
+
+
+def txt_line(text, line=0, to_end=False):
+    """エディタに text を入れ、指定行にカーソルを置く。"""
+    ed.blockSignals(True)
+    ed.setPlainText(text)
+    ed.blockSignals(False)
+    cur = ed.textCursor()
+    cur.movePosition(QTextCursor.MoveOperation.Start)
+    for _ in range(line):
+        cur.movePosition(QTextCursor.MoveOperation.NextBlock)
+    if to_end:
+        cur.movePosition(QTextCursor.MoveOperation.EndOfBlock)
+    ed.setTextCursor(cur)
+
+
+def txt_apply(text, ops, line=0, to_end=False):
+    txt_line(text, line, to_end)
+    for op in ops:
+        op()
+    return ed.toPlainText()
+
+
+H1 = lambda: win._md_set_block("# ")          # noqa: E731
+H2 = lambda: win._md_set_block("## ")         # noqa: E731
+H3 = lambda: win._md_set_block("### ")        # noqa: E731
+QT = lambda: win._md_set_block("> ")          # noqa: E731
+BODY = win._md_body
+LIST = win._md_toggle_unordered
+NUM = win._md_toggle_ordered
+
+TXT_CASES = [
+    ("見出しを付ける", "本文\n", [H1], "# 本文\n"),
+    ("H1→H2 は置き換わる", "本文\n", [H1, H2], "## 本文\n"),
+    ("押し続けても積み重ならない", "本文\n", [H1, H2, H3, QT, H2], "## 本文\n"),
+    ("同じ書式でトグル解除", "本文\n", [H1, H1], "本文\n"),
+    ("見出しの後に本文で戻る", "本文\n", [H1, H2, H3, BODY], "本文\n"),
+    ("何も書かずに見出し→本文", "\n", [H1, BODY], "\n"),
+    ("何も書かずに見出し→見出し→本文", "\n", [H1, H2, BODY], "\n"),
+    ("積み上がった行も一度で戻る", "## # 本文\n", [BODY], "本文\n"),
+    ("見出しから箇条書きへ", "本文\n", [H1, LIST], "- 本文\n"),
+    ("見出しから番号付きへ", "本文\n", [H1, NUM], "1. 本文\n"),
+    ("箇条書きから本文へ", "本文\n", [LIST, BODY], "本文\n"),
+    ("チェックボックスから本文へ", "- [x] やること\n", [BODY], "やること\n"),
+    ("インデントを保つ", "    本文\n", [H2], "    ## 本文\n"),
+]
+for _name, _src, _ops, _want in TXT_CASES:
+    _got = txt_apply(_src, _ops)
+    check(f"[txt書式] {_name}", _got == _want, f"{_src!r} -> {_got!r} (期待 {_want!r})")
+
+# 2 行目に適用しても他の行を壊さない
+check("[txt書式] 対象は現在行だけ",
+      txt_apply("1行目\n2行目\n", [H2], line=1) == "1行目\n## 2行目\n",
+      txt_apply("1行目\n2行目\n", [H2], line=1))
+
+# 折り返しのある長い行でも行頭に付く (StartOfLine は見た目の行を指すため
+# v1.4.1 では行の途中に "# " が入ることがあった)
+ed.setLineWrapMode(ed.LineWrapMode.WidgetWidth)
+ed.resize(300, 200)
+_long = "あ" * 400
+_res = txt_apply(_long + "\n", [H1], to_end=True)
+check("[txt書式] 折り返した行でも行頭に付く",
+      _res.startswith("# ") and "#" not in _res[2:], _res[:40])
+
+# 番号付きリストは直前の行を見て連番になる
+check("[txt書式] 番号が連番になる",
+      txt_apply("1. one\n次\n", [NUM], line=1) == "1. one\n2. 次\n",
+      txt_apply("1. one\n次\n", [NUM], line=1))
 
 print("=" * 60)
 print(f"PASS: {PASS}   FAIL: {len(FAIL)}")
