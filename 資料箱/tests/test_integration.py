@@ -517,6 +517,65 @@ check("[取り込み] 入力の直後の HTML書き出しにも入る", "DDD" in
 
 win.is_modified = False
 
+# ══════════════════════════════════════════════════════════════
+# v1.4.2 回帰: MD編集で Enter を押して入れた空行が、保存 → 開き直しで残るか
+#   段落が空行で区切られた文書で行間を空けようとすると、その空行が保存時に
+#   消えていた (素の空行は Markdown が無視するため、書き出しても復元できない)。
+# ══════════════════════════════════════════════════════════════
+blank_path = os.path.join(TMP, "blank.md")
+BLANK_DOC = "段落A。\n\n段落B。\n\n段落C。\n"
+open(blank_path, "w", encoding="utf-8").write(BLANK_DOC)
+win._load_file(blank_path)
+wait(1200)
+win._set_mode("md")
+wait(1600)
+focus_web()
+
+# 「段落A。」の末尾にキャレットを置いて Enter (行間を空ける操作)
+_r = js("""(function(){
+var ps=document.querySelectorAll('.wrap p');
+for(var i=0;i<ps.length;i++){
+ if(ps[i].textContent.trim()==='段落A。'){
+  var r=document.createRange();r.selectNodeContents(ps[i]);r.collapse(false);
+  var s=getSelection();s.removeAllRanges();s.addRange(r);return 'ok';}}
+return 'notfound';})()""")
+check("[空行] キャレットを段落Aの末尾に置ける", _r == "ok", str(_r))
+QTest.keyClick(win._preview_web.focusProxy(), Qt.Key.Key_Return)
+wait(400)
+check("[空行] 画面上に空の段落ができる",
+      (js("document.querySelectorAll('.wrap p').length") or 0) == 4,
+      str(js("document.querySelectorAll('.wrap p').length")))
+
+win.current_file_path = blank_path
+win.file_save()
+_blank_saved = open(blank_path, encoding="utf-8").read()
+check("[空行] 保存したファイルが元のままではない", _blank_saved.strip() != BLANK_DOC.strip(),
+      repr(_blank_saved))
+check("[空行] 空行が <br> の行として保存される", "<br>" in _blank_saved, repr(_blank_saved))
+
+# 開き直して空の段落が復元されるか
+win.is_modified = False
+win._set_mode("view")
+wait(700)
+win._content_text = ""
+win._load_file(blank_path)
+wait(1500)
+check("[空行] 開き直しても空の段落が残る",
+      (js("document.querySelectorAll('.wrap p').length") or 0) == 4,
+      str(js("document.querySelectorAll('.wrap p').length")))
+check("[空行] 本文が欠けていない",
+      all(s in (js("document.querySelector('.wrap').innerText") or "")
+          for s in ("段落A。", "段落B。", "段落C。")), "")
+
+# もう一度 MD編集で開いて保存しても増減しない
+win._set_mode("md")
+wait(1500)
+win.file_save()
+check("[空行] 開いて保存し直しても空行が増減しない",
+      open(blank_path, encoding="utf-8").read().count("<br>") == 1,
+      repr(open(blank_path, encoding="utf-8").read()))
+win.is_modified = False
+
 serious = [e for e in errors if "Error" in e or "error" in e]
 check("[e2e] JS エラーが出ていない", not serious, str(serious[:5]))
 

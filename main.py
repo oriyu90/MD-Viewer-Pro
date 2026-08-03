@@ -1039,6 +1039,9 @@ class _HTML2MD(HTMLParser):
         # <li> の行頭マーカー ("- " 等) を出した直後の parts 長。項目の中身が
         # まだ何も出ていないかの判定に使う (loose list の <p> 対策)。
         self._li_marks: List[int] = []
+        # <p>/<div> 開始時点の parts 長。閉じるときに中身が空だったかを見る
+        # (Enter で入れた空行を保存できるようにするため)。
+        self._p_marks: List[int] = []
 
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
@@ -1087,11 +1090,13 @@ class _HTML2MD(HTMLParser):
             # 中身の行に割れてしまうため、項目の先頭にある <p> は境界を出さない。
             if not (self._li_marks and self._li_marks[-1] == len(self.parts)):
                 self.parts.append('\n\n')
+            self._p_marks.append(len(self.parts))
         elif tag == 'div':
             # contenteditable が Enter で生成する <div> は <p> と同じ段落境界として扱う。
             # 単一改行 ('\n') のみだと、往復編集のたびに段落間の空行(段落区切り)が
             # 失われ、保存後に再度開くと改行が詰まって表示される不具合の原因になっていた。
             self.parts.append('\n\n')
+            self._p_marks.append(len(self.parts))
         elif tag == 'br':
             if any(t in self._stack for t in ('td', 'th')):
                 self.parts.append('<br>')
@@ -1180,6 +1185,15 @@ class _HTML2MD(HTMLParser):
             if self._li_marks:
                 self._li_marks.pop()
         elif tag in ('p', 'div'):
+            if self._p_marks:
+                start = self._p_marks.pop()
+                if ''.join(self.parts[start:]).strip() == '':
+                    # 中身が空の段落 = 利用者が Enter で入れた空行。
+                    # Markdown は連続した空行を無視するので、素の空行として
+                    # 書き出すと保存後に消えてしまう。空行を確実に表現できる
+                    # <br> だけの行にする (再度開いても同じ空段落に戻る)。
+                    del self.parts[start:]
+                    self.parts.append('<br>')
             # 箇条書きの項目内での段落終わりは 1 改行だけにする。空行を入れると
             # 次の項目との間に空行ができ、往復のたびに loose list 化していく。
             self.parts.append('\n' if 'li' in self._stack else '\n\n')

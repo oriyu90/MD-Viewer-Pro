@@ -568,6 +568,39 @@ for _name, _src in ROUNDTRIP_CASES:
     _r2 = roundtrip(_r1)
     check(f"[往復] {_name}: 2周目で変化しない", _r1 == _r2, f"{_r1!r} -> {_r2!r}")
 
+# ── Enter で入れた空行が保存され、開き直しても残るか ──
+#    素の空行は Markdown が無視するため、<br> だけの行として書き出す。
+EMPTY_P_CASES = [
+    ("Enter 1回", '<p>行A</p><p><br></p><p>行B</p>', "行A\n\n<br>\n\n行B"),
+    ("Enter 2回", '<p>行A</p><p><br></p><p><br></p><p>行B</p>',
+     "行A\n\n<br>\n\n<br>\n\n行B"),
+    ("空の div", '<p>行A</p><div><br></div><p>行B</p>', "行A\n\n<br>\n\n行B"),
+    ("完全に空の p", '<p>行A</p><p></p><p>行B</p>', "行A\n\n<br>\n\n行B"),
+]
+for _name, _html, _want in EMPTY_P_CASES:
+    _got = _html_to_md(_html)
+    check(f"[空行] {_name}: 空行が保存される", _got == _want,
+          f"{_got!r} (期待 {_want!r})")
+
+# 書き出した空行が、開き直したときに実際に空の段落として描画されるか
+_blank_html = render("行A\n\n<br>\n\n行B")
+check("[空行] 開き直すと空の段落になる", _blank_html.count("<p>") == 3, _blank_html)
+check("[空行] 素の空行を増やしても Markdown は無視する",
+      render("行A\n\n\n\n行B").count("<p>") == 2, render("行A\n\n\n\n行B"))
+# 往復しても増えたり消えたりしない
+for _name, _src in [("空行1つ", "行A\n\n<br>\n\n行B"),
+                    ("空行2つ", "行A\n\n<br>\n\n<br>\n\n行B")]:
+    _r1 = roundtrip(_src)
+    _r2 = roundtrip(_r1)
+    check(f"[空行] {_name}: 往復で変化しない", _r1 == _r2 == _src,
+          f"{_src!r} -> {_r1!r} -> {_r2!r}")
+
+# 中身のある段落を空行と誤判定しない
+for _name, _html in [("文字", '<p>あ</p>'), ("画像", '<p><img src="x.png" alt=""></p>'),
+                     ("強調のみ", '<p><strong>太字</strong></p>')]:
+    check(f"[空行] {_name}のある段落は <br> にしない",
+          "<br>" not in _html_to_md(_html), _html_to_md(_html))
+
 # 個別に「壊れていないこと」を明示的に押さえる
 check("[往復] 改行が段落に化けない", roundtrip("行1\n行2") == "行1\n行2",
       repr(roundtrip("行1\n行2")))
