@@ -2,9 +2,30 @@
 
 ## v1.4.2
 
-書き心地まわりの不具合をまとめて直したバグ修正リリースです。新機能はありません。
+書き心地まわりの不具合をまとめて直したリリースです。
+あわせて LaTeX の体裁コマンド（`\newpage` 等）に対応しました。
 
 ### 日本語
+
+#### 新機能
+
+- **LaTeX の体裁コマンド（`\newpage` 等）に対応**: `\newpage` のように文書の体裁を
+  指示するコマンドを、文字列として表示するのをやめ、指示として解釈して表示に
+  反映するようにしました。
+  - **改ページ** (`\newpage` / `\pagebreak` / `\clearpage` / `\cleardoublepage`):
+    PDF 書き出しでは実際にそこでページが分かれます（A4文書 / B5文書 / フリーの
+    いずれでも）。A4文書 / B5文書の表示では次のページの先頭まで送られ、
+    ページ区切り線が入ります。フリー表示ではページの概念がないため何も表示しません。
+  - **縦の空き** (`\vspace{1cm}` / `\bigskip` / `\medskip` / `\smallskip`):
+    指定された分の空きを入れます。
+  - **改行・段落** (`\newline` / `\linebreak` / `\par`): 指示どおりに改行します。
+  - **体裁のみのコマンド** (`\noindent` / `\centering` / `\raggedright` 等):
+    表示には反映できないため、隠すだけにします。
+  - MD編集モードでは、場所が分かるように破線とコマンド名を薄く表示します
+    （削除・移動できます）。開いて保存しても元の記述はそのまま残ります。
+  - コードブロック / インラインコード / 数式の中のコマンドは対象外です。説明として
+    `` `\newpage` `` と書いたものが消えることはありません。対応していない
+    コマンドも消さずにそのまま表示します。
 
 #### 修正
 
@@ -51,6 +72,28 @@
 ---
 
 ### English
+
+#### New features
+
+- **LaTeX layout commands such as `\newpage`**: commands that describe document
+  layout are no longer printed as literal text — they are interpreted and applied
+  to the rendering.
+  - **Page breaks** (`\newpage` / `\pagebreak` / `\clearpage` /
+    `\cleardoublepage`): PDF export produces a real page break (in A4 Document,
+    B5 Document and Free alike). In A4 / B5 Document view the content is pushed to
+    the top of the next page and a page separator is drawn. Free view shows
+    nothing, since it has no pages.
+  - **Vertical space** (`\vspace{1cm}` / `\bigskip` / `\medskip` /
+    `\smallskip`): inserts the requested amount of space.
+  - **Line and paragraph breaks** (`\newline` / `\linebreak` / `\par`): break
+    as instructed.
+  - **Layout-only commands** (`\noindent` / `\centering` / `\raggedright`, …):
+    cannot be reflected in the rendering, so they are simply hidden.
+  - MD Edit shows a faint dashed marker with the command name so you can find,
+    move or delete it. Opening and saving keeps the original text intact.
+  - Commands inside code blocks, code spans and math are left alone, so writing
+    `` `\newpage` `` as an example never disappears. Unsupported commands are
+    still shown verbatim.
 
 #### Fixes
 

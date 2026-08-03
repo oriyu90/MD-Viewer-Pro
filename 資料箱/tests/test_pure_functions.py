@@ -669,6 +669,108 @@ check("[書式] その後 本文 で必ず戻る", body_of(_line) == "本文", r
 
 
 # ══════════════════════════════════════════════════════════════
+# v1.4.2 回帰: LaTeX の体裁コマンド (\newpage 等)
+# ══════════════════════════════════════════════════════════════
+_extract_tex_layout = ns["_extract_tex_layout"]
+_restore_tex_layout = ns["_restore_tex_layout"]
+_tex_length_to_css  = ns["_tex_length_to_css"]
+
+
+def render_layout(md_text):
+    """アプリと同じ順序 (数式 → 体裁コマンド) で描画する。"""
+    s, mstore = _extract_math(md_text)
+    s, lstore = _extract_tex_layout(s)
+    body = _sanitize_html(markdown.markdown(s, extensions=MD_EXTS))
+    return _restore_tex_layout(_restore_math(body, mstore), lstore)
+
+
+def layout_roundtrip(md_text):
+    return _html_to_md(render_layout(md_text))
+
+
+# ── 改ページとして解釈されるコマンド ──
+for _cmd in ("\\newpage", "\\pagebreak", "\\clearpage", "\\cleardoublepage",
+             "\\pagebreak[4]"):
+    _h = render_layout("前\n\n" + _cmd + "\n\n後")
+    check(f"[体裁] {_cmd} が改ページ要素になる", 'class="mdv-texcmd mdv-newpage"' in _h, _h)
+    check(f"[体裁] {_cmd} の文字列が残らない",
+          _cmd.split("[")[0][1:] not in _h.replace("mdv-newpage", "")
+          .replace(f'data-tex="{_cmd}"', ""), _h)
+    check(f"[体裁] {_cmd} が <p> に包まれない", "<p><div" not in _h, _h)
+
+# ── 縦の空き ──
+_h = render_layout("前\n\n\\vspace{1cm}\n\n後")
+check("[体裁] \\vspace が高さを持つ", 'style="height:1cm"' in _h, _h)
+for _cmd, _px in (("\\bigskip", "12pt"), ("\\medskip", "6pt"), ("\\smallskip", "3pt")):
+    _h = render_layout(_cmd + "\n\n本文")
+    check(f"[体裁] {_cmd} の空き", f'style="height:{_px}"' in _h, _h)
+
+LEN_CASES = [("1cm", "1cm"), ("0.5in", "0.5in"), ("12pt", "12pt"), ("2em", "2em"),
+             ("10px", "10px"), ("1\\baselineskip", "1.5em"), ("3", "0"),
+             ("bogus", "0"), ("", "0")]
+for _src, _want in LEN_CASES:
+    check(f"[体裁] 長さ {_src!r} → {_want}", _tex_length_to_css(_src) == _want,
+          f"{_src!r} -> {_tex_length_to_css(_src)!r}")
+
+# ── 改行系 ──
+for _cmd in ("\\newline", "\\linebreak"):
+    _h = render_layout("行1" + _cmd + "行2")
+    check(f"[体裁] {_cmd} が改行になる", "mdv-texbr" in _h and "<br/>" in _h, _h)
+    check(f"[体裁] {_cmd} の後ろの本文が残る", "行2" in _h, _h)
+
+# ── 表示に反映できないコマンドは隠すだけ ──
+_h = render_layout("\\noindent 字下げなし")
+check("[体裁] \\noindent は隠れる", 'class="mdv-texcmd"' in _h and "noindent" not in
+      _h.replace('data-tex="\\noindent"', ""), _h)
+check("[体裁] \\noindent の後ろの本文が残る", "字下げなし" in _h, _h)
+
+# ── 対象外にすべきもの ──
+_h = render_layout("説明: `\\newpage` と書きます")
+check("[体裁] インラインコード内は触らない",
+      "<code>\\newpage</code>" in _h and "mdv-newpage" not in _h, _h)
+_h = render_layout("```\n\\newpage\n```")
+check("[体裁] コードブロック内は触らない",
+      "\\newpage" in _h and "mdv-newpage" not in _h, _h)
+_h = render_layout("数式 $\\newpage$ です")
+check("[体裁] 数式の中は数式のまま", "mdv-math" in _h and "mdv-newpage" not in _h, _h)
+_h = render_layout("\\parbox は別コマンド")
+check("[体裁] \\parbox を \\par と誤認しない", "mdv-texcmd" not in _h, _h)
+_h = render_layout("未対応の \\unknowncmd はそのまま")
+check("[体裁] 未対応コマンドは消さずに残す",
+      "\\unknowncmd" in _h and "mdv-texcmd" not in _h, _h)
+
+# ── MD編集モードの往復で原文に戻る ──
+LAYOUT_RT = [
+    "本文1\n\n\\newpage\n\n本文2",
+    "行1\\newline行2",
+    "前\n\n\\vspace{1cm}\n\n後",
+    "\\bigskip\n\n本文\n\n\\newpage\n\n続き",
+    "\\noindent 字下げなし",
+    "A\\newline B\\newline C",
+    "前\\par後",
+    "説明: `\\newpage` と書きます",
+]
+for _src in LAYOUT_RT:
+    _r1 = layout_roundtrip(_src)
+    _r2 = layout_roundtrip(_r1)
+    check(f"[体裁] 往復で変化しない {_src[:16]!r}", _r1 == _r2, f"{_r1!r} -> {_r2!r}")
+check("[体裁] 往復で \\newpage が原文に戻る",
+      layout_roundtrip("本文1\n\n\\newpage\n\n本文2") == "本文1\n\n\\newpage\n\n本文2",
+      repr(layout_roundtrip("本文1\n\n\\newpage\n\n本文2")))
+check("[体裁] 往復で改行コマンドの後ろが消えない",
+      layout_roundtrip("行1\\newline行2") == "行1\\newline行2",
+      repr(layout_roundtrip("行1\\newline行2")))
+
+# 改ページを挟んでも行 ⇔ 表示要素の対応がずれない
+_doc = "段落1\n\n\\newpage\n\n段落2"
+_starts = _split_source_blocks(_doc)
+check("[体裁] 改ページも 1 ブロックとして数える", _starts == [0, 2, 4], str(_starts))
+_tagged = _tag_src_lines(render_layout(_doc), _starts)
+check("[体裁] 改ページを挟んでも data-src-line が全ブロックに付く",
+      _tagged.count("data-src-line=") == 3, _tagged)
+
+
+# ══════════════════════════════════════════════════════════════
 print("=" * 60)
 print(f"PASS: {PASS}   FAIL: {len(FAIL)}")
 if FAIL:

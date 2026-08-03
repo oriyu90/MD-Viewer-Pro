@@ -381,8 +381,13 @@ win.doc_kind = "md"
 check("[render/md] MD編集に戻る", win._mode_available("md"), "")
 
 # 数式が無い文書でも従来どおり動く
+# (data-tex は体裁コマンドの CSS にも現れるため、本文の中身だけを見る)
 plain = win._build_md_html("# A\n\ntext\n")
-check("[render] 数式なしでも生成できる", "<h1" in plain and "data-tex" not in plain, "")
+_pi = plain.index('class="wrap"')
+_pj = plain.find('<script', _pi)
+plain_body = plain[_pi:_pj if _pj != -1 else len(plain)]
+check("[render] 数式なしでも生成できる",
+      "<h1" in plain_body and "data-tex" not in plain_body, plain_body)
 
 # ══════════════════════════════════════════════════
 # 10. スクロールアンカー (v1.4.1)

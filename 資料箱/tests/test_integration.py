@@ -5,12 +5,12 @@
 取り扱いを確認する。ブラウザ側の JS も含めて通しで検証する点が、
 イベントループを回さない test_qt_widgets.py との違い。
 """
-import os, sys, json, shutil, tempfile, faulthandler
+import os, re, sys, json, shutil, tempfile, faulthandler
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 # リポジトリ内の相対位置から main.py を解決する (資料箱/tests/ から 2 つ上)
 sys.path.insert(0, os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
-faulthandler.dump_traceback_later(120, exit=True)
+faulthandler.dump_traceback_later(300, exit=True)
 
 from PySide6.QtCore import QTimer, QEventLoop, Qt
 from PySide6.QtWidgets import QApplication
@@ -289,6 +289,117 @@ check("[書き出し] HTML の本文が欠けない",
 pdf_html = win._build_md_html(win._content_text, editable=False, strip_images=True)
 check("[書き出し] PDF 用 HTML にも改行が残る", pdf_html.count("<br") >= 2,
       str(pdf_html.count("<br")))
+
+# ══════════════════════════════════════════════════════════════
+# v1.4.2 回帰: LaTeX の体裁コマンド (\newpage) が実際に効くか
+# ══════════════════════════════════════════════════════════════
+from PySide6.QtCore import QMarginsF, QSizeF
+from PySide6.QtGui import QPageLayout, QPageSize
+
+win._set_mode("view")
+wait(800)
+
+
+def export_pdf(doc, page_mode, name):
+    """_export_pdf と同じ HTML・同じ印刷経路で PDF を書き出す。"""
+    win._content_text = doc
+    win.page_mode = page_mode
+    html = win._build_md_html(doc, editable=False, strip_images=True)
+    out = os.path.join(TMP, name + ".pdf")
+    if page_mode == "b5":
+        ps = QPageSize(QSizeF(182, 257), QPageSize.Unit.Millimeter, "JIS B5")
+    else:
+        ps = QPageSize(QPageSize.PageSizeId.A4)
+    layout = QPageLayout(ps, QPageLayout.Orientation.Portrait,
+                         QMarginsF(20, 20, 20, 20), QPageLayout.Unit.Millimeter)
+    loop = QEventLoop()
+
+    def on_done(_path, _ok):
+        loop.quit()
+
+    def on_load(_ok):
+        win._preview_web.loadFinished.disconnect(on_load)
+        win._preview_web.page().pdfPrintingFinished.connect(on_done)
+        win._preview_web.page().printToPdf(out, layout)
+
+    win._preview_web.loadFinished.connect(on_load)
+    win._loader.load_html(html, None)
+    QTimer.singleShot(25000, loop.quit)
+    loop.exec()
+    try:
+        win._preview_web.page().pdfPrintingFinished.disconnect(on_done)
+    except Exception:
+        pass
+    return out
+
+
+def pdf_pages(path):
+    if not os.path.exists(path):
+        return -1
+    data = open(path, "rb").read()
+    n = len(re.findall(rb"/Type\s*/Page[^s]", data))
+    if n == 0:
+        m = re.search(rb"/Count\s+(\d+)", data)
+        n = int(m.group(1)) if m else 0
+    return n
+
+
+SHORT = "1ページ目の本文です。"
+PDF_CASES = [
+    ("改ページなし", SHORT + "\n\nもう少し本文。", "a4", 1),
+    ("newpage 1個", SHORT + "\n\n\\newpage\n\n2枚目", "a4", 2),
+    ("newpage 2個", SHORT + "\n\n\\newpage\n\n2枚目\n\n\\newpage\n\n3枚目", "a4", 3),
+    ("pagebreak", SHORT + "\n\n\\pagebreak\n\n2枚目", "a4", 2),
+    ("clearpage B5", SHORT + "\n\n\\clearpage\n\n2枚目", "b5", 2),
+    ("フリー表示でも効く", SHORT + "\n\n\\newpage\n\n2枚目", "free", 2),
+]
+for _name, _doc, _mode, _want in PDF_CASES:
+    _p = export_pdf(_doc, _mode, "pdf_" + _name.replace(" ", "_"))
+    _got = pdf_pages(_p)
+    check(f"[体裁] PDF {_name}: {_want}ページになる", _got == _want,
+          f"want={_want} got={_got}")
+
+# ── A4 表示: 次のページの先頭まで送られるか ──
+win.page_mode = "a4"
+win._content_text = "1枚目です。\n\n\\newpage\n\n2枚目です。\n\n\\newpage\n\n3枚目です。"
+win._refresh_view()
+wait(2500)
+
+check("[体裁] A4表示に改ページ要素がある",
+      (js("document.querySelectorAll('.mdv-newpage').length") or 0) == 2,
+      str(js("document.querySelectorAll('.mdv-newpage').length")))
+_pos = js("""(function(){
+var pgH=297*96/25.4;var out=[];
+document.querySelectorAll('.mdv-newpage').forEach(function(e){
+var n=e.nextElementSibling;
+out.push([Math.round(e.offsetHeight), n?n.offsetTop/pgH:-1]);});
+return JSON.stringify(out);})()""")
+_data = json.loads(_pos or "[]")
+check("[体裁] A4表示で詰め物が入る", all(d[0] > 0 for d in _data), _pos)
+check("[体裁] A4表示で後続がページ先頭に来る",
+      all(abs(d[1] - round(d[1])) < 0.03 for d in _data), _pos)
+check("[体裁] 改ページの数だけページ区切り線が増える",
+      (js("document.querySelectorAll('.pg-brk').length") or 0) == 2,
+      str(js("document.querySelectorAll('.pg-brk').length")))
+
+# ── 通常 (フリー) 表示ではコマンドを見せない ──
+win.page_mode = "free"
+win._refresh_view()
+wait(1800)
+check("[体裁] フリー表示では詰め物を入れない",
+      js("(function(){var e=document.querySelector('.mdv-newpage');"
+         "return e?Math.round(e.offsetHeight):-1;})()") == 0, "")
+check("[体裁] フリー表示に \\newpage の文字が出ない",
+      "newpage" not in (js("document.querySelector('.wrap').innerText") or ""),
+      js("document.querySelector('.wrap').innerText"))
+
+# ── \vspace は通常表示でも指示どおりの空きになる ──
+win._content_text = "前\n\n\\vspace{2cm}\n\n後"
+win._refresh_view()
+wait(1500)
+_vh = js("(function(){var e=document.querySelector('.mdv-vspace');"
+         "return e?Math.round(e.offsetHeight):-1;})()")
+check("[体裁] \\vspace{2cm} が約2cm(76px)になる", abs((_vh or 0) - 76) <= 3, str(_vh))
 
 serious = [e for e in errors if "Error" in e or "error" in e]
 check("[e2e] JS エラーが出ていない", not serious, str(serious[:5]))

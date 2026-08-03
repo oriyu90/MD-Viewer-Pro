@@ -1062,6 +1062,16 @@ class _HTML2MD(HTMLParser):
                 self.parts.append('---\n' + fm + '\n---\n\n')
                 self._skip_at = len(self._stack)
                 return
+            # \newpage 等の体裁コマンドは表示用に描画した空要素なので、
+            # 中身ではなく data-tex の原文に戻す。
+            if 'mdv-texcmd' in cls_set:
+                cmd = attrs_d.get('data-tex', '') or ''
+                if 'mdv-newpage' in cls_set or 'mdv-vspace' in cls_set:
+                    self.parts.append('\n\n' + cmd + '\n\n')
+                else:
+                    self.parts.append(cmd)
+                self._skip_at = len(self._stack)
+                return
             # エディタが注入する制御要素(コピーボタン・テーブル操作ボタン・
             # 改ページ線・オーバーレイ目次)は出力しない
             if cls_set & {'mdv-copy-btn', 'mdv-table-ctrl', 'pg-brk', 'mdv-toc'}:
@@ -2149,6 +2159,172 @@ def _restore_math(html: str, store: List[tuple]) -> str:
         return _render_tex(tex, display)
 
     return _MATH_PH_RE.sub(sub, html)
+
+
+# ════════════════════════════════════════════════
+#  LaTeX の体裁コマンド (\newpage 等)
+#
+#  \newpage のような「文書の体裁を指示する」コマンドは、数式と違って
+#  組版する中身を持たない。文字列のまま表示されてしまうと本文の邪魔に
+#  なるため、指示として解釈して表示に反映し、コマンド自体は見せない。
+#    ・改ページ … PDF書き出しでは実際にページを分け、A4/B5表示では
+#                 次のページの先頭まで送る (通常表示では何も見せない)
+#    ・改行/空き … 指示どおりの改行・縦の空きを入れる
+#    ・体裁のみ … 表示には反映できないので隠すだけ
+#  対応していないコマンドは書き換えずそのまま残す (数式と同じ方針)。
+# ════════════════════════════════════════════════
+_TEXCMD_PH_OPEN  = "\ue002"
+_TEXCMD_PH_CLOSE = "\ue003"
+_TEXCMD_PH_RE = re.compile(_TEXCMD_PH_OPEN + r'(\d+)' + _TEXCMD_PH_CLOSE)
+
+# コマンド名 → (種別, 既定値)
+#   "page"  改ページ / "br" 改行 / "par" 段落 / "space" 縦の空き / "none" 隠すだけ
+_TEX_LAYOUT_CMDS = {
+    'newpage':         ('page',  None),
+    'pagebreak':       ('page',  None),
+    'clearpage':       ('page',  None),
+    'cleardoublepage': ('page',  None),
+    'newline':         ('br',    None),
+    'linebreak':       ('br',    None),
+    'par':             ('par',   None),
+    'bigskip':         ('space', '12pt'),
+    'medskip':         ('space', '6pt'),
+    'smallskip':       ('space', '3pt'),
+    'noindent':        ('none',  None),
+    'indent':          ('none',  None),
+    'centering':       ('none',  None),
+    'raggedright':     ('none',  None),
+    'raggedleft':      ('none',  None),
+    'hfill':           ('none',  None),
+}
+
+# 長いものから並べる (\clearpage より \cleardoublepage を先に当てる)。
+# 直後が英字のときは別コマンド (\par と \parbox 等) なので採らない。
+_TEX_LAYOUT_RE = re.compile(
+    r'\\(vspace\*?|'
+    + '|'.join(sorted(_TEX_LAYOUT_CMDS, key=len, reverse=True))
+    + r')(?![a-zA-Z])'
+    r'(?:\[[^\]\n]*\])?'      # \pagebreak[4] のような任意引数
+    r'(?:\{([^}\n]*)\})?'     # \vspace{1cm} の長さ
+)
+
+# CSS がそのまま解釈できる長さの単位
+_TEX_CSS_UNITS = ('cm', 'mm', 'in', 'pt', 'pc', 'px', 'em', 'ex', 'rem')
+
+
+def _tex_length_to_css(arg: str) -> str:
+    """LaTeX の長さ指定を CSS の長さに直す。解釈できなければ 0。"""
+    s = (arg or '').strip()
+    m = re.match(r'^(-?\d*\.?\d+)\s*\\?([a-zA-Z]*)$', s)
+    if not m:
+        return '0'
+    num, unit = m.group(1), m.group(2).lower()
+    if unit in _TEX_CSS_UNITS:
+        return f'{num}{unit}'
+    # \baselineskip / \parskip などは行送りを基準にした概算に置き換える
+    if unit in ('baselineskip', 'lineskip'):
+        try:
+            return f'{float(num) * 1.5:g}em'
+        except ValueError:
+            return '0'
+    if unit == '':
+        return '0'
+    return '0'
+
+
+def _extract_tex_layout(text: str):
+    """Markdown 変換前に体裁コマンドをプレースホルダへ退避する。
+
+    コードフェンス内・インラインコード内は対象外 (説明として書かれた
+    `\\newpage` を勝手に消してしまわないため)。
+    戻り値: (置換後テキスト, [原文, ...])"""
+    store: List[str] = []
+
+    def scan(s: str) -> str:
+        out, i, n = [], 0, len(s)
+        while i < n:
+            c = s[i]
+            if c == '`':
+                # インラインコードはそのまま通す
+                k = i
+                while k < n and s[k] == '`':
+                    k += 1
+                run = s[i:k]
+                j = s.find(run, k)
+                if j != -1:
+                    out.append(s[i:j + len(run)])
+                    i = j + len(run)
+                    continue
+                out.append(run)
+                i = k
+                continue
+            if c == '\\':
+                m = _TEX_LAYOUT_RE.match(s, i)
+                if m:
+                    store.append(m.group(0))
+                    out.append(f"{_TEXCMD_PH_OPEN}{len(store) - 1}{_TEXCMD_PH_CLOSE}")
+                    i = m.end()
+                    continue
+                # 体裁コマンド以外のエスケープは 2 文字まとめて素通しする
+                out.append(s[i:i + 2])
+                i += 2
+                continue
+            out.append(c)
+            i += 1
+        return ''.join(out)
+
+    chunks = [c if is_code else scan(c) for is_code, c in _split_code_fences(text)]
+    return '\n'.join(chunks), store
+
+
+def _render_tex_layout(raw: str) -> str:
+    """体裁コマンド 1 つ分の HTML を作る。
+
+    原文を data-tex に持たせ、MD編集モードの HTML→Markdown 逆変換で
+    元のコマンドに戻せるようにする (数式と同じ仕組み)。"""
+    m = _TEX_LAYOUT_RE.match(raw)
+    if not m:
+        return _tex_escape(raw)
+    name, arg = m.group(1), m.group(2)
+    esc = _tex_escape(raw)
+    attrs = f'data-tex="{esc}" contenteditable="false"'
+    if name.startswith('vspace'):
+        return (f'<div class="mdv-texcmd mdv-vspace" {attrs} '
+                f'style="height:{_tex_length_to_css(arg)}"></div>')
+    kind, val = _TEX_LAYOUT_CMDS.get(name, ('none', None))
+    if kind == 'page':
+        return f'<div class="mdv-texcmd mdv-newpage" {attrs}></div>'
+    if kind == 'space':
+        return (f'<div class="mdv-texcmd mdv-vspace" {attrs} '
+                f'style="height:{val}"></div>')
+    # <br> は必ず自己終了形で書く。HTMLParser は void 要素を知らないため、
+    # <br> のままだと開始タグだけが積まれてタグの対応が崩れ、
+    # HTML→Markdown 変換で後続の本文が丸ごと失われる。
+    if kind == 'br':
+        return f'<span class="mdv-texcmd mdv-texbr" {attrs}><br/></span>'
+    if kind == 'par':
+        return f'<span class="mdv-texcmd mdv-texbr" {attrs}><br/><br/></span>'
+    return f'<span class="mdv-texcmd" {attrs}></span>'
+
+
+# 行に体裁コマンドだけが書かれていた場合、markdown はそれを <p> で包む。
+# ブロック要素を <p> の中に置くと HTML として不正なので包みを外す。
+_TEXCMD_UNWRAP_RE = re.compile(
+    r'<p>\s*((?:<div class="mdv-texcmd[^>]*></div>\s*)+)</p>')
+
+
+def _restore_tex_layout(html: str, store: List[str]) -> str:
+    """サニタイズ後の HTML に体裁コマンドの描画結果を差し込む。"""
+    if not store:
+        return html
+
+    def sub(m):
+        idx = int(m.group(1))
+        if idx >= len(store):
+            return ''
+        return _render_tex_layout(store[idx])
+
+    return _TEXCMD_UNWRAP_RE.sub(r'\1', _TEXCMD_PH_RE.sub(sub, html))
 
 
 # ════════════════════════════════════════════════
@@ -4030,6 +4206,30 @@ class MDViewerPro(QMainWindow):
             f"white-space:pre-wrap;color:{p['text_dim']};}}"
         )
 
+    def _tex_layout_css(self):
+        """体裁コマンド (\\newpage 等) の見た目。
+
+        通常はコマンドの存在を見せない。改ページは A4/B5 表示では
+        _page_break_js が高さを入れて次ページ送りにし、PDF では
+        print 側の break-after で実際にページを分ける。"""
+        p = self._palette
+        return (
+            ".mdv-texcmd{-webkit-user-modify:read-only;}"
+            ".mdv-newpage{display:block;height:0;clear:both;}"
+            ".mdv-vspace{display:block;}"
+            # MD編集モードでのみ、消したり動かしたりできるよう印を出す
+            # (閲覧・書き出しでは editable_css を付けないので見えない)
+            ".wrap[contenteditable] .mdv-newpage{"
+            f"height:auto!important;min-height:1.6em;margin:.5em 0;"
+            f"border-top:1px dashed {p['accent']};opacity:.65;}}"
+            ".wrap[contenteditable] .mdv-newpage::after{"
+            f"content:attr(data-tex);display:block;font-size:11px;"
+            f"color:{p['accent']};padding-top:2px;}}"
+            ".wrap[contenteditable] .mdv-vspace,"
+            ".wrap[contenteditable] .mdv-texcmd:not(.mdv-newpage){"
+            f"outline:1px dotted {p['border']};}}"
+        )
+
     def _page_break_js(self, page_height_mm):
         _pg_prefix = json.dumps(self._t("page_label_prefix"))
         _pg_suffix = json.dumps(self._t("page_label_suffix"))
@@ -4044,6 +4244,16 @@ class MDViewerPro(QMainWindow):
             f'var pgH=pH*mm2px;'
             f'function upd(){{'
             f'document.querySelectorAll(".pg-brk").forEach(function(e){{e.remove();}});'
+            # \\newpage 等の改ページ指示を、次のページの先頭まで送る詰め物にする。
+            # 前の詰め物が後ろの位置をずらすので、一度 0 に戻してから
+            # 上から順に高さを決め直す。
+            f'var nps=w.querySelectorAll(".mdv-newpage");'
+            f'nps.forEach(function(e){{e.style.height="0px";}});'
+            f'nps.forEach(function(e){{'
+            f'var y=e.offsetTop;'
+            f'var rem=y%pgH;'
+            f'e.style.height=(rem<1?0:Math.round(pgH-rem))+"px";'
+            f'}});'
             f'var tot=Math.max(w.scrollHeight,w.offsetHeight);'
             f'if(tot<pgH)return;'
             f'var n=Math.ceil(tot/pgH);'
@@ -4240,6 +4450,9 @@ class MDViewerPro(QMainWindow):
 
         # ── LaTeX 数式を退避 (Markdown が `_`/`\` を書き換えるのを防ぐ) ──
         md_source, math_store = _extract_math(md_text)
+        # ── \newpage 等の体裁コマンドを退避 (数式の後。数式の中身は
+        #    既にプレースホルダに逃げているので巻き込まない) ──
+        md_source, layout_store = _extract_tex_layout(md_source)
 
         try:
             body = markdown.markdown(md_source, extensions=_exts, extension_configs=_cfg)
@@ -4258,6 +4471,7 @@ class MDViewerPro(QMainWindow):
         # 数式 HTML はサニタイズ後に差し込む (自前生成なので無害化の対象外。
         # 先に差し込むと <span> の属性やクラスが落とされてしまう)。
         body = _restore_math(body, math_store)
+        body = _restore_tex_layout(body, layout_store)
         body = self._embed_remote_images(body)
         if strip_images:
             body = re.sub(r'<img[^>]*>', '', body)
@@ -4276,6 +4490,17 @@ class MDViewerPro(QMainWindow):
             body = self._tag_src_lines(body, starts)
         except Exception:
             pass
+
+        # 印刷/PDF 時の体裁コマンド。画面用に入れた高さ (次ページ送りの
+        # 詰め物・編集用の目印) は捨てて、ブラウザ本来の改ページに任せる。
+        _pg_print = (
+            ".mdv-newpage{height:0!important;min-height:0!important;"
+            "margin:0!important;padding:0!important;border:0!important;"
+            "opacity:1!important;"
+            "break-after:page!important;page-break-after:always!important;}"
+            ".mdv-newpage::after{content:none!important;display:none!important;}"
+            ".mdv-texcmd{outline:none!important;}"
+        )
 
         if self.page_mode == "a4":
             t, r, b, l = self.a4_margins
@@ -4296,6 +4521,7 @@ class MDViewerPro(QMainWindow):
                 f"padding:0!important;box-shadow:none!important;"
                 f"min-height:auto!important;background:{p['bg']}!important;}}"
                 f".pg-brk{{display:none!important;}}"
+                + _pg_print +
                 f"}}"
             )
             pg_js = self._page_break_js(page_h)
@@ -4316,6 +4542,7 @@ class MDViewerPro(QMainWindow):
                 f"padding:0!important;box-shadow:none!important;"
                 f"min-height:auto!important;background:{p['bg']}!important;}}"
                 f".pg-brk{{display:none!important;}}"
+                + _pg_print +
                 f"}}"
             )
             pg_js = self._page_break_js(page_h)
@@ -4325,7 +4552,9 @@ class MDViewerPro(QMainWindow):
                 # 余白は QPageLayout が管理 (CSS 側は 0 にして二重適用を防ぐ)
                 f"@media print{{@page{{margin:0;}}"
                 f"body{{background:{p['bg']}!important;}}"
-                f".wrap{{background:{p['bg']}!important;}}}}"
+                f".wrap{{background:{p['bg']}!important;}}"
+                + _pg_print +
+                f"}}"
             )
             pg_js = ""
 
@@ -4344,7 +4573,10 @@ class MDViewerPro(QMainWindow):
                 "transition:background .15s;border-radius:3px;}"
             )
 
-        css = self._css(fs) + f".wrap{{{wrap}}}" + print_css + editable_css + sync_css
+        # 体裁コマンドの CSS は print_css より前に置く。改ページの
+        # break-after は print 側で上書きする必要があるため。
+        css = (self._css(fs) + f".wrap{{{wrap}}}" + self._tex_layout_css()
+               + editable_css + sync_css + print_css)
 
         wrap_attrs = ' contenteditable="true" spellcheck="false"' if editable else ""
 

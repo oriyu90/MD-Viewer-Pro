@@ -68,6 +68,7 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 * リアルタイムプレビュー
 * コードブロックのコピーボタン
 * LaTeX 数式表示（オフライン・追加インストール不要）
+* LaTeX の体裁コマンド（`\newpage` 等）の解釈
 * YAML フロントマター / YAML ファイル表示
 * ユーザーフォントの追加・削除
 * PDF / HTML 書き出し
@@ -138,6 +139,35 @@ $$
   `$5 と $10` のような通貨表記もそのまま表示されます。
 * 未対応のコマンドは消さずにそのまま表示するので、書いた内容が失われることはありません。
 * MD編集モードでは数式は 1 つのまとまりとして扱われます（式そのものの編集は TXT編集モードで行ってください）。
+
+---
+
+### LaTeX の体裁コマンド（改ページなど）
+
+`\newpage` のような「文書の体裁を指示する」コマンドは、**文字列としては表示せず、
+指示として解釈して表示に反映します**（v1.4.2 以降）。
+
+| コマンド | 動作 |
+| ---- | ---- |
+| `\newpage` `\pagebreak` `\clearpage` `\cleardoublepage` | 改ページ |
+| `\vspace{1cm}` `\vspace*{…}` | 指定した高さの縦の空き |
+| `\bigskip` `\medskip` `\smallskip` | 大・中・小の縦の空き |
+| `\newline` `\linebreak` | 改行 |
+| `\par` | 段落の区切り |
+| `\noindent` `\indent` `\centering` `\raggedright` `\raggedleft` `\hfill` | 表示には反映できないため隠すだけ |
+
+改ページの見え方はモードによって変わります。
+
+* **PDF 書き出し**: 実際にそこでページが分かれます（A4文書 / B5文書 / フリーのいずれでも）。
+* **A4文書 / B5文書 表示**: 次のページの先頭まで送られ、ページ区切り線が入ります。
+* **フリー表示**: ページという概念がないため、何も表示しません（段落の区切りとしてだけ働きます）。
+* **MD編集モード**: 場所が分かるよう破線とコマンド名を薄く表示します（削除・移動できます）。
+
+* コードブロック / インラインコード内のコマンドは対象外です。説明として
+  `` `\newpage` `` と書いたものが消えることはありません。
+* 数式（`$…$`）の中のコマンドも対象外です。
+* 対応していないコマンドは消さずにそのまま表示します。
+* MD編集モードで開いて保存しても、元のコマンドの記述はそのまま残ります。
 
 ---
 
@@ -224,6 +254,7 @@ To open the app:
 * Real-time preview
 * Copy button for code blocks
 * LaTeX math rendering (offline, no extra install)
+* LaTeX layout commands (`\newpage`, …)
 * YAML front matter / YAML files
 * Add and remove your own fonts
 * Export to PDF / HTML
@@ -296,6 +327,38 @@ Supported notation includes:
   you wrote is lost.
 * In MD Edit mode a formula behaves as a single unit; edit the formula itself in
   TXT Edit mode.
+
+---
+
+### LaTeX layout commands (page breaks and friends)
+
+Commands that describe document layout, such as `\newpage`, are **not shown as
+text — they are interpreted and applied to the rendering** (since v1.4.2).
+
+| Command | Effect |
+| ---- | ---- |
+| `\newpage` `\pagebreak` `\clearpage` `\cleardoublepage` | Page break |
+| `\vspace{1cm}` `\vspace*{…}` | Vertical space of the given length |
+| `\bigskip` `\medskip` `\smallskip` | Large / medium / small vertical space |
+| `\newline` `\linebreak` | Line break |
+| `\par` | Paragraph break |
+| `\noindent` `\indent` `\centering` `\raggedright` `\raggedleft` `\hfill` | Cannot be reflected in the rendering, so simply hidden |
+
+How a page break looks depends on the mode:
+
+* **PDF export**: a real page break (in A4 Document, B5 Document and Free alike).
+* **A4 / B5 Document view**: content is pushed to the top of the next page and a
+  page separator line is drawn.
+* **Free view**: nothing is shown — there are no pages — it just acts as a
+  paragraph separator.
+* **MD Edit**: a faint dashed line with the command name, so you can see and
+  delete or move it.
+
+* Commands inside code blocks and code spans are left alone, so writing
+  `` `\newpage` `` as an example never disappears.
+* Commands inside math (`$…$`) are left alone too.
+* Unsupported commands are shown verbatim rather than dropped.
+* Opening a document in MD Edit and saving it keeps the original commands intact.
 
 ---
 
