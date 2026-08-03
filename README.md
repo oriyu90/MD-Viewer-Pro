@@ -89,6 +89,11 @@ Obsidian や Typora などのエディタと同じ考え方です。
 * 閲覧モード・MD編集・TXT編集のプレビュー・PDF / HTML 書き出しのすべてで
   同じように表示されます。
 
+素の Markdown の挙動が必要な場合は、**詳細設定 →「改行の扱い」** の
+「改行をそのまま改行として表示する」をオフにすると、v1.4.1 までと同じ
+（単一の改行は前の行につながり、改行には行末の半角スペース 2 個または空行が
+必要）動作に戻せます。設定は次回起動時にも引き継がれます。
+
 ---
 
 ### 書式ボタンの動き
@@ -239,6 +244,11 @@ used by editors such as Obsidian and Typora.
 * Code blocks and tables follow standard Markdown and are unchanged.
 * View mode, MD Edit, the TXT Edit preview, and PDF / HTML export all render
   identically.
+
+If you need standard Markdown behaviour, turn off **Settings → Line Breaks →
+"Render a single newline as a line break"**. That restores the pre-v1.4.2
+behaviour (a single newline joins onto the previous line; breaking a line needs
+two trailing spaces or a blank line). The choice is remembered between launches.
 
 ---
 

@@ -17,6 +17,11 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
 import main as M
 
+# 設定ファイルを一時ディレクトリへ逃がす (利用者の ~/.mdviewer を壊さない)
+_SETTINGS_TMP = tempfile.mkdtemp(prefix="mdvp_settings_")
+M.SETTINGS_DIR = _SETTINGS_TMP
+M.SETTINGS_FILE = os.path.join(_SETTINGS_TMP, "settings.json")
+
 FAIL, PASS = [], 0
 def check(name, cond, detail=""):
     global PASS

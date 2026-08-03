@@ -164,6 +164,11 @@ I18N = {
         "font_label": "フォント", "lang_label": "言語", "theme_label": "テーマ",
         "dark": "ダークモード", "light": "ライトモード",
         "bold_label": "テキスト太字強調",
+        "hard_breaks_label": "改行の扱い",
+        "hard_breaks_cb": "改行をそのまま改行として表示する",
+        "hard_breaks_hint": "オフにすると、素の Markdown 仕様どおり単一の改行は\n"
+                            "前の行につながります（改行するには行末に半角スペース\n"
+                            "2個、または空行が必要になります）。",
         "plugin_label": "プラグインテーマ",
         "plugin_dir_btn": "テーマフォルダを開く",
         "untitled": "無題",
@@ -253,6 +258,11 @@ I18N = {
         "font_label": "Font", "lang_label": "Language", "theme_label": "Theme",
         "dark": "Dark Mode", "light": "Light Mode",
         "bold_label": "Bold Text Emphasis",
+        "hard_breaks_label": "Line Breaks",
+        "hard_breaks_cb": "Render a single newline as a line break",
+        "hard_breaks_hint": "When off, standard Markdown rules apply: a single\n"
+                            "newline joins onto the previous line, and breaking a\n"
+                            "line needs two trailing spaces or a blank line.",
         "plugin_label": "Plugin Theme",
         "plugin_dir_btn": "Open Theme Folder",
         "untitled": "Untitled",
@@ -342,6 +352,11 @@ I18N = {
         "font_label": "Schriftart", "lang_label": "Sprache", "theme_label": "Thema",
         "dark": "Dunkelmodus", "light": "Hellmodus",
         "bold_label": "Fettschrift-Hervorhebung",
+        "hard_breaks_label": "Zeilenumbrüche",
+        "hard_breaks_cb": "Einzelnen Zeilenumbruch als Umbruch darstellen",
+        "hard_breaks_hint": "Ausgeschaltet gelten die Markdown-Regeln: ein einzelner\n"
+                            "Umbruch hängt an der vorherigen Zeile an; ein Umbruch\n"
+                            "braucht zwei Leerzeichen am Zeilenende oder eine Leerzeile.",
         "plugin_label": "Plugin-Thema",
         "plugin_dir_btn": "Themenordner öffnen",
         "untitled": "Unbenannt",
@@ -431,6 +446,11 @@ I18N = {
         "font_label": "Police", "lang_label": "Langue", "theme_label": "Thème",
         "dark": "Mode sombre", "light": "Mode clair",
         "bold_label": "Emphase en gras",
+        "hard_breaks_label": "Sauts de ligne",
+        "hard_breaks_cb": "Afficher un saut de ligne simple comme un retour à la ligne",
+        "hard_breaks_hint": "Désactivé, les règles Markdown s'appliquent : un saut de\n"
+                            "ligne simple rejoint la ligne précédente ; il faut deux\n"
+                            "espaces en fin de ligne ou une ligne vide pour couper.",
         "plugin_label": "Thème plugin",
         "plugin_dir_btn": "Ouvrir le dossier des thèmes",
         "untitled": "Sans titre",
@@ -519,6 +539,9 @@ _SETTINGS_DEFAULTS: dict = {
     "window_geometry":  "",
     # 目次は既定でオン。機能の存在に気づいてもらうため、初回起動時から開いた状態にする。
     "show_toc":         True,
+    # 改行の扱い。既定はオン (Enter で入れた改行をそのまま改行として表示する)。
+    # オフにすると素の Markdown 仕様どおり、単一の改行は前の行に連結される。
+    "hard_breaks":      True,
 }
 
 def load_settings() -> dict:
@@ -531,6 +554,7 @@ def load_settings() -> dict:
                 result[k] = data[k]
         result["scale_idx"] = max(0, min(len(SCALE_STEPS) - 1, int(result["scale_idx"])))
         result["show_toc"] = bool(result["show_toc"])
+        result["hard_breaks"] = bool(result["hard_breaks"])
         if result["lang"] not in ("ja", "en", "de", "fr"):
             result["lang"] = "ja"
         if not result["last_pdf_dir"] or not os.path.isdir(result["last_pdf_dir"]):
@@ -2351,7 +2375,8 @@ class MarginDialog(QDialog):
 #  詳細設定ダイアログ
 # ════════════════════════════════════════════════
 class SettingsDialog(QDialog):
-    def __init__(self, parent, font_family, lang, current_theme, bold_mode, t, plugin_themes: Dict[str, dict]):
+    def __init__(self, parent, font_family, lang, current_theme, bold_mode, t,
+                 plugin_themes: Dict[str, dict], hard_breaks: bool = True):
         super().__init__(parent)
         self.setWindowTitle(t["settings_title"])
         self.setMinimumWidth(380)
@@ -2427,6 +2452,20 @@ class SettingsDialog(QDialog):
         self._bold_cb.setChecked(bold_mode)
         bl.addWidget(self._bold_cb)
         root.addWidget(bg2)
+
+        # 改行の扱い (既定はオン = 書いたとおりに改行する)
+        hg = QGroupBox(t.get("hard_breaks_label", "Line Breaks"))
+        hl = QVBoxLayout(hg)
+        self._hard_breaks_cb = QCheckBox(
+            t.get("hard_breaks_cb", "Render a single newline as a line break"))
+        self._hard_breaks_cb.setChecked(hard_breaks)
+        hl.addWidget(self._hard_breaks_cb)
+        hint = QLabel(t.get("hard_breaks_hint", ""))
+        hint.setWordWrap(True)
+        # 明暗どちらのテーマでも読める中間色にする
+        hint.setStyleSheet("color: rgba(140,140,140,1); font-size: 11px;")
+        hl.addWidget(hint)
+        root.addWidget(hg)
 
         bb = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok |
@@ -2536,7 +2575,7 @@ class SettingsDialog(QDialog):
             theme = "light"
         else:
             theme = self._theme_items[idx]
-        return font, lang, theme, bold
+        return font, lang, theme, bold, self._hard_breaks_cb.isChecked()
 
 
 # ════════════════════════════════════════════════
@@ -2888,6 +2927,8 @@ class MDViewerPro(QMainWindow):
         self.lang              = _s["lang"]
         self.ui_font_family    = _s["font_family"]
         self.bold_mode         = _s["bold_mode"]
+        # 改行をそのまま改行として描画するか (詳細設定で切り替え)
+        self.hard_breaks       = _s["hard_breaks"]
         self._last_pdf_dir     = _s["last_pdf_dir"]
         self._content_text     = ""
         self._palette          = DARK_PALETTE
@@ -4174,15 +4215,19 @@ class MDViewerPro(QMainWindow):
         # codehilite はコードを色付き <span> に変換して言語情報を失わせるため、
         # ビジュアル編集→Markdown 逆変換で言語指定 (```python 等) が壊れる。
         # fenced_code は <code class="language-xxx"> を出力し _HTML2MD が言語を復元できる。
-        # nl2br は必須: 素の Markdown 仕様では単一の改行が段落内で連結されてしまい、
-        # エディタで Enter を押して作った改行が閲覧・HTML/PDF 書き出しで消える
-        # (v1.4.1 の不具合)。<br> は _HTML2MD が改行として復元するため往復も保たれる。
+        # nl2br は既定でオン: 素の Markdown 仕様では単一の改行が段落内で連結されて
+        # しまい、エディタで Enter を押して作った改行が閲覧・HTML/PDF 書き出しで
+        # 消える (v1.4.1 の不具合)。<br> は _HTML2MD が改行として復元するため
+        # 往復も保たれる。素の Markdown の挙動が要る文書のために、詳細設定
+        # (hard_breaks) でオフにできる。
         if editable:
-            _exts = ["tables", "fenced_code", "nl2br"]
+            _exts = ["tables", "fenced_code"]
             _cfg = {}
         else:
-            _exts = ["tables", "fenced_code", "codehilite", "nl2br"]
+            _exts = ["tables", "fenced_code", "codehilite"]
             _cfg = {"codehilite": {"guess_lang": False, "noclasses": True}}
+        if self.hard_breaks:
+            _exts.append("nl2br")
 
         # ── YAML ドキュメントは全文を yaml コードブロックとして描画する ──
         if self.doc_kind == "yaml":
@@ -4200,8 +4245,10 @@ class MDViewerPro(QMainWindow):
             body = markdown.markdown(md_source, extensions=_exts, extension_configs=_cfg)
         except Exception:
             try:
-                body = markdown.markdown(md_source,
-                                         extensions=["tables", "fenced_code", "nl2br"])
+                body = markdown.markdown(
+                    md_source,
+                    extensions=["tables", "fenced_code"]
+                               + (["nl2br"] if self.hard_breaks else []))
             except Exception:
                 body = markdown.markdown(md_source)
         # Markdown 由来の生 HTML/JavaScript を無害化 (信頼済みの自前スクリプト/CSS は
@@ -5102,6 +5149,7 @@ class MDViewerPro(QMainWindow):
             "theme":            self.current_theme,
             "font_family":      self.ui_font_family,
             "bold_mode":        self.bold_mode,
+            "hard_breaks":      self.hard_breaks,
             "scale_idx":        self.scale_idx,
             "last_pdf_dir":     self._last_pdf_dir,
             "pdf_embed_images": self._pdf_embed_images,
@@ -5116,14 +5164,16 @@ class MDViewerPro(QMainWindow):
             self, self.ui_font_family, self.lang,
             self.current_theme, self.bold_mode,
             I18N[self.lang], self._plugin_themes,
+            hard_breaks=self.hard_breaks,
         )
         if dlg.exec():
-            fam, lang, theme, bold = dlg.get_result()
+            fam, lang, theme, bold, hard_breaks = dlg.get_result()
             changed_font = (fam != self.ui_font_family)
             self.ui_font_family = fam
             changed_lang = (lang != self.lang)
             self.lang      = lang
             self.bold_mode = bold
+            self.hard_breaks = hard_breaks
             self.current_theme = theme
             if changed_font:
                 # 再起動しなくても UI 全体に反映されるようにする

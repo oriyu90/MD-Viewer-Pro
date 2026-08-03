@@ -17,6 +17,16 @@ from PySide6.QtGui import QTextCursor
 
 import main as M
 
+# 設定ファイルを一時ディレクトリへ逃がす。テストは設定を書き換えるため、
+# そのままだと利用者の ~/.mdviewer/settings.json を壊してしまう。
+import tempfile
+_SETTINGS_TMP = tempfile.mkdtemp(prefix="mdvp_settings_")
+M.SETTINGS_DIR = _SETTINGS_TMP
+M.SETTINGS_FILE = os.path.join(_SETTINGS_TMP, "settings.json")
+import atexit
+import shutil
+atexit.register(shutil.rmtree, _SETTINGS_TMP, True)
+
 FAIL, PASS = [], 0
 
 
@@ -512,6 +522,75 @@ check("[txt書式] 折り返した行でも行頭に付く",
 check("[txt書式] 番号が連番になる",
       txt_apply("1. one\n次\n", [NUM], line=1) == "1. one\n2. 次\n",
       txt_apply("1. one\n次\n", [NUM], line=1))
+
+# ══════════════════════════════════════════════════════════════
+# v1.4.2 回帰: 改行の扱いの切り替え設定 (hard_breaks)
+# ══════════════════════════════════════════════════════════════
+check("[設定] hard_breaks の既定はオン", M._SETTINGS_DEFAULTS["hard_breaks"] is True,
+      str(M._SETTINGS_DEFAULTS["hard_breaks"]))
+check("[設定] 起動時に設定が読み込まれる", isinstance(win.hard_breaks, bool),
+      repr(win.hard_breaks))
+
+NL_DOC = "行1\n行2\n行3"
+_was = win.hard_breaks
+
+
+def wrap_html(doc, editable=False):
+    """描画された本文 (.wrap の中身) だけを取り出す。
+
+    編集モードの HTML には書式操作用の JS が付き、その中にも "<br>" という
+    文字列が現れるため、ドキュメント全体を数えると判定を誤る。"""
+    h = win._build_md_html(doc, editable=editable)
+    i = h.index('class="wrap"')
+    j = h.find('<script', i)
+    return h[i:j if j != -1 else len(h)]
+
+
+win.hard_breaks = True
+check("[設定] オンなら改行が <br> になる", wrap_html(NL_DOC).count("<br") >= 2,
+      wrap_html(NL_DOC))
+check("[設定] MD編集でも <br> になる",
+      wrap_html(NL_DOC, editable=True).count("<br") >= 2,
+      wrap_html(NL_DOC, editable=True))
+
+win.hard_breaks = False
+_off = wrap_html(NL_DOC)
+check("[設定] オフなら素の Markdown どおり連結する", "<br" not in _off, _off)
+check("[設定] オフでも本文は失われない",
+      all(s in _off for s in ("行1", "行2", "行3")), _off)
+check("[設定] オフは MD編集にも効く",
+      "<br" not in wrap_html(NL_DOC, editable=True),
+      wrap_html(NL_DOC, editable=True))
+
+# 行末2スペースの明示的な改行は、オフでも従来どおり効く
+check("[設定] オフでも行末2スペースの改行は残る",
+      wrap_html("行1  \n行2").count("<br") >= 1, wrap_html("行1  \n行2"))
+
+# 設定は保存され、読み直せる
+win.hard_breaks = False
+win._save_app_settings()
+check("[設定] オフが保存される", M.load_settings()["hard_breaks"] is False,
+      str(M.load_settings()["hard_breaks"]))
+win.hard_breaks = True
+win._save_app_settings()
+check("[設定] オンが保存される", M.load_settings()["hard_breaks"] is True,
+      str(M.load_settings()["hard_breaks"]))
+win.hard_breaks = _was
+win._save_app_settings()
+
+# ダイアログが値を往復できるか (全言語で文言が揃っているかも見る)
+for _lang in ("ja", "en", "de", "fr"):
+    _t = M.I18N[_lang]
+    for _k in ("hard_breaks_label", "hard_breaks_cb", "hard_breaks_hint"):
+        check(f"[設定] {_lang} に {_k} がある", bool(_t.get(_k)), _lang)
+    _dlg = M.SettingsDialog(win, "Helvetica Neue", _lang, "dark", False, _t, {},
+                            hard_breaks=False)
+    check(f"[設定] {_lang} ダイアログがオフを反映", _dlg.get_result()[4] is False,
+          str(_dlg.get_result()))
+    _dlg._hard_breaks_cb.setChecked(True)
+    check(f"[設定] {_lang} ダイアログがオンを返す", _dlg.get_result()[4] is True,
+          str(_dlg.get_result()))
+    _dlg.deleteLater()
 
 print("=" * 60)
 print(f"PASS: {PASS}   FAIL: {len(FAIL)}")

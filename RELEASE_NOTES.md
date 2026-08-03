@@ -14,6 +14,8 @@
   Enter で入れた改行をそのまま改行として表示するようにしました。
   行の途中の折り返しではなく、書いた行のとおりに表示されます。
   コードブロック・表の中は今までどおりで、変わりません。
+  素の Markdown の挙動が必要な場合は、詳細設定の「改行の扱い」でオフに
+  できます（既定はオン）。
 - **HTML / PDF に書き出すと改行が消える問題**: 上と同じ原因です。書き出しは
   閲覧モードと同じ描画を使っているため、こちらも一緒に直っています。
   画面で見えているとおりに書き出されます。
@@ -32,6 +34,9 @@
     書式を「置き換える」ようにし、「本文」はすべての記号を一度に外すようにしました。
     同じ書式のボタンをもう一度押すと本文に戻ります。
     過去のバージョンで記号が積み重なってしまった行も、「本文」を一度押せば戻ります。
+- **改行の扱いを詳細設定で切り替えられるようにしました**: 詳細設定に「改行の扱い」を
+  追加しました。既定はオン（書いたとおりに改行する）で、オフにすると素の Markdown
+  仕様どおりの表示に戻せます。設定は次回起動時にも引き継がれます。
 
 #### あわせて直したもの
 
@@ -53,7 +58,8 @@
   View mode — the next line was joined onto the previous one, and a blank line was
   the only way to break text. Documents written and saved with v1.4.1 lost their
   line breaks when reopened. Line breaks you type are now rendered as line breaks.
-  Code blocks and tables are unaffected.
+  Code blocks and tables are unaffected. If you need standard Markdown behaviour,
+  turn it off under Settings → Line Breaks (on by default).
 - **HTML / PDF export dropped line breaks**: same root cause — export uses the same
   rendering as View mode, so it is fixed as well. Exports now match what you see.
 - **Pressing Enter in a heading kept the heading format** (MD Edit): after making a
@@ -71,6 +77,9 @@
     removes every marker at once. Pressing the same format button again returns the
     line to body text. Lines that accumulated markers in earlier versions are fixed
     by a single press of Body.
+- **A setting to choose how line breaks are handled**: Settings now has a
+  "Line Breaks" section. It is on by default (render what you typed); turning it
+  off restores standard Markdown rendering. The choice is remembered.
 
 #### Also fixed
 
