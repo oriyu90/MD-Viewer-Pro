@@ -1,4 +1,4 @@
-"""v1.4.2 統合テスト (実 WebEngine / オフスクリーン).
+"""v1.4.3 統合テスト (実 WebEngine / オフスクリーン).
 
 実際に QWebEngineView を動かし、数式・フロントマターの描画、
 モード切替時のスクロール引き継ぎ、MD編集の往復変換、YAML ファイルの
@@ -574,6 +574,76 @@ win.file_save()
 check("[空行] 開いて保存し直しても空行が増減しない",
       open(blank_path, encoding="utf-8").read().count("<br>") == 1,
       repr(open(blank_path, encoding="utf-8").read()))
+win.is_modified = False
+
+# ══════════════════════════════════════════════════════════════
+# v1.4.3 回帰: 表示設定を変えても編集中の内容が消えないか
+#   MD編集モードでは画面がそのまま編集領域なので、言語・文字サイズ・
+#   目次・レイアウトを変えて描き直すと、取り込みが済んでいない編集
+#   (改行や見出し) がまるごと失われていた。
+# ══════════════════════════════════════════════════════════════
+keep_path = os.path.join(TMP, "keep.md")
+KEEP_DOC = "段落A。\n\n段落B。\n"
+
+
+def setup_md_edit():
+    """MD編集で「段落A。」の後ろに改行し、新しい行を見出しにする。"""
+    open(keep_path, "w", encoding="utf-8").write(KEEP_DOC)
+    win.is_modified = False
+    win._load_file(keep_path)
+    wait(1200)
+    win._set_mode("md")
+    wait(1600)
+    fp = focus_web()
+    js("""(function(){
+var ps=document.querySelectorAll('.wrap p');
+for(var i=0;i<ps.length;i++){ if(ps[i].textContent.trim()==='段落A。'){
+ var r=document.createRange();r.selectNodeContents(ps[i]);r.collapse(false);
+ var s=getSelection();s.removeAllRanges();s.addRange(r);return 'ok';}}
+return 'no';})()""")
+    wait(200)
+    QTest.keyClick(fp, Qt.Key.Key_Return)
+    wait(250)
+    QTest.keyClicks(fp, "MIDASHI")
+    wait(250)
+    js("window._mdvBlock('h1');")
+    wait(300)
+
+
+def md_block_tags():
+    return js("(function(){var w=document.querySelector('.wrap');"
+              "return Array.prototype.map.call(w.children,function(e){"
+              "return e.tagName+'{'+e.textContent.trim().slice(0,8)+'}';"
+              "}).join(' ');})()") or ""
+
+
+# 前提: 編集直後は見出しができている
+setup_md_edit()
+check("[保持] 編集直後に見出しができる", "H1{MIDASHI}" in md_block_tags(), md_block_tags())
+
+KEEP_CASES = [
+    ("文字サイズ変更", lambda: win._on_scale_slider(
+        min(win.scale_idx + 1, len(M.SCALE_STEPS) - 1))),
+    ("言語変更", lambda: (setattr(win, "lang", "en"), win._apply_theme(refresh=True))),
+    ("テーマ変更", lambda: (setattr(win, "current_theme", "light"),
+                        win._apply_theme(refresh=True))),
+    ("目次の表示切替", lambda: win._toggle_toc()),
+    ("A4レイアウトへ", lambda: win._set_layout("a4")),
+]
+for _name, _act in KEEP_CASES:
+    setup_md_edit()
+    _act()
+    wait(2000)
+    _tags = md_block_tags()
+    check(f"[保持] {_name}で編集内容が消えない", "H1{MIDASHI}" in _tags, _tags)
+    check(f"[保持] {_name}で本文も消えない",
+          "段落A。" in _tags and "段落B。" in _tags, _tags)
+    # 後片付け
+    win.lang = "ja"
+    win.current_theme = "dark"
+    win.page_mode = "free"
+
+win._apply_theme(refresh=False)
 win.is_modified = False
 
 serious = [e for e in errors if "Error" in e or "error" in e]

@@ -1,4 +1,4 @@
-"""v1.4.2 Qt ウィジェット層 自動テスト (オフスクリーン).
+"""v1.4.3 Qt ウィジェット層 自動テスト (オフスクリーン).
 
 実際の MDViewerPro を生成し、目次パネル・スプリッター・書式ヘルパ等の
 振る舞いを画面なしで検証する。QWebEngineView は遅延生成のため、
@@ -596,6 +596,124 @@ for _lang in ("ja", "en", "de", "fr"):
     check(f"[設定] {_lang} ダイアログがオンを返す", _dlg.get_result()[4] is True,
           str(_dlg.get_result()))
     _dlg.deleteLater()
+
+# ══════════════════════════════════════════════════════════════
+# v1.4.3 回帰: 対応言語 (中国語の追加)
+# ══════════════════════════════════════════════════════════════
+EXPECTED_LANGS = ["ja", "en", "de", "fr", "zh"]
+check("[言語] LANGS に 5 言語ある", sorted(M.LANGS.values()) == sorted(EXPECTED_LANGS),
+      str(M.LANGS))
+check("[言語] 简体中文 が選べる", M.LANGS.get("简体中文") == "zh", str(M.LANGS))
+
+# 全言語で文言のキーが揃っているか (どれか一つでも欠けると実行時に KeyError)
+_base = set(M.I18N["ja"])
+for _lg in EXPECTED_LANGS:
+    check(f"[言語] {_lg} が I18N にある", _lg in M.I18N, str(list(M.I18N)))
+    if _lg in M.I18N:
+        _missing = sorted(_base - set(M.I18N[_lg]))
+        _extra = sorted(set(M.I18N[_lg]) - _base)
+        check(f"[言語] {_lg} のキーが揃っている", not _missing and not _extra,
+              f"不足={_missing} 余分={_extra}")
+        # ページ番号の前後の語は語順で片方が空になるのが正しい
+        # (日本語「2 ページ目」/ 中国語「第 2 页」/ 英語「Page 2」)。
+        _page_keys = {"page_label_prefix", "page_label_suffix"}
+        _empty = [k for k, v in M.I18N[_lg].items()
+                  if isinstance(v, str) and not v and k not in _page_keys]
+        check(f"[言語] {_lg} に空の文言がない", not _empty, str(_empty))
+        check(f"[言語] {_lg} のページ番号に語が付く",
+              bool(M.I18N[_lg]["page_label_prefix"]
+                   or M.I18N[_lg]["page_label_suffix"]),
+              f"{M.I18N[_lg]['page_label_prefix']!r} / "
+              f"{M.I18N[_lg]['page_label_suffix']!r}")
+
+# 設定として保存・復元できるか
+for _lg in EXPECTED_LANGS:
+    win.lang = _lg
+    win._save_app_settings()
+    check(f"[言語] {_lg} が設定に保存される", M.load_settings()["lang"] == _lg,
+          M.load_settings()["lang"])
+# 未知の言語は既定へ落とす
+M.save_settings({**M.load_settings(), "lang": "xx"})
+check("[言語] 未知の言語は日本語に戻す", M.load_settings()["lang"] == "ja",
+      M.load_settings()["lang"])
+win.lang = "ja"
+win._save_app_settings()
+
+# 中国語でツールバーとダイアログが組み立てられるか
+for _lg in EXPECTED_LANGS:
+    win.lang = _lg
+    win._sync_tb_labels()
+    win._rebuild_fmt_tb()
+    check(f"[言語] {_lg} でツールバーを組み立てられる",
+          bool(win._back_btn.text()) and bool(win._mode_btns["view"].text()), _lg)
+    _d = M.SettingsDialog(win, "Helvetica Neue", _lg, "dark", False,
+                          M.I18N[_lg], {}, hard_breaks=True)
+    _items = [_d._lang_cb.itemText(i) for i in range(_d._lang_cb.count())]
+    check(f"[言語] {_lg} の設定に 5 言語が並ぶ", len(_items) == 5, str(_items))
+    _d.deleteLater()
+win.lang = "ja"
+win._sync_tb_labels()
+win._rebuild_fmt_tb()
+
+# 起動時サンプルとガイドが全言語で用意されているか
+_guide_dir = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__)))), "資料箱")
+_guide_files = {"ja": "sample_日本語.md", "en": "sample_English.md",
+                "de": "sample_Deutsch.md", "fr": "sample_français.md",
+                "zh": "sample_中文.md"}
+for _lg, _fn in _guide_files.items():
+    check(f"[言語] {_lg} のガイドがある",
+          os.path.exists(os.path.join(_guide_dir, _fn)), _fn)
+    win.lang = _lg
+    win._set_sample()
+    check(f"[言語] {_lg} のサンプルが用意されている",
+          len(win._content_text) > 50, repr(win._content_text[:30]))
+win.lang = "ja"
+
+
+# ══════════════════════════════════════════════════════════════
+# v1.4.3 回帰: 水平線を見やすく (太さ 4px・コントラスト増)
+# ══════════════════════════════════════════════════════════════
+def _luminance(hexcol):
+    h = hexcol.lstrip("#")
+
+    def ch(v):
+        v = int(v, 16) / 255
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    return 0.2126 * ch(h[0:2]) + 0.7152 * ch(h[2:4]) + 0.0722 * ch(h[4:6])
+
+
+def _contrast(a, b):
+    la, lb = _luminance(a), _luminance(b)
+    hi, lo = max(la, lb), min(la, lb)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+for _theme, _pal in (("dark", M.DARK_PALETTE), ("light", M.LIGHT_PALETTE)):
+    win.current_theme = _theme
+    win._palette = _pal
+    _css = win._css(16)
+    check(f"[水平線] {_theme}: 太さ 4px", "height:4px" in _css.replace(" ", ""),
+          [s for s in _css.split("}") if s.startswith("hr{")][:1])
+    _hr = M._mix_hex(_pal["border"], _pal["text_dim"], 0.5)
+    check(f"[水平線] {_theme}: 色が CSS に入る", _hr in _css, _hr)
+    check(f"[水平線] {_theme}: 枠線色よりコントラストが高い",
+          _contrast(_hr, _pal["bg2"]) > _contrast(_pal["border"], _pal["bg2"]),
+          f"{_contrast(_hr, _pal['bg2']):.2f} vs {_contrast(_pal['border'], _pal['bg2']):.2f}")
+win.current_theme = "dark"
+win._palette = M.DARK_PALETTE
+
+# 色の混合そのもの
+check("[水平線] 混合の両端", M._mix_hex("#000000", "#ffffff", 0.0) == "#000000"
+      and M._mix_hex("#000000", "#ffffff", 1.0) == "#ffffff", "")
+check("[水平線] 中間色", M._mix_hex("#000000", "#ffffff", 0.5) == "#808080",
+      M._mix_hex("#000000", "#ffffff", 0.5))
+check("[水平線] 3桁表記を扱える", M._mix_hex("#fff", "#000", 0.0) == "#ffffff",
+      M._mix_hex("#fff", "#000", 0.0))
+check("[水平線] 16進以外はそのまま返す",
+      M._mix_hex("rgba(1,2,3,.5)", "#000000", 0.5) == "rgba(1,2,3,.5)", "")
+check("[水平線] 不正な値でも落ちない", M._mix_hex("#zzzzzz", "#000000", 0.5) == "#zzzzzz",
+      "")
 
 print("=" * 60)
 print(f"PASS: {PASS}   FAIL: {len(FAIL)}")

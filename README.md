@@ -2,8 +2,8 @@
 
 A simple and fast Markdown viewer built with Python and PySide6 (Qt for Python).
 
-**Current version / 現在のバージョン: v1.4.2**
-See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.4.2).
+**Current version / 現在のバージョン: v1.4.3**
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.4.3).
 更新履歴は [RELEASE_NOTES.md](RELEASE_NOTES.md) をご覧ください。
 
 ---
@@ -56,7 +56,7 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 | LaTeX 数式 | `$…$` / `$$…$$` の数式を組版して表示             |
 | YAML 対応  | フロントマターをメタ情報として表示、`.yml`/`.yaml` も閲覧可 |
 | A4文書     | 印刷向けA4レイアウト・余白設定                      |
-| 詳細設定     | フォント・言語・テーマ・表示設定の変更                   |
+| 詳細設定     | フォント・言語・テーマ・表示設定の変更（日本語 / 英語 / ドイツ語 / フランス語 / 中国語） |
 | フォント追加   | TTF/OTF を取り込んで本文フォントに追加（削除も可）         |
 | プラグインテーマ | `~/.mdviewer/themes/` にJSONを配置してテーマ追加 |
 
@@ -70,6 +70,7 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 * LaTeX 数式表示（オフライン・追加インストール不要）
 * LaTeX の体裁コマンド（`\newpage` 等）の解釈
 * YAML フロントマター / YAML ファイル表示
+* 5 言語の表示（日本語 / English / Deutsch / Français / 简体中文）
 * ユーザーフォントの追加・削除
 * PDF / HTML 書き出し
 * プラグインテーマ対応
@@ -242,7 +243,7 @@ To open the app:
 | LaTeX Math        | Typesets `$…$` / `$$…$$` formulas            |
 | YAML Support      | Front matter shown as a metadata panel; opens `.yml`/`.yaml` |
 | A4 Document       | Print-ready A4 layout with margins           |
-| Advanced Settings | Customize fonts, language, and themes        |
+| Advanced Settings | Fonts, language (JA / EN / DE / FR / ZH), and themes |
 | Custom Fonts      | Add TTF/OTF files as body fonts (and remove them) |
 | Plugin Themes     | Add themes via JSON in `~/.mdviewer/themes/` |
 
@@ -256,6 +257,7 @@ To open the app:
 * LaTeX math rendering (offline, no extra install)
 * LaTeX layout commands (`\newpage`, …)
 * YAML front matter / YAML files
+* Five UI languages (日本語 / English / Deutsch / Français / 简体中文)
 * Add and remove your own fonts
 * Export to PDF / HTML
 * Plugin theme support

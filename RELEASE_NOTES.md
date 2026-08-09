@@ -1,5 +1,62 @@
 # Release Notes / 更新履歴
 
+## v1.4.3
+
+表示の細かい不具合を直し、対応言語に中国語を追加したリリースです。
+
+### 日本語
+
+#### 新機能
+
+- **中国語（简体中文）に対応**: 詳細設定と起動画面の言語に「简体中文」を
+  追加しました。ツールバー・メニュー・各種ダイアログ・使用ガイド・
+  新規作成時のサンプル文書まで中国語で表示されます。
+  これで日本語 / English / Deutsch / Français / 简体中文 の 5 言語になります。
+
+#### 修正
+
+- **言語や文字サイズを変えると、編集中の改行や見出しが消える問題**:
+  MD編集モードでは画面がそのまま編集領域のため、表示設定を変えると
+  画面を作り直す必要があります。このとき、まだ内部に取り込まれていない
+  直前の編集（Enter で入れた改行や、H1 / H2 にした見出し）が
+  作り直しで失われていました。描き直す前に必ず編集内容を取り込むように
+  しました。言語・文字サイズのほか、テーマ・フォント・目次の表示切替・
+  レイアウト変更（フリー / A4文書 / B5文書）・余白設定でも同じ問題が
+  起きていましたが、まとめて直っています。
+- **水平線が細すぎて見えない問題**: `---` で入れる水平線が 1px で背景に
+  溶けてしまい、特にダークモードではほとんど見えませんでした。太さを
+  4 倍にし、色のコントラストも少し上げて、はっきり見えるようにしました。
+  テーマごとの雰囲気は保つよう、線の色はテーマの枠線色と淡色テキストの
+  中間から決めています。プラグインテーマにもそのまま反映されます。
+
+---
+
+### English
+
+#### New features
+
+- **Chinese (简体中文) support**: "简体中文" is now available in Settings and on
+  the startup screen. The toolbar, menus, dialogs, the built-in guide and the
+  sample document for new files are all translated. That makes five UI languages:
+  日本語 / English / Deutsch / Français / 简体中文.
+
+#### Fixes
+
+- **Changing the language or text size wiped out line breaks and headings you had
+  just typed**: in MD Edit the page itself is the editing surface, so changing a
+  display setting has to rebuild it. Edits that had not yet been captured — a line
+  break from Enter, or a line just turned into H1 / H2 — were lost in that rebuild.
+  The content is now captured before redrawing. The same problem affected theme and
+  font changes, toggling the TOC, switching layout (Free / A4 / B5) and changing
+  margins; all are fixed together.
+- **Horizontal rules were too thin to see**: a `---` rule was drawn as a 1px line
+  that blended into the background, and was nearly invisible in dark mode. It is now
+  four times thicker with slightly more contrast. The colour is derived from the
+  theme's border and dim-text colours, so each theme keeps its own character and
+  plugin themes benefit as well.
+
+---
+
 ## v1.4.2
 
 書き心地まわりの不具合をまとめて直したリリースです。

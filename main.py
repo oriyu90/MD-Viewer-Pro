@@ -60,12 +60,13 @@ SCALE_LABELS = ["50%", "75%", "100%", "125%", "150%"]
 DEFAULT_SCALE_IDX = 2  # 100%
 TB_H  = 72
 FMT_H = 52
-LANGS = {"日本語": "ja", "English": "en", "Deutsch": "de", "Français": "fr"}
+LANGS = {"日本語": "ja", "English": "en", "Deutsch": "de", "Français": "fr",
+         "简体中文": "zh"}
 PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
-APP_VERSION   = "1.4.2"
+APP_VERSION   = "1.4.3"
 
 # 開けるファイルの拡張子 (YAML を含む)
 OPEN_FILTER = ("Markdown / Text / YAML "
@@ -133,6 +134,33 @@ LIGHT_PALETTE = {
 }
 
 _PALETTE_REQUIRED_KEYS = list(DARK_PALETTE.keys())
+
+
+def _mix_hex(c1: str, c2: str, t: float) -> str:
+    """16進の色 c1 と c2 を t の割合で混ぜる (t=0 で c1、t=1 で c2)。
+
+    16進表記でない色 (プラグインテーマが rgba() 等を使った場合) は
+    混ぜずに c1 をそのまま返す。"""
+    def parse(c):
+        c = (c or "").strip()
+        if not c.startswith("#"):
+            return None
+        h = c[1:]
+        if len(h) == 3:
+            h = "".join(ch * 2 for ch in h)
+        if len(h) != 6:
+            return None
+        try:
+            return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+        except ValueError:
+            return None
+
+    a, b = parse(c1), parse(c2)
+    if a is None or b is None:
+        return c1
+    t = max(0.0, min(1.0, t))
+    return "#{:02x}{:02x}{:02x}".format(
+        *(round(x + (y - x) * t) for x, y in zip(a, b)))
 
 # TXT編集モードの行同期プレビュー用: ブロック分割時のリスト項目判定
 _LIST_ITEM_RE = re.compile(r'^\s{0,3}([-*+]|\d+[.)])\s+')
@@ -522,6 +550,81 @@ I18N = {
         "front_matter": "En-tête YAML",
         "yaml_doc": "Document YAML",
     },
+    "zh": {
+        "back": "返回", "view": "阅读", "md_edit": "MD编辑", "txt_edit": "TXT编辑",
+        "free": "自由", "a4": "A4文档", "b5": "B5文档", "margin": "页边距",
+        "scale": "缩放", "settings": "设置", "pdf_export": "导出PDF",
+        "file": "文件", "open": "打开...", "save": "保存", "new": "新建",
+        "save_as": "另存为...",
+        "pdf_export_menu": "导出为 PDF...",
+        "html_export_menu": "导出为 HTML...",
+        "upload_gdrive": "上传到 Google Drive...",
+        "upload_onedrive": "上传到 OneDrive...",
+        "unsaved": "有未保存的更改",
+        "unsaved_msg": "有尚未保存的更改。现在保存吗？",
+        "read_error": "读取错误", "save_error": "保存错误",
+        "settings_title": "设置",
+        "font_label": "字体", "lang_label": "语言", "theme_label": "主题",
+        "dark": "深色模式", "light": "浅色模式",
+        "bold_label": "正文加粗",
+        "hard_breaks_label": "换行的处理",
+        "hard_breaks_cb": "把输入的换行直接显示为换行",
+        "hard_breaks_hint": "关闭后按标准 Markdown 规则处理：单个换行会\n"
+                            "接到上一行，要换行需要在行尾加两个空格或\n"
+                            "插入一个空行。",
+        "plugin_label": "插件主题", "plugin_dir_btn": "打开主题文件夹",
+        "untitled": "未命名",
+        "margin_title": "A4 页边距 (mm)", "margin_title_b5": "B5 页边距 (mm)",
+        "margin_top": "上", "margin_right": "右",
+        "margin_bottom": "下", "margin_left": "左",
+        "fmt_bold": "B", "fmt_italic": "I", "fmt_strike": "~~",
+        "fmt_code": "代码", "fmt_h1": "H1", "fmt_h2": "H2", "fmt_h3": "H3",
+        "fmt_body": "正文", "fmt_list": "项目", "fmt_num": "编号",
+        "fmt_check": "清单", "fmt_quote": "引用", "fmt_hr": "横线",
+        "fmt_link": "链接", "fmt_img": "图片", "fmt_table": "表格",
+        "gdrive_msg": "文件：{fname}\n\n正在打开 Google Drive。\n"
+                      "请使用「+ 新建」→「文件上传」上传文件。",
+        "onedrive_msg": "文件：{fname}\n\n正在打开 OneDrive。\n"
+                        "请使用「上传」→「文件」上传文件。",
+        "unsaved_file": "（未保存）",
+        "pdf_settings_title": "PDF 导出设置",
+        "pdf_page_size": "纸张大小", "pdf_orientation": "方向",
+        "pdf_portrait": "纵向", "pdf_landscape": "横向",
+        "pdf_success": "PDF 导出成功。", "pdf_error": "PDF 导出失败。",
+        "html_export_success": "HTML 导出成功。",
+        "html_save_error": "HTML 保存错误",
+        "img_confirm_title": "载入外部图片",
+        "img_confirm_msg": "此文件包含 {n} 张外部图片。\n要从外部服务器载入吗？",
+        "startup_title": "MD Viewer Pro",
+        "startup_open": "打开文件", "startup_new": "新建文件",
+        "startup_hint": "请选择要打开的文件，或新建一个文件",
+        "startup_language": "语言", "startup_guide": "打开使用指南",
+        "readonly_notice": "只读",
+        "plugin_invalid": "主题文件无效：{name}",
+        "toc": "目录",
+        "pdf_embed_images": "包含图片",
+        "pdf_embed_images_label": "在 PDF 中嵌入图片",
+        "pdf_style_mode": "样式",
+        "new_window": "新建窗口",
+        "toc_title": "≡ 目录", "toc_empty": "没有标题",
+        "link_text_default": "文字", "img_alt_default": "说明",
+        "img_url_prompt": "图片网址",
+        "table_col": "列", "table_cell": "单元格",
+        "table_add_col": "+ 列", "table_add_col_title": "添加列",
+        "table_add_row": "+ 行", "table_add_row_title": "添加行",
+        "page_label_prefix": "第 ", "page_label_suffix": " 页",
+        "font_recommended": "推荐字体", "font_user": "已添加的字体",
+        "font_system": "系统字体", "font_not_installed": "（未安装）",
+        "font_add": "添加字体...", "font_remove": "删除所选字体",
+        "font_add_title": "选择字体文件",
+        "font_add_error": "添加字体失败。",
+        "font_add_invalid": "该文件无法作为字体载入。",
+        "font_remove_title": "删除字体",
+        "font_remove_msg": "要删除已添加的字体「{name}」吗？",
+        "font_hint": "未安装的推荐字体，可通过「添加字体...」注册\n"
+                     "TTF/OTF 文件后使用。",
+        "front_matter": "前置元数据", "yaml_doc": "YAML 文档",
+    },
 }
 
 
@@ -555,7 +658,7 @@ def load_settings() -> dict:
         result["scale_idx"] = max(0, min(len(SCALE_STEPS) - 1, int(result["scale_idx"])))
         result["show_toc"] = bool(result["show_toc"])
         result["hard_breaks"] = bool(result["hard_breaks"])
-        if result["lang"] not in ("ja", "en", "de", "fr"):
+        if result["lang"] not in ("ja", "en", "de", "fr", "zh"):
             result["lang"] = "ja"
         if not result["last_pdf_dir"] or not os.path.isdir(result["last_pdf_dir"]):
             result["last_pdf_dir"] = os.path.expanduser("~")
@@ -4048,6 +4151,8 @@ class MDViewerPro(QMainWindow):
 
     def _css(self, fs):
         p  = self._palette
+        # 水平線の色: 枠線色と淡色テキストの中間
+        _HR_COLOR = _mix_hex(p["border"], p["text_dim"], 0.5)
         fw = "600" if self.bold_mode else "400"
         ff = ("'Helvetica Neue', '-apple-system', "
               "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif")
@@ -4088,7 +4193,11 @@ class MDViewerPro(QMainWindow):
             f"tr:nth-child(even){{background:{p['row_even']}}}"
             "ul,ol{padding-left:1.7em;margin:10px 0}"
             "li{margin:4px 0}"
-            f"hr{{border:none;border-top:1px solid {p['border']};margin:24px 0}}"
+            # 水平線: 1px の枠線色だと背景に溶けてほぼ見えなかったため、
+            # 太さを 4px にし、色は枠線色と淡色テキストの中間にして
+            # コントラストを少しだけ上げる (テーマごとの雰囲気は保つ)。
+            f"hr{{border:none;height:4px;background:{_HR_COLOR};"
+            f"margin:24px 0;border-radius:2px}}"
             "img{max-width:100%;border-radius:4px}"
             ".task-list-item{list-style:none;margin-left:-1.4em}"
             ".task-list-item input[type='checkbox']{margin-right:6px;vertical-align:middle}"
@@ -4791,7 +4900,10 @@ class MDViewerPro(QMainWindow):
         self._sync_tb_labels()
         self._refresh_btn_states()
         if refresh:
-            self._refresh_view()
+            # 言語 / テーマ / フォント / 文字サイズの変更による描き直し。
+            # MD編集中なら先に編集内容を取り込む (取り込まないと、直前に
+            # 入れた改行や見出しが描き直しで消える)。
+            self._refresh_view_keeping_edits()
 
     def _sync_tb_labels(self):
         self._back_btn.setText(self._t("back"))
@@ -4868,6 +4980,19 @@ class MDViewerPro(QMainWindow):
         if self._toc_panel.isVisible():
             self._rebuild_toc_list()
 
+    def _refresh_view_keeping_edits(self):
+        """表示設定を変えたときの再描画。
+
+        MD編集モードでは画面がそのまま編集領域なので、_refresh_view() は
+        いま編集している内容を _content_text から作り直して丸ごと置き換える。
+        取り込みが済んでいない編集 (改行や見出し) はそこで消えてしまうため、
+        描き直す前に必ず取り込む。
+        ※ 別の文書を読み込んだ直後など「中身を入れ替える」再描画では、
+           古い画面から取り込んでしまうので使ってはいけない。"""
+        if self.edit_mode == "md":
+            self._flush_md_buf()
+        self._refresh_view()
+
     def _flush_preview(self):
         if self.edit_mode == "txt":
             self._preview_web.page().runJavaScript(
@@ -4875,7 +5000,7 @@ class MDViewerPro(QMainWindow):
                 self._do_flush_preserve_scroll
             )
         else:
-            self._refresh_view()
+            self._refresh_view_keeping_edits()
 
     def _do_flush_preserve_scroll(self, scroll_y):
         self._saved_scroll_y = int(scroll_y) if scroll_y else 0
@@ -4918,7 +5043,7 @@ class MDViewerPro(QMainWindow):
     def _on_images_fetched(self, results: dict):
         if results:
             self._image_cache.update(results)
-            self._refresh_view()
+            self._refresh_view_keeping_edits()
 
     def _check_and_fetch_images_for_file(self, text: str):
         all_urls = _extract_remote_image_urls(text)
@@ -5180,7 +5305,7 @@ class MDViewerPro(QMainWindow):
         self._update_toc_panel_visibility()
         self._update_splitter_sizes()
         self._save_app_settings()   # 次回起動時も同じ状態で開く
-        self._refresh_view()
+        self._refresh_view_keeping_edits()
 
     # ─── 見出し(TOC)パネル ─────────────────────────
     def _update_toc_panel_visibility(self):
@@ -5423,7 +5548,7 @@ class MDViewerPro(QMainWindow):
     def _set_layout(self, layout):
         self.page_mode = layout
         self._refresh_btn_states()
-        self._refresh_view()
+        self._refresh_view_keeping_edits()
 
     def _open_margin_dialog(self):
         if self.page_mode == "b5":
@@ -5438,7 +5563,7 @@ class MDViewerPro(QMainWindow):
                 self.b5_margins = dlg.get_margins()
             else:
                 self.a4_margins = dlg.get_margins()
-            self._refresh_view()
+            self._refresh_view_keeping_edits()
 
     def _on_scale_slider(self, v):
         self.scale_idx = v
@@ -6054,6 +6179,32 @@ class MDViewerPro(QMainWindow):
                 "```\n\n"
                 "> Passez en mode Édition TXT ou MD pour afficher la barre de formatage.\n"
             ),
+            "zh": (
+                "# 欢迎使用 MD Viewer Pro\n\n"
+                "可以在顶部工具栏切换模式、版式和缩放。\n\n"
+                "## 功能一览\n\n"
+                "| 功能 | 说明 |\n"
+                "| :--- | :--- |\n"
+                "| 阅读模式 | 清晰地渲染 Markdown |\n"
+                "| MD编辑 | 保持渲染后的样子直接编辑 |\n"
+                "| TXT编辑 | 左侧编辑器 + 右侧实时预览 |\n"
+                "| A4文档 | 适合打印的 A4 版式与页边距设置 |\n"
+                "| 设置 | 字体、语言、主题、加粗的切换 |\n"
+                "| 插件主题 | 在 ~/.mdviewer/themes/ 放入 JSON 即可添加 |\n\n"
+                "## 清单\n\n"
+                "- [x] Markdown 渲染\n"
+                "- [x] 实时预览\n"
+                "- [x] 代码块的复制按钮\n"
+                "- [x] 导出 PDF / HTML\n"
+                "- [x] 插件主题\n"
+                "- [ ] 云端同步（计划中）\n\n"
+                "## 代码块\n\n"
+                "```python\n"
+                "def hello():\n"
+                "    print('Hello, MD Viewer Pro!')\n"
+                "```\n\n"
+                "> 切换到 TXT编辑 或 MD编辑 模式即可显示格式工具栏。\n"
+            ),
         }
         s = _samples.get(self.lang, _samples["en"])
         self._content_text = s
@@ -6070,6 +6221,7 @@ class MDViewerPro(QMainWindow):
             "en": "sample_English.md",
             "de": "sample_Deutsch.md",
             "fr": "sample_français.md",
+            "zh": "sample_中文.md",
         }
         filename = lang_to_file.get(self.lang, "sample_English.md")
         candidates = []
