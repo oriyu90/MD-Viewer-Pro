@@ -1,0 +1,33 @@
+name: Deploy site to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'favicon.ico'
+      - 'google4d56ef11b86317e2.html'
+      - 'scripts/build_site.sh'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build site directory
+        run: bash scripts/build_site.sh
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: md-viewer-pro
+          directory: dist-site
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
