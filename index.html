@@ -3,24 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MD Viewer Pro - 究極のMarkdownエディタ</title>
-    <meta name="description" content="MD Viewer Proは、Macユーザーのための軽量かつAIフレンドリーなオープンソースMarkdownエディタです。テキストエディットの不満を解消し、使いやすさを追求しました。">
-    <meta name="keywords" content="MD Viewer Pro, Markdown, エディタ, オープンソース, Mac, 編集ソフト, Yuki_Orita">
+    <title>MD Viewer Pro - 快適に使えるMarkdownビューア&エディタ</title>
+    <meta name="description" content="MD Viewer Pro は、Mac向けの軽量・無料・オープンソースなMarkdownビューア&エディタです。レンダリングされた見た目のまま編集、LaTeX数式、YAML対応、5言語UI、PDF/HTML書き出しに対応。開発者: 折田悠希 (Yuki_Orita)。">
+    <meta name="keywords" content="MD Viewer Pro, Markdown Viewer, Markdown Editor, Markdownエディタ, Markdownビューア, オープンソース, Open Source, Mac, macOS, 折田悠希, おりたゆうき, Yuki_Orita, github, LaTeX, YAML">
     <meta name="author" content="Yuki_Orita">
-    
+    <link rel="canonical" href="https://github.com/oriyu90/MD-Viewer-Pro">
+    <link rel="icon" href="favicon.ico" sizes="any">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="MD Viewer Pro - 快適に使えるMarkdownビューア&エディタ">
+    <meta property="og:description" content="Mac向けの軽量・無料・オープンソースなMarkdownビューア&エディタ。LaTeX数式・YAML対応・5言語UI・PDF/HTML書き出し。">
+    <meta property="og:url" content="https://github.com/oriyu90/MD-Viewer-Pro">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="@InovateofRIZI">
+
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "MD Viewer Pro",
+      "alternateName": "MDビューアプロ",
+      "softwareVersion": "1.4.3",
       "operatingSystem": "macOS",
       "applicationCategory": "TextEditor",
       "author": {
         "@type": "Person",
         "name": "Yuki_Orita",
-        "url": "https://oriyu90.github.io/official/"
+        "alternateName": "折田悠希 / おりたゆうき",
+        "url": "https://oriyu90.github.io/official/",
+        "sameAs": [
+          "https://x.com/InovateofRIZI",
+          "https://github.com/oriyu90",
+          "https://discord.gg/x7KXhNTD8M"
+        ]
       },
       "url": "https://github.com/oriyu90/MD-Viewer-Pro",
+      "downloadUrl": "https://github.com/oriyu90/MD-Viewer-Pro/releases",
+      "license": "https://github.com/oriyu90/MD-Viewer-Pro/blob/main/LICENSE",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -30,310 +49,549 @@
     </script>
 
     <style>
-        /* CSSカスタムプロパティ (ライトテーマのデフォルト) */
         :root {
             --bg-color: #f9f9f9;
-            --text-color: #333333;
+            --text-color: #2b2b2b;
+            --muted-text: #5a5a5a;
             --container-bg: #ffffff;
+            --card-bg: #ffffff;
             --primary-color: #007aff;
+            --primary-contrast: #ffffff;
             --border-color: #e5e5e5;
             --code-bg: #f1f1f1;
             --footer-text: #777777;
+            --pill-bg: #eef4ff;
+            --pill-text: #0a5fd6;
         }
 
-        /* ダークテーマの定義 */
         [data-theme="dark"] {
-            --bg-color: #121212;
-            --text-color: #e0e0e0;
-            --container-bg: #1e1e1e;
+            --bg-color: #101114;
+            --text-color: #eaeaea;
+            --muted-text: #b7b7b7;
+            --container-bg: #17181c;
+            --card-bg: #1c1d22;
             --primary-color: #4da6ff;
-            --border-color: #333333;
-            --code-bg: #2d2d2d;
-            --footer-text: #aaaaaa;
+            --primary-contrast: #101114;
+            --border-color: #303136;
+            --code-bg: #24252b;
+            --footer-text: #9a9a9a;
+            --pill-bg: #17293f;
+            --pill-text: #7cb8ff;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: 1.8;
             transition: background-color 0.3s, color 0.3s;
         }
 
+        a { color: var(--primary-color); }
+
+        .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+
         .container {
-            max-width: 800px;
+            max-width: 880px;
             margin: 40px auto;
-            padding: 40px;
+            padding: 48px;
             background-color: var(--container-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-            transition: background-color 0.3s;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 40px;
-            position: relative;
+        header.hero { text-align: center; margin-bottom: 48px; position: relative; }
+
+        .topbar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
         }
 
-        h1 {
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-            color: var(--text-color);
-        }
-
-        h2 {
-            font-size: 1.5rem;
-            margin-top: 40px;
-            margin-bottom: 20px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        p {
-            margin-bottom: 16px;
-        }
-
-        .btn-download {
-            display: inline-block;
-            background-color: var(--primary-color);
-            color: #ffffff;
-            text-decoration: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: bold;
-            margin-top: 20px;
-            transition: opacity 0.2s;
-        }
-
-        .btn-download:hover {
-            opacity: 0.8;
-        }
-
-        .highlight {
-            background-color: var(--code-bg);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-family: monospace;
-        }
-
-        footer {
-            margin-top: 50px;
-            text-align: center;
-            color: var(--footer-text);
-            font-size: 0.9rem;
-            border-top: 1px solid var(--border-color);
-            padding-top: 20px;
-        }
-
-        footer a {
-            color: var(--primary-color);
-            text-decoration: none;
-        }
-
-        /* テーマ切り替えボタン */
-        .theme-toggle {
-            position: absolute;
-            top: 0;
-            right: 0;
+        select#langSelect, .theme-toggle {
             background: none;
             border: 1px solid var(--border-color);
             color: var(--text-color);
             padding: 8px 12px;
             border-radius: 20px;
             cursor: pointer;
-            font-size: 0.9rem;
-            transition: background-color 0.2s;
-        }
-        
-        .theme-toggle:hover {
-            background-color: var(--code-bg);
+            font-size: 0.85rem;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                margin: 20px;
-                padding: 20px;
-            }
-            .theme-toggle {
-                position: relative;
-                margin-top: 20px;
-            }
+        .theme-toggle:hover { background-color: var(--code-bg); }
+
+        .badge {
+            display: inline-block;
+            background: var(--pill-bg);
+            color: var(--pill-text);
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 999px;
+            margin-bottom: 16px;
+        }
+
+        h1 { font-size: 2.1rem; margin-bottom: 14px; line-height: 1.4; }
+        .tagline { font-size: 1.05rem; color: var(--muted-text); margin-bottom: 28px; }
+
+        .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 8px; }
+
+        .btn-download, .btn-outline {
+            display: inline-block;
+            text-decoration: none;
+            padding: 13px 26px;
+            border-radius: 10px;
+            font-weight: bold;
+            transition: opacity 0.2s, background-color 0.2s;
+        }
+
+        .btn-download { background-color: var(--primary-color); color: var(--primary-contrast); }
+        .btn-download:hover { opacity: 0.85; }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        .btn-outline:hover { background-color: var(--code-bg); }
+
+        .version-note { font-size: 0.82rem; color: var(--footer-text); margin-top: 14px; }
+
+        h2 {
+            font-size: 1.4rem;
+            margin-top: 48px;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        p { margin-bottom: 16px; color: var(--text-color); }
+
+        .highlight {
+            background-color: var(--code-bg);
+            padding: 3px 7px;
+            border-radius: 4px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.92em;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 14px;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .feature-card h3 { font-size: 1rem; margin-bottom: 6px; }
+        .feature-card p { font-size: 0.88rem; color: var(--muted-text); margin-bottom: 0; }
+
+        .lang-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+        .lang-pill {
+            background: var(--pill-bg);
+            color: var(--pill-text);
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 999px;
+        }
+
+        ol.steps { padding-left: 22px; }
+        ol.steps li { margin-bottom: 8px; }
+
+        .community-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+        }
+
+        .community-card {
+            display: block;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 18px;
+            text-decoration: none;
+            color: var(--text-color);
+        }
+        .community-card:hover { border-color: var(--primary-color); }
+        .community-card strong { display: block; margin-bottom: 4px; color: var(--text-color); }
+        .community-card span { font-size: 0.85rem; color: var(--muted-text); }
+
+        footer {
+            margin-top: 56px;
+            text-align: center;
+            color: var(--footer-text);
+            font-size: 0.88rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 22px;
+        }
+        footer .footer-links { margin-top: 8px; }
+        footer .footer-links a { margin: 0 8px; }
+
+        @media (max-width: 640px) {
+            .container { margin: 16px; padding: 24px; }
+            h1 { font-size: 1.6rem; }
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <header>
+        <div class="topbar">
+            <select id="langSelect" aria-label="Language">
+                <option value="ja">日本語</option>
+                <option value="en">English</option>
+                <option value="de">Deutsch</option>
+                <option value="fr">Français</option>
+                <option value="zh">简体中文</option>
+            </select>
             <button class="theme-toggle" id="themeToggle">🌓 Theme</button>
-            <h1 data-i18n="title">最高に使いやすいを求めたMD編集ソフト作った</h1>
-            <p data-i18n="intro1">私は今、MD Viewer Proを制作しています。</p>
-            <p data-i18n="intro2">完全無料のMarkdownという形式のドキュメントを編集するオープンソースソフトです。</p>
-            <a href="https://github.com/oriyu90/MD-Viewer-Pro/releases" target="_blank" rel="noopener noreferrer" class="btn-download" data-i18n="download">ここで配信しています。dmgをDLしてお使いください。</a>
+        </div>
+
+        <header class="hero">
+            <span class="badge" data-i18n="badge">無料 / オープンソース / Mac用</span>
+            <h1 data-i18n="title">Macのための、心地よいMarkdownビューア&amp;エディタ</h1>
+            <p class="tagline" data-i18n="tagline">見た目そのままで編集できる、軽量なMarkdownアプリ。LaTeX数式・YAMLフロントマター・5言語UIに対応。</p>
+
+            <div class="cta-row">
+                <a href="https://github.com/oriyu90/MD-Viewer-Pro/releases" target="_blank" rel="noopener noreferrer" class="btn-download" data-i18n="download">最新版をダウンロード (dmg)</a>
+                <a href="https://github.com/oriyu90/MD-Viewer-Pro" target="_blank" rel="noopener noreferrer" class="btn-outline" data-i18n="viewSource">GitHubでソースを見る</a>
+            </div>
+            <p class="version-note" data-i18n="versionNote">現行バージョン: v1.4.3（macOS / Apple Silicon & Intel）</p>
         </header>
 
         <section>
-            <h2 data-i18n="h2_1">そもそもなんで作ったの？</h2>
-            <p data-i18n="p2_1">私は普段Macを使っているので、標準搭載されているテキストエディットを文章の原案だったり、下書きだったりを作るときにちょこちょこ使っています。</p>
-            <p data-i18n="p2_2">ですが、webサイトからコピーした文章の形式が<span class="highlight">cmd + v</span>だとそのまま貼り付けられてしまうので、見にくくなったりフォントが変わったりするところに不満が出てきました。</p>
-            <p data-i18n="p2_3">（これに関してはプレーンテキストで貼り付けを覚えればいいだけですが、めんどくさく忘れそうなのでハナから覚える気はありません。）</p>
-            <p data-i18n="p2_4">さらに、Windowサイズを覚えてくれないところにも不満です。</p>
-            <p data-i18n="p2_5">ということで、AIでサクッと代替アプリを作ってみました。それが <strong>MD Viewer Pro</strong> です。</p>
-            <p data-i18n="p2_6">私はTXT形式自体にはこだわりがなく、TXTのように扱えるならいいってだけだったので軽量なのに文字の大きさを変えれたり、AIの出力の標準フォーマット的になっている、<strong>「MarkDown形式」</strong>を採用しています。</p>
-            <p data-i18n="p2_7">なのでAIの回答をそのままはっつけても綺麗にみられる。<br>しかもMD特有の編集(型)を使ってなかったらtxtに拡張子を変えても大丈夫。<br>そんな形式です。</p>
-            <p data-i18n="p2_8">まあ個人のフラストレーションから生まれたアプリです。</p>
+            <h2 data-i18n="h2_why">なぜ作ったのか</h2>
+            <p data-i18n="p_why1">普段Macを使っていて、標準のテキストエディットで下書きやメモを書いていました。しかしWebサイトからコピーした文章を <span class="highlight">cmd + v</span> で貼り付けると元の書式ごと入ってしまい、フォントも見た目も崩れてしまうのが不満でした。ウィンドウサイズを覚えてくれない点も地味にストレスでした。</p>
+            <p data-i18n="p_why2">それなら自分で作ろうと思い立ち、AIの助けを借りて開発したのが <strong>MD Viewer Pro</strong> です。TXT感覚で気軽に使えて、文字サイズも変えられ、AIの出力形式としても標準的な <strong>Markdown</strong> をベースにしています。AIの回答をそのまま貼っても綺麗に表示され、MD特有の記法を使っていなければ拡張子を <span class="highlight">.txt</span> に変えても問題ありません。</p>
         </section>
 
         <section>
-            <h2 data-i18n="h2_2">何使って作ってるの？</h2>
-            <p data-i18n="p3_1">python使ってます。開発期間の短縮です。</p>
-            <p data-i18n="p3_2">あと、Claude codeにコーディング、アプリリリースはお願いしています。</p>
-            <p data-i18n="p3_3">ですがリリース作成までにちゃんと一回自分で使って監査してます。</p>
-            <p data-i18n="p3_4">まあそんな感じですね。</p>
+            <h2 data-i18n="h2_features">できること</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3 data-i18n="f1_t">閲覧・編集モード</h3>
+                    <p data-i18n="f1_d">Markdownをきれいにレンダリングして閲覧。レンダリング形式のまま直接編集できるMD編集モードと、左エディタ＋右プレビューのTXT編集モードを用意。</p>
+                </div>
+                <div class="feature-card">
+                    <h3 data-i18n="f2_t">見出し(TOC)パネル</h3>
+                    <p data-i18n="f2_d">見出し一覧を表示し、クリックで該当箇所へジャンプ。標準でオンになっています。</p>
+                </div>
+                <div class="feature-card">
+                    <h3 data-i18n="f3_t">LaTeX数式・体裁コマンド</h3>
+                    <p data-i18n="f3_d">$…$ / $$…$$ の数式をオフラインで組版。\newpage などの体裁コマンドも解釈して反映します。</p>
+                </div>
+                <div class="feature-card">
+                    <h3 data-i18n="f4_t">YAML対応</h3>
+                    <p data-i18n="f4_d">フロントマターをメタ情報パネルとして表示。.yml / .yaml ファイルも構文強調して閲覧できます。</p>
+                </div>
+                <div class="feature-card">
+                    <h3 data-i18n="f5_t">A4文書レイアウト</h3>
+                    <p data-i18n="f5_d">印刷向けのA4/B5レイアウトと余白設定に対応。PDF / HTML書き出しも可能です。</p>
+                </div>
+                <div class="feature-card">
+                    <h3 data-i18n="f6_t">改行をそのまま表示</h3>
+                    <p data-i18n="f6_d">Enterで入れた改行をそのまま改行として表示（切り替え可能）。ObsidianやTyporaと同じ感覚で書けます。</p>
+                </div>
+                <div class="feature-card">
+                    <h3 data-i18n="f7_t">フォント追加</h3>
+                    <p data-i18n="f7_d">TTF/OTF/TTCを取り込んで本文フォントに追加・削除可能。IPAmj明朝やSource Han Serifを推奨フォントとして提案します。</p>
+                </div>
+                <div class="feature-card">
+                    <h3 data-i18n="f8_t">プラグインテーマ</h3>
+                    <p data-i18n="f8_d">~/.mdviewer/themes/ にJSONを配置するだけで、独自テーマを追加できます。</p>
+                </div>
+            </div>
         </section>
 
         <section>
-            <h2 data-i18n="h2_3">伝えたいポイント</h2>
-            <p data-i18n="p4_1">このアプリ、私が普段使いする前提なのでとにかくユーザーフレンドリーに作っていってます。不満があれば即AIに修正依頼って感じで初回リリースまでも色々と細かく修正してきました。</p>
-            <p data-i18n="p4_2">最近も色々修正して、LateXに対応したり編集画面の軽微なバグ修正をしてきました。</p>
-            <p data-i18n="p4_3">ぜひ、使ってみてください！</p>
+            <h2 data-i18n="h2_lang">対応言語</h2>
+            <p data-i18n="p_lang">アプリのUI・メニュー・使用ガイドは5言語に対応しています。</p>
+            <div class="lang-pills">
+                <span class="lang-pill">日本語</span>
+                <span class="lang-pill">English</span>
+                <span class="lang-pill">Deutsch</span>
+                <span class="lang-pill">Français</span>
+                <span class="lang-pill">简体中文</span>
+            </div>
+        </section>
+
+        <section>
+            <h2 data-i18n="h2_install">ダウンロードとインストール</h2>
+            <ol class="steps">
+                <li data-i18n="step1"><a href="https://github.com/oriyu90/MD-Viewer-Pro/releases" target="_blank" rel="noopener noreferrer">Releasesページ</a>から最新の <span class="highlight">.dmg</span> をダウンロード</li>
+                <li data-i18n="step2">ファイルを開く</li>
+                <li data-i18n="step3"><strong>MDViewerPro.app</strong> を Applications フォルダへドラッグ</li>
+                <li data-i18n="step4">アプリを起動</li>
+            </ol>
+            <p data-i18n="unsigned_note">本アプリは未署名のため、初回起動時にmacOSの警告が表示される場合があります。その場合はアプリを右クリック→「開く」→もう一度「開く」で起動してください。</p>
+        </section>
+
+        <section>
+            <h2 data-i18n="h2_community">コミュニティ・サポート</h2>
+            <div class="community-grid">
+                <a class="community-card" href="https://discord.gg/x7KXhNTD8M" target="_blank" rel="noopener noreferrer">
+                    <strong>Discord</strong>
+                    <span data-i18n="c_discord">バグ報告・アップデート告知はこちら</span>
+                </a>
+                <a class="community-card" href="https://github.com/oriyu90/MD-Viewer-Pro/issues" target="_blank" rel="noopener noreferrer">
+                    <strong>GitHub Issues</strong>
+                    <span data-i18n="c_issues">不具合報告・機能リクエスト</span>
+                </a>
+                <a class="community-card" href="https://x.com/InovateofRIZI" target="_blank" rel="noopener noreferrer">
+                    <strong>X (Twitter)</strong>
+                    <span data-i18n="c_x">開発者の最新情報</span>
+                </a>
+                <a class="community-card" href="https://oriyu90.github.io/official/" target="_blank" rel="noopener noreferrer">
+                    <strong data-i18n="c_official_t">開発者公式サイト</strong>
+                    <span data-i18n="c_official">折田悠希 (Yuki_Orita) の他のプロジェクト</span>
+                </a>
+            </div>
         </section>
 
         <footer>
-            <p><span data-i18n="author">編集者: Yuki_Orita</span> | <a href="https://oriyu90.github.io/official/" target="_blank" rel="noopener noreferrer" data-i18n="website">ホームページ</a></p>
+            <p><span data-i18n="author">開発者: 折田悠希 (Yuki_Orita)</span> ・ <span data-i18n="license">MIT License</span></p>
+            <p class="footer-links">
+                <a href="https://github.com/oriyu90/MD-Viewer-Pro" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a href="https://discord.gg/x7KXhNTD8M" target="_blank" rel="noopener noreferrer">Discord</a>
+                <a href="https://x.com/InovateofRIZI" target="_blank" rel="noopener noreferrer">X</a>
+                <a href="https://oriyu90.github.io/official/" target="_blank" rel="noopener noreferrer" data-i18n="website">公式サイト</a>
+            </p>
         </footer>
     </div>
 
     <script>
-        // --- 言語データ ---
         const translations = {
             ja: {
-                title: "最高に使いやすいを求めたMD編集ソフト作った",
-                intro1: "私は今、MD Viewer Proを制作しています。",
-                intro2: "完全無料のMarkdownという形式のドキュメントを編集するオープンソースソフトです。",
-                download: "ここで配信しています。dmgをDLしてお使いください。",
-                h2_1: "そもそもなんで作ったの？",
-                p2_1: "私は普段Macを使っているので、標準搭載されているテキストエディットを文章の原案だったり、下書きだったりを作るときにちょこちょこ使っています。",
-                p2_2: "ですが、webサイトからコピーした文章の形式が <span class=\"highlight\">cmd + v</span> だとそのまま貼り付けられてしまうので、見にくくなったりフォントが変わったりするところに不満が出てきました。",
-                p2_3: "（これに関してはプレーンテキストで貼り付けを覚えればいいだけですが、めんどくさく忘れそうなのでハナから覚える気はありません。）",
-                p2_4: "さらに、Windowサイズを覚えてくれないところにも不満です。",
-                p2_5: "ということで、AIでサクッと代替アプリを作ってみました。それが <strong>MD Viewer Pro</strong> です。",
-                p2_6: "私はTXT形式自体にはこだわりがなく、TXTのように扱えるならいいってだけだったので軽量なのに文字の大きさを変えれたり、AIの出力の標準フォーマット的になっている、<strong>「MarkDown形式」</strong>を採用しています。",
-                p2_7: "なのでAIの回答をそのままはっつけても綺麗にみられる。<br>しかもMD特有の編集(型)を使ってなかったらtxtに拡張子を変えても大丈夫。<br>そんな形式です。",
-                p2_8: "まあ個人のフラストレーションから生まれたアプリです。",
-                h2_2: "何使って作ってるの？",
-                p3_1: "python使ってます。開発期間の短縮です。",
-                p3_2: "あと、Claude codeにコーディング、アプリリリースはお願いしています。",
-                p3_3: "ですがリリース作成までにちゃんと一回自分で使って監査してます。",
-                p3_4: "まあそんな感じですね。",
-                h2_3: "伝えたいポイント",
-                p4_1: "このアプリ、私が普段使いする前提なのでとにかくユーザーフレンドリーに作っていってます。不満があれば即AIに修正依頼って感じで初回リリースまでも色々と細かく修正してきました。",
-                p4_2: "最近も色々修正して、LateXに対応したり編集画面の軽微なバグ修正をしてきました。",
-                p4_3: "ぜひ、使ってみてください！",
-                author: "編集者: Yuki_Orita",
-                website: "ホームページ"
+                badge: "無料 / オープンソース / Mac用",
+                title: "Macのための、心地よいMarkdownビューア&エディタ",
+                tagline: "見た目そのままで編集できる、軽量なMarkdownアプリ。LaTeX数式・YAMLフロントマター・5言語UIに対応。",
+                download: "最新版をダウンロード (dmg)",
+                viewSource: "GitHubでソースを見る",
+                versionNote: "現行バージョン: v1.4.3（macOS / Apple Silicon &amp; Intel）",
+                h2_why: "なぜ作ったのか",
+                p_why1: "普段Macを使っていて、標準のテキストエディットで下書きやメモを書いていました。しかしWebサイトからコピーした文章を <span class=\"highlight\">cmd + v</span> で貼り付けると元の書式ごと入ってしまい、フォントも見た目も崩れてしまうのが不満でした。ウィンドウサイズを覚えてくれない点も地味にストレスでした。",
+                p_why2: "それなら自分で作ろうと思い立ち、AIの助けを借りて開発したのが <strong>MD Viewer Pro</strong> です。TXT感覚で気軽に使えて、文字サイズも変えられ、AIの出力形式としても標準的な <strong>Markdown</strong> をベースにしています。AIの回答をそのまま貼っても綺麗に表示され、MD特有の記法を使っていなければ拡張子を <span class=\"highlight\">.txt</span> に変えても問題ありません。",
+                h2_features: "できること",
+                f1_t: "閲覧・編集モード", f1_d: "Markdownをきれいにレンダリングして閲覧。レンダリング形式のまま直接編集できるMD編集モードと、左エディタ＋右プレビューのTXT編集モードを用意。",
+                f2_t: "見出し(TOC)パネル", f2_d: "見出し一覧を表示し、クリックで該当箇所へジャンプ。標準でオンになっています。",
+                f3_t: "LaTeX数式・体裁コマンド", f3_d: "$…$ / $$…$$ の数式をオフラインで組版。\\newpage などの体裁コマンドも解釈して反映します。",
+                f4_t: "YAML対応", f4_d: "フロントマターをメタ情報パネルとして表示。.yml / .yaml ファイルも構文強調して閲覧できます。",
+                f5_t: "A4文書レイアウト", f5_d: "印刷向けのA4/B5レイアウトと余白設定に対応。PDF / HTML書き出しも可能です。",
+                f6_t: "改行をそのまま表示", f6_d: "Enterで入れた改行をそのまま改行として表示（切り替え可能）。ObsidianやTyporaと同じ感覚で書けます。",
+                f7_t: "フォント追加", f7_d: "TTF/OTF/TTCを取り込んで本文フォントに追加・削除可能。IPAmj明朝やSource Han Serifを推奨フォントとして提案します。",
+                f8_t: "プラグインテーマ", f8_d: "~/.mdviewer/themes/ にJSONを配置するだけで、独自テーマを追加できます。",
+                h2_lang: "対応言語", p_lang: "アプリのUI・メニュー・使用ガイドは5言語に対応しています。",
+                h2_install: "ダウンロードとインストール",
+                step1: "<a href=\"https://github.com/oriyu90/MD-Viewer-Pro/releases\" target=\"_blank\" rel=\"noopener noreferrer\">Releasesページ</a>から最新の <span class=\"highlight\">.dmg</span> をダウンロード",
+                step2: "ファイルを開く",
+                step3: "<strong>MDViewerPro.app</strong> を Applications フォルダへドラッグ",
+                step4: "アプリを起動",
+                unsigned_note: "本アプリは未署名のため、初回起動時にmacOSの警告が表示される場合があります。その場合はアプリを右クリック→「開く」→もう一度「開く」で起動してください。",
+                h2_community: "コミュニティ・サポート",
+                c_discord: "バグ報告・アップデート告知はこちら",
+                c_issues: "不具合報告・機能リクエスト",
+                c_x: "開発者の最新情報",
+                c_official_t: "開発者公式サイト",
+                c_official: "折田悠希 (Yuki_Orita) の他のプロジェクト",
+                author: "開発者: 折田悠希 (Yuki_Orita)",
+                license: "MIT License",
+                website: "公式サイト"
             },
             en: {
-                title: "I Built the Most User-Friendly MD Editing Software",
-                intro1: "I am currently developing MD Viewer Pro.",
-                intro2: "It's a completely free, open-source software for editing Markdown documents.",
-                download: "Download the .dmg file here.",
-                h2_1: "Why did I build it?",
-                p2_1: "I usually use a Mac, so I often use the built-in TextEdit for drafting and outlining documents.",
-                p2_2: "However, when copying from websites using <span class=\"highlight\">cmd + v</span>, the original formatting is pasted along with it, messing up the font and readability.",
-                p2_3: "(I know I could just memorize 'Paste as Plain Text', but it's tedious and I don't want to bother.)",
-                p2_4: "Furthermore, I was annoyed that it doesn't remember the window size.",
-                p2_5: "So, I quickly created an alternative app using AI. That app is <strong>MD Viewer Pro</strong>.",
-                p2_6: "I don't have a strong preference for the TXT format itself. I just wanted something that acts like TXT but allows resizing text and uses the AI-standard format: <strong>Markdown</strong>.",
-                p2_7: "This means you can paste AI responses directly and they look great.<br>Plus, if you aren't using MD-specific formatting, you can safely change the extension to .txt.<br>It's that versatile.",
-                p2_8: "Basically, it's an app born from personal frustration.",
-                h2_2: "What is it built with?",
-                p3_1: "I use Python to shorten development time.",
-                p3_2: "I also rely on Claude Code for coding and app releases.",
-                p3_3: "However, before creating a release, I always audit it myself.",
-                p3_4: "So, that's about it.",
-                h2_3: "Key Points",
-                p4_1: "Since I built this for my own daily use, it's highly user-friendly. Any complaints I had were immediately sent as fix requests to the AI, resulting in many fine-tuned adjustments.",
-                p4_2: "Recently, I added LaTeX support and fixed minor bugs in the editing screen.",
-                p4_3: "Please give it a try!",
-                author: "Editor: Yuki_Orita",
-                website: "Website"
+                badge: "Free / Open Source / for Mac",
+                title: "A Markdown viewer &amp; editor that feels right on Mac",
+                tagline: "A lightweight Markdown app you can edit exactly as it renders. Supports LaTeX math, YAML front matter, and a 5-language UI.",
+                download: "Download the latest .dmg",
+                viewSource: "View source on GitHub",
+                versionNote: "Current version: v1.4.3 (macOS / Apple Silicon &amp; Intel)",
+                h2_why: "Why I built it",
+                p_why1: "I use a Mac day to day, and I used to write drafts and notes in the built-in TextEdit. But pasting text copied from a website with <span class=\"highlight\">cmd + v</span> brought the original formatting along with it, breaking the font and layout. Not remembering the window size was a quiet annoyance too.",
+                p_why2: "So I decided to build my own alternative with the help of AI: <strong>MD Viewer Pro</strong>. It feels as casual as a plain TXT file, lets you resize text, and is based on <strong>Markdown</strong>, the de-facto standard output format for AI. You can paste an AI response straight in and it looks clean, and if you're not using Markdown-specific syntax you can safely rename the file to <span class=\"highlight\">.txt</span>.",
+                h2_features: "What it can do",
+                f1_t: "View &amp; edit modes", f1_d: "Clean Markdown rendering in View mode, direct editing in the rendered layout with MD Edit, or a split editor with live preview in TXT Edit.",
+                f2_t: "TOC panel", f2_d: "A headings sidebar you can click to jump to any section. On by default.",
+                f3_t: "LaTeX math &amp; layout commands", f3_d: "Typesets $…$ / $$…$$ formulas offline, and interprets layout commands like \\newpage.",
+                f4_t: "YAML support", f4_d: "Front matter is shown as a separate metadata panel; .yml / .yaml files get syntax highlighting.",
+                f5_t: "A4 document layout", f5_d: "Print-ready A4/B5 layouts with margin settings, plus PDF / HTML export.",
+                f6_t: "Line breaks rendered as typed", f6_d: "A line break from Enter shows as a line break (toggleable) — the same convention as Obsidian and Typora.",
+                f7_t: "Custom fonts", f7_d: "Add TTF/OTF/TTC files as body fonts (and remove them). IPAmj Mincho and Source Han Serif are suggested as recommended fonts.",
+                f8_t: "Plugin themes", f8_d: "Drop a JSON file into ~/.mdviewer/themes/ to add your own theme.",
+                h2_lang: "Supported languages", p_lang: "The UI, menus, and built-in guide are available in five languages.",
+                h2_install: "Download &amp; install",
+                step1: "Download the latest <span class=\"highlight\">.dmg</span> from the <a href=\"https://github.com/oriyu90/MD-Viewer-Pro/releases\" target=\"_blank\" rel=\"noopener noreferrer\">Releases page</a>",
+                step2: "Open the file",
+                step3: "Drag <strong>MDViewerPro.app</strong> into the Applications folder",
+                step4: "Launch the app",
+                unsigned_note: "The app is unsigned, so macOS may show a warning on first launch. If it does, right-click the app, choose \"Open\", then \"Open\" again.",
+                h2_community: "Community &amp; support",
+                c_discord: "Bug reports and update announcements",
+                c_issues: "Report bugs or request features",
+                c_x: "Latest news from the developer",
+                c_official_t: "Developer's official site",
+                c_official: "Other projects by Yuki_Orita",
+                author: "Developer: Yuki_Orita (折田悠希)",
+                license: "MIT License",
+                website: "Official site"
+            },
+            de: {
+                badge: "Kostenlos / Open Source / für Mac",
+                title: "Ein Markdown-Viewer &amp; -Editor, der sich auf dem Mac richtig anfühlt",
+                tagline: "Eine schlanke Markdown-App, die Sie genau so bearbeiten können, wie sie gerendert wird. Mit LaTeX-Formeln, YAML-Front-Matter und einer 5-sprachigen Oberfläche.",
+                download: "Neueste .dmg herunterladen",
+                viewSource: "Quellcode auf GitHub ansehen",
+                versionNote: "Aktuelle Version: v1.4.3 (macOS / Apple Silicon &amp; Intel)",
+                h2_why: "Warum ich es gebaut habe",
+                p_why1: "Ich nutze täglich einen Mac und schrieb Entwürfe und Notizen im integrierten TextEdit. Doch beim Einfügen von Text aus einer Website mit <span class=\"highlight\">cmd + v</span> wurde die ursprüngliche Formatierung mit übernommen, was Schriftart und Layout durcheinanderbrachte. Dass die Fenstergröße nicht gemerkt wurde, störte mich ebenfalls.",
+                p_why2: "Also beschloss ich, mit Hilfe von KI eine eigene Alternative zu bauen: <strong>MD Viewer Pro</strong>. Es fühlt sich so einfach an wie eine reine TXT-Datei, erlaubt die Anpassung der Schriftgröße und basiert auf <strong>Markdown</strong>, dem gängigen Ausgabeformat von KI. KI-Antworten lassen sich direkt einfügen und sehen sauber aus; ohne Markdown-spezifische Syntax kann die Datei problemlos in <span class=\"highlight\">.txt</span> umbenannt werden.",
+                h2_features: "Funktionen",
+                f1_t: "Ansichts- &amp; Bearbeitungsmodi", f1_d: "Sauberes Markdown-Rendering im Ansichtsmodus, direkte Bearbeitung im gerenderten Layout mit MD-Edit oder ein geteilter Editor mit Live-Vorschau im TXT-Edit.",
+                f2_t: "Inhaltsverzeichnis (TOC)", f2_d: "Eine Überschriftenleiste zum Springen zu jedem Abschnitt. Standardmäßig aktiviert.",
+                f3_t: "LaTeX-Formeln &amp; Layout-Befehle", f3_d: "Setzt $…$ / $$…$$ -Formeln offline; interpretiert Layout-Befehle wie \\newpage.",
+                f4_t: "YAML-Unterstützung", f4_d: "Front Matter wird als separates Metadaten-Panel angezeigt; .yml / .yaml-Dateien erhalten Syntax-Hervorhebung.",
+                f5_t: "A4-Dokumentlayout", f5_d: "Druckfertige A4/B5-Layouts mit Randeinstellungen sowie PDF-/HTML-Export.",
+                f6_t: "Zeilenumbrüche wie eingegeben", f6_d: "Ein Zeilenumbruch mit Enter wird als solcher angezeigt (umschaltbar) — wie bei Obsidian und Typora.",
+                f7_t: "Eigene Schriftarten", f7_d: "TTF/OTF/TTC-Dateien als Textschrift hinzufügen (und entfernen). IPAmj Mincho und Source Han Serif werden empfohlen.",
+                f8_t: "Plugin-Themes", f8_d: "Eine JSON-Datei in ~/.mdviewer/themes/ legen, um ein eigenes Theme hinzuzufügen.",
+                h2_lang: "Unterstützte Sprachen", p_lang: "Oberfläche, Menüs und integrierte Anleitung sind in fünf Sprachen verfügbar.",
+                h2_install: "Download &amp; Installation",
+                step1: "Neueste <span class=\"highlight\">.dmg</span> von der <a href=\"https://github.com/oriyu90/MD-Viewer-Pro/releases\" target=\"_blank\" rel=\"noopener noreferrer\">Releases-Seite</a> herunterladen",
+                step2: "Datei öffnen",
+                step3: "<strong>MDViewerPro.app</strong> in den Programme-Ordner ziehen",
+                step4: "App starten",
+                unsigned_note: "Die App ist nicht signiert, daher zeigt macOS beim ersten Start möglicherweise eine Warnung. Klicken Sie in diesem Fall mit der rechten Maustaste auf die App, wählen Sie „Öffnen“ und dann erneut „Öffnen“.",
+                h2_community: "Community &amp; Support",
+                c_discord: "Fehlermeldungen und Update-Ankündigungen",
+                c_issues: "Fehler melden oder Funktionen vorschlagen",
+                c_x: "Neuigkeiten vom Entwickler",
+                c_official_t: "Offizielle Website des Entwicklers",
+                c_official: "Weitere Projekte von Yuki_Orita",
+                author: "Entwickler: Yuki_Orita (折田悠希)",
+                license: "MIT-Lizenz",
+                website: "Offizielle Website"
             },
             fr: {
-                title: "J'ai créé le logiciel d'édition MD le plus convivial",
-                intro1: "Je développe actuellement MD Viewer Pro.",
-                intro2: "Il s'agit d'un logiciel open source entièrement gratuit pour éditer des documents Markdown.",
-                download: "Téléchargez le fichier .dmg ici.",
-                h2_1: "Pourquoi l'ai-je créé ?",
-                p2_1: "J'utilise généralement un Mac, je me sers donc souvent de TextEdit pour rédiger des brouillons.",
-                p2_2: "Cependant, lors de la copie depuis des sites Web avec <span class=\"highlight\">cmd + v</span>, le formatage d'origine est conservé, ce qui gâche la police et la lisibilité.",
-                p2_3: "(Je sais que je pourrais mémoriser 'Coller en texte brut', mais c'est fastidieux et je n'en ai pas envie.)",
-                p2_4: "De plus, j'étais agacé qu'il ne mémorise pas la taille de la fenêtre.",
-                p2_5: "J'ai donc rapidement créé une application alternative avec l'IA. Cette application est <strong>MD Viewer Pro</strong>.",
-                p2_6: "Je n'ai pas de préférence pour le format TXT en soi. Je voulais juste un format léger comme le TXT, mais qui permette de redimensionner le texte et utilise le standard de l'IA : le <strong>Markdown</strong>.",
-                p2_7: "Cela signifie que vous pouvez coller les réponses de l'IA et elles sont superbes.<br>De plus, sans formatage MD spécifique, vous pouvez changer l'extension en .txt en toute sécurité.",
-                p2_8: "En gros, c'est une application née d'une frustration personnelle.",
-                h2_2: "Avec quoi est-il construit ?",
-                p3_1: "J'utilise Python pour réduire le temps de développement.",
-                p3_2: "Je m'appuie également sur Claude Code pour le codage et les versions.",
-                p3_3: "Cependant, avant de créer une version, je la vérifie toujours moi-même.",
-                p3_4: "Voilà, c'est à peu près tout.",
-                h2_3: "Points clés",
-                p4_1: "Comme je l'ai créé pour mon usage quotidien, il est très convivial. Le moindre problème a été immédiatement envoyé à l'IA pour correction, ce qui a permis de nombreux ajustements.",
-                p4_2: "Récemment, j'ai ajouté la prise en charge de LaTeX et corrigé des bugs mineurs.",
-                p4_3: "N'hésitez pas à l'essayer !",
-                author: "Éditeur : Yuki_Orita",
-                website: "Site Web"
+                badge: "Gratuit / Open Source / pour Mac",
+                title: "Un visualiseur et éditeur Markdown qui se sent bien sur Mac",
+                tagline: "Une application Markdown légère que vous pouvez modifier exactement telle qu'elle s'affiche. Formules LaTeX, front matter YAML et interface en 5 langues.",
+                download: "Télécharger le dernier .dmg",
+                viewSource: "Voir le code source sur GitHub",
+                versionNote: "Version actuelle : v1.4.3 (macOS / Apple Silicon &amp; Intel)",
+                h2_why: "Pourquoi je l'ai créé",
+                p_why1: "J'utilise un Mac au quotidien et j'écrivais mes brouillons et notes dans TextEdit. Mais coller du texte copié depuis un site web avec <span class=\"highlight\">cmd + v</span> importait aussi la mise en forme d'origine, ce qui gâchait la police et la mise en page. Le fait qu'il ne mémorise pas la taille de la fenêtre m'agaçait aussi.",
+                p_why2: "J'ai donc décidé de créer ma propre alternative avec l'aide de l'IA : <strong>MD Viewer Pro</strong>. Il est aussi simple qu'un fichier TXT, permet de redimensionner le texte et repose sur le <strong>Markdown</strong>, le format de sortie standard de l'IA. Vous pouvez coller une réponse d'IA directement et elle s'affiche proprement ; sans syntaxe spécifique à Markdown, vous pouvez renommer le fichier en <span class=\"highlight\">.txt</span> sans problème.",
+                h2_features: "Fonctionnalités",
+                f1_t: "Modes lecture et édition", f1_d: "Rendu Markdown soigné en mode lecture, édition directe dans la mise en page rendue avec MD Edit, ou éditeur scindé avec aperçu en direct dans TXT Edit.",
+                f2_t: "Panneau de sommaire (TOC)", f2_d: "Une liste des titres pour sauter à n'importe quelle section. Activé par défaut.",
+                f3_t: "Formules LaTeX &amp; commandes de mise en page", f3_d: "Compose les formules $…$ / $$…$$ hors ligne et interprète des commandes comme \\newpage.",
+                f4_t: "Support YAML", f4_d: "Le front matter s'affiche dans un panneau de métadonnées séparé ; les fichiers .yml / .yaml sont colorés syntaxiquement.",
+                f5_t: "Mise en page A4", f5_d: "Mises en page A4/B5 prêtes à imprimer avec réglage des marges, et export PDF / HTML.",
+                f6_t: "Retours à la ligne affichés tels quels", f6_d: "Un retour à la ligne avec Entrée s'affiche comme tel (option désactivable) — comme dans Obsidian et Typora.",
+                f7_t: "Polices personnalisées", f7_d: "Ajoutez des fichiers TTF/OTF/TTC comme police de texte (et supprimez-les). IPAmj Mincho et Source Han Serif sont suggérées.",
+                f8_t: "Thèmes en plugin", f8_d: "Déposez un fichier JSON dans ~/.mdviewer/themes/ pour ajouter votre propre thème.",
+                h2_lang: "Langues prises en charge", p_lang: "L'interface, les menus et le guide intégré sont disponibles en cinq langues.",
+                h2_install: "Téléchargement et installation",
+                step1: "Téléchargez le dernier <span class=\"highlight\">.dmg</span> depuis la <a href=\"https://github.com/oriyu90/MD-Viewer-Pro/releases\" target=\"_blank\" rel=\"noopener noreferrer\">page Releases</a>",
+                step2: "Ouvrez le fichier",
+                step3: "Glissez <strong>MDViewerPro.app</strong> dans le dossier Applications",
+                step4: "Lancez l'application",
+                unsigned_note: "L'application n'est pas signée, macOS peut donc afficher un avertissement au premier lancement. Faites un clic droit sur l'application, choisissez « Ouvrir », puis « Ouvrir » à nouveau.",
+                h2_community: "Communauté &amp; support",
+                c_discord: "Rapports de bugs et annonces de mises à jour",
+                c_issues: "Signaler un bug ou demander une fonctionnalité",
+                c_x: "Actualités du développeur",
+                c_official_t: "Site officiel du développeur",
+                c_official: "Autres projets de Yuki_Orita",
+                author: "Développeur : Yuki_Orita (折田悠希)",
+                license: "Licence MIT",
+                website: "Site officiel"
+            },
+            zh: {
+                badge: "免费 / 开源 / 适用于 Mac",
+                title: "一款在 Mac 上用起来很舒适的 Markdown 阅读器与编辑器",
+                tagline: "一款轻量级 Markdown 应用，所见即所编。支持 LaTeX 数学公式、YAML Front Matter，以及 5 种语言界面。",
+                download: "下载最新 .dmg",
+                viewSource: "在 GitHub 上查看源代码",
+                versionNote: "当前版本：v1.4.3（macOS / Apple Silicon 与 Intel）",
+                h2_why: "为什么要做这个",
+                p_why1: "我平时使用 Mac，会用系统自带的文本编辑来写草稿和笔记。但从网页复制的文字用 <span class=\"highlight\">cmd + v</span> 粘贴时会连同原始格式一起带入，导致字体和排版变乱。它不记住窗口大小这一点也一直让我很不满。",
+                p_why2: "于是我决定借助 AI 自己做一个替代方案，这就是 <strong>MD Viewer Pro</strong>。它用起来和 TXT 一样轻松，可以调整字号，并以 AI 输出的标准格式 <strong>Markdown</strong> 为基础。可以直接粘贴 AI 的回答并保持整洁显示，如果没有使用 Markdown 专属语法，也可以放心把扩展名改成 <span class=\"highlight\">.txt</span>。",
+                h2_features: "功能特色",
+                f1_t: "阅读与编辑模式", f1_d: "阅读模式下呈现整洁的 Markdown 渲染；MD 编辑模式可在渲染后的排版中直接编辑；TXT 编辑模式提供左侧编辑器 + 右侧实时预览。",
+                f2_t: "大纲（目录）面板", f2_d: "显示标题列表，点击即可跳转到对应位置，默认开启。",
+                f3_t: "LaTeX 公式与排版命令", f3_d: "离线排版 $…$ / $$…$$ 公式，并解析 \\newpage 等排版命令。",
+                f4_t: "YAML 支持", f4_d: "Front Matter 会显示为独立的元信息面板；.yml / .yaml 文件也会进行语法高亮。",
+                f5_t: "A4 文档排版", f5_d: "支持适合打印的 A4/B5 排版与页边距设置，并可导出 PDF / HTML。",
+                f6_t: "按输入原样显示换行", f6_d: "按 Enter 输入的换行会原样显示为换行（可切换），与 Obsidian、Typora 的习惯一致。",
+                f7_t: "添加自定义字体", f7_d: "可导入 TTF/OTF/TTC 文件作为正文字体（也可删除）。推荐使用 IPAmj明朝 与 Source Han Serif。",
+                f8_t: "插件主题", f8_d: "只需将 JSON 文件放入 ~/.mdviewer/themes/ 即可添加自定义主题。",
+                h2_lang: "支持的语言", p_lang: "应用的界面、菜单和内置指南均支持五种语言。",
+                h2_install: "下载与安装",
+                step1: "从 <a href=\"https://github.com/oriyu90/MD-Viewer-Pro/releases\" target=\"_blank\" rel=\"noopener noreferrer\">Releases 页面</a>下载最新的 <span class=\"highlight\">.dmg</span>",
+                step2: "打开文件",
+                step3: "将 <strong>MDViewerPro.app</strong> 拖入「应用程序」文件夹",
+                step4: "启动应用",
+                unsigned_note: "本应用未签名，首次启动时 macOS 可能会显示警告。此时请右键点击应用，选择「打开」，再次点击「打开」即可启动。",
+                h2_community: "社区与支持",
+                c_discord: "在这里报告 Bug 与获取更新公告",
+                c_issues: "报告问题或提出功能请求",
+                c_x: "开发者的最新动态",
+                c_official_t: "开发者官方网站",
+                c_official: "Yuki_Orita 的其他项目",
+                author: "开发者：折田悠希 (Yuki_Orita)",
+                license: "MIT 许可证",
+                website: "官方网站"
             }
         };
 
-        // --- 多言語設定ロジック ---
-        // ブラウザの言語設定を取得 (例: "ja-JP" -> "ja")
-        let userLang = (navigator.language || navigator.userLanguage).slice(0, 2);
-        
-        // サポートしていない言語の場合は英語(en)にフォールバック
-        if (!['ja', 'en', 'fr'].includes(userLang)) {
-            userLang = 'en';
+        const supported = ['ja', 'en', 'de', 'fr', 'zh'];
+
+        function decodeHtml(html) {
+            const el = document.createElement('textarea');
+            el.innerHTML = html;
+            return el.value;
         }
 
-        // HTML要素を翻訳データで置換
-        document.documentElement.lang = userLang;
-        document.title = translations[userLang].title + " - MD Viewer Pro";
-        
-        const i18nElements = document.querySelectorAll('[data-i18n]');
-        i18nElements.forEach(el => {
-            const key = el.getAttribute('data-i18n');
-            if (translations[userLang][key]) {
-                el.innerHTML = translations[userLang][key];
-            }
-        });
+        function applyLang(lang) {
+            if (!supported.includes(lang)) lang = 'en';
+            document.documentElement.lang = lang;
+            document.title = decodeHtml(translations[lang].title.replace(/<[^>]+>/g, '')) + " - MD Viewer Pro";
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) el.innerHTML = translations[lang][key];
+            });
+            const sel = document.getElementById('langSelect');
+            if (sel) sel.value = lang;
+            try { localStorage.setItem('mdviewerpro_lang', lang); } catch (e) {}
+        }
 
-        // --- テーマ切り替えロジック ---
+        let initialLang = null;
+        try { initialLang = localStorage.getItem('mdviewerpro_lang'); } catch (e) {}
+        if (!initialLang) {
+            const browserLang = (navigator.language || navigator.userLanguage || 'en').slice(0, 2);
+            initialLang = supported.includes(browserLang) ? browserLang : 'en';
+        }
+        applyLang(initialLang);
+
+        document.getElementById('langSelect').addEventListener('change', (e) => applyLang(e.target.value));
+
         const themeToggle = document.getElementById('themeToggle');
-        
-        // システムのカラーテーマを取得
         const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
-        
-        // 初期状態の設定
-        if (prefersDarkScheme.matches) {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        }
-
-        // ボタンでの手動切り替え
+        if (prefersDarkScheme.matches) document.documentElement.setAttribute('data-theme', 'dark');
         themeToggle.addEventListener('click', () => {
-            let currentTheme = document.documentElement.getAttribute('data-theme');
-            if (currentTheme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'light');
-            } else {
-                document.documentElement.setAttribute('data-theme', 'dark');
-            }
+            const current = document.documentElement.getAttribute('data-theme');
+            document.documentElement.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
         });
     </script>
 </body>
