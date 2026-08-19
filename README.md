@@ -16,7 +16,8 @@ MD Viewer Pro は、Python で開発された軽量な Markdown ビューアで�
 シンプルで直感的なUIにより、Markdownの閲覧・編集・書き出しを快適に行えます。
 
 公式紹介サイト: https://md-viewer-pro.pages.dev/
-（サイトの実体はリポジトリの `website/` フォルダで、`main` への push で自動反映されます）
+（文言は `site/content.json` を編集して `python3 site/build.py` で生成します。
+詳しくは [site/README.md](site/README.md) を参照してください）
 
 ---
 
@@ -206,8 +207,8 @@ MD Viewer Pro is a lightweight Markdown viewer built with Python.
 It provides fast rendering, editing, and exporting with a clean interface.
 
 Official website: https://md-viewer-pro.pages.dev/
-(the site lives in the `website/` folder of this repository and is deployed
-automatically when `main` is updated)
+(edit `site/content.json` and run `python3 site/build.py` to regenerate it —
+see [site/README.md](site/README.md))
 
 ---
 
