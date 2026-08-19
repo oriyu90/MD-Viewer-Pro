@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://md-viewer-pro.pages.dev/sitemap.xml
