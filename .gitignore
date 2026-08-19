@@ -20,6 +20,8 @@ dist/
 *.dmg
 
 # --- Site build output ---
+# 旧デプロイ経路の名残 (紹介サイトは website/ に置き、
+#  Cloudflare Pages の Git連携で自動デプロイされる)
 dist-site/
 .wrangler/
 
