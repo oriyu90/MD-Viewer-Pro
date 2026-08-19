@@ -1,5 +1,36 @@
 # Release Notes / 更新履歴
 
+## v1.4.4
+
+Mermaid ダイアグラムの表示に対応したリリースです。
+
+### 日本語
+
+#### 新機能
+
+- **Mermaid ダイアグラムに対応**: ` ```mermaid ` フェンスに書いたフローチャート・
+  シーケンス図・グラフなどを、閲覧モード・TXT編集のプレビュー・PDF / HTML 書き出しで
+  図として描画するようにしました。mermaid.js をアプリに完全同梱しており、
+  ネットワーク接続は一切不要です。ダーク / ライトなど選択中のテーマに合わせて
+  配色が自動的に変わります。MD編集モードでは他の言語のコードブロックと同様、
+  フェンスをそのまま直接編集できます（保存しても記法は壊れません）。
+
+---
+
+### English
+
+#### New features
+
+- **Mermaid diagram support**: flowcharts, sequence diagrams, graphs and other
+  diagrams written in a ` ```mermaid ` fence are now rendered as figures in View
+  mode, the TXT Edit preview, and PDF / HTML export. mermaid.js is bundled
+  entirely with the app, so no network connection is required at all. Colours
+  follow the currently selected theme (dark, light, etc.) automatically. In MD
+  Edit, the fence is edited directly like any other language's code block, and
+  survives a save unchanged.
+
+---
+
 ## v1.4.3
 
 表示の細かい不具合を直し、対応言語に中国語を追加したリリースです。

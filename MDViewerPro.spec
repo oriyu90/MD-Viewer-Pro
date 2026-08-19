@@ -20,6 +20,11 @@ for _lf in ('LICENSE', 'NOTICE.md'):
     if os.path.exists(_lpath):
         datas.append((_lpath, '.'))
 
+# mermaid.js (図表描画、MITライセンス、オフライン同梱) をバンドルに含める
+_mermaid_js = os.path.join(_spec_dir, 'assets', 'mermaid.min.js')
+if os.path.exists(_mermaid_js):
+    datas.append((_mermaid_js, 'assets'))
+
 for pkg in ('PySide6', 'PySide6.QtWebEngineWidgets', 'PySide6.QtWebChannel',
             'markdown', 'pygments'):
     try:
@@ -180,8 +185,8 @@ app = BUNDLE(
     info_plist={
         'CFBundleName': 'MD Viewer Pro',
         'CFBundleDisplayName': 'MD Viewer Pro',
-        'CFBundleVersion': '1.4.3',
-        'CFBundleShortVersionString': '1.4.3',
+        'CFBundleVersion': '1.4.4',
+        'CFBundleShortVersionString': '1.4.4',
         'CFBundlePackageType': 'APPL',
         'CFBundleSignature': '????',
         'NSHighResolutionCapable': True,

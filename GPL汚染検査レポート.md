@@ -23,6 +23,7 @@ MD Viewer Pro (`main.py`) および依存ライブラリ全体。
 | **PySide6** (Qt本体) | 6.10.3 | LGPL-3.0 OR GPL-2.0 OR GPL-3.0 | ✅ なし（LGPL選択で使用） |
 | **shiboken6** (Qtバインディング) | 6.10.3 | LGPL-3.0 OR GPL-2.0 OR GPL-3.0 | ✅ なし（LGPL選択で使用） |
 | **Python-Markdown** | 3.9 | BSD-3-Clause | ✅ なし |
+| **mermaid.js** (図表描画、オフライン同梱) | 11.17.0 | MIT | ✅ なし |
 | **Pygments** (シンタックスハイライト) | 2.20.0 | BSD-2-Clause | ✅ なし |
 | **PyObjC** (Dockメニュー) | 12.0 | MIT | ✅ なし |
 | **PyInstaller** (ビルドツール) | 6.19.0 | GPL v2+ + Bootloader Exception | ✅ なし（ビルドツールのみ、配布物に含まれない） |

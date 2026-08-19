@@ -58,6 +58,7 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 | TXT編集    | 左エディタ + 右リアルタイムプレビュー（編集行を自動ハイライト・追従スクロール） |
 | 見出し(TOC)パネル | 見出し一覧を表示し、クリックでジャンプ（**標準でオン**） |
 | LaTeX 数式 | `$…$` / `$$…$$` の数式を組版して表示             |
+| Mermaid ダイアグラム | ` ```mermaid ` フェンスをフローチャート・グラフ等として描画（オフライン同梱） |
 | YAML 対応  | フロントマターをメタ情報として表示、`.yml`/`.yaml` も閲覧可 |
 | A4文書     | 印刷向けA4レイアウト・余白設定                      |
 | 詳細設定     | フォント・言語・テーマ・表示設定の変更（日本語 / 英語 / ドイツ語 / フランス語 / 中国語） |
@@ -73,6 +74,7 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 * コードブロックのコピーボタン
 * LaTeX 数式表示（オフライン・追加インストール不要）
 * LaTeX の体裁コマンド（`\newpage` 等）の解釈
+* Mermaid ダイアグラム表示（オフライン同梱・追加インストール不要）
 * YAML フロントマター / YAML ファイル表示
 * 5 言語の表示（日本語 / English / Deutsch / Français / 简体中文）
 * ユーザーフォントの追加・削除
@@ -176,6 +178,21 @@ $$
 
 ---
 
+### Mermaid ダイアグラム
+
+` ```mermaid ` フェンスに書いたフローチャート・シーケンス図・グラフなどを
+図として描画します（v1.4.4 以降）。mermaid.js をアプリに完全同梱しており、
+ネットワーク接続は不要です。フェンスの中身は通常の mermaid 記法
+（`flowchart LR` / `sequenceDiagram` / `xychart-beta` など）をそのまま使えます。
+
+* 閲覧モード・TXT編集のプレビュー・PDF / HTML 書き出しで描画されます。
+* ダーク / ライトなど選択中のテーマに合わせて配色が変わります。
+* MD編集モードでは他の言語のコードブロックと同様、フェンスそのものを直接編集します
+  （保存してもフェンスの記法はそのまま残ります）。
+* 対応する図の種類・記法は mermaid.js の仕様に準じます。
+
+---
+
 ### YAML 対応
 
 * **フロントマター**: 文書の先頭を `---` で囲んだ YAML は、本文とは別のメタ情報
@@ -249,6 +266,7 @@ To open the app:
 | TXT Editing       | Split editor with live preview (auto-highlights and scrolls to the edited line) |
 | TOC Panel         | Headings sidebar, click to jump (**on by default**) |
 | LaTeX Math        | Typesets `$…$` / `$$…$$` formulas            |
+| Mermaid Diagrams  | Renders ` ```mermaid ` fences as flowcharts, graphs, etc. (bundled, offline) |
 | YAML Support      | Front matter shown as a metadata panel; opens `.yml`/`.yaml` |
 | A4 Document       | Print-ready A4 layout with margins           |
 | Advanced Settings | Fonts, language (JA / EN / DE / FR / ZH), and themes |
@@ -264,6 +282,7 @@ To open the app:
 * Copy button for code blocks
 * LaTeX math rendering (offline, no extra install)
 * LaTeX layout commands (`\newpage`, …)
+* Mermaid diagram rendering (bundled offline, no extra install)
 * YAML front matter / YAML files
 * Five UI languages (日本語 / English / Deutsch / Français / 简体中文)
 * Add and remove your own fonts
@@ -369,6 +388,22 @@ How a page break looks depends on the mode:
 * Commands inside math (`$…$`) are left alone too.
 * Unsupported commands are shown verbatim rather than dropped.
 * Opening a document in MD Edit and saving it keeps the original commands intact.
+
+---
+
+### Mermaid Diagrams
+
+Flowcharts, sequence diagrams, graphs and other diagrams written in a
+` ```mermaid ` fence are rendered as figures (since v1.4.4). mermaid.js is
+bundled entirely with the app, so no network connection is required. Any
+standard mermaid syntax (`flowchart LR`, `sequenceDiagram`, `xychart-beta`, …)
+works inside the fence.
+
+* Rendered in View mode, the TXT Edit preview, and PDF / HTML export.
+* Colours follow the currently selected theme (dark, light, etc.).
+* In MD Edit, the fence itself is edited directly like any other language's
+  code block (the fence syntax survives a save).
+* Supported diagram types and syntax follow the mermaid.js specification.
 
 ---
 

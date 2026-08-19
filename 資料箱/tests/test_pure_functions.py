@@ -47,6 +47,11 @@ _split_front_matter = ns["_split_front_matter"]
 _parse_simple_yaml = ns["_parse_simple_yaml"]
 _front_matter_html = ns["_front_matter_html"]
 
+# mermaid ダイアグラム抽出/復元 (同じ範囲に含まれる)
+_extract_mermaid = ns["_extract_mermaid"]
+_restore_mermaid = ns["_restore_mermaid"]
+_hex_is_dark     = ns["_hex_is_dark"]
+
 # _extract_headings (staticmethod 本体をインデント除去して取り込む)
 _eh = extract("    def _extract_headings(text):", "    def _rebuild_toc_list")
 _eh = "\n".join(l[4:] if l.startswith("    ") else l for l in _eh.split("\n"))
@@ -801,6 +806,65 @@ check("[体裁] 改ページも 1 ブロックとして数える", _starts == [0
 _tagged = _tag_src_lines(render_layout(_doc), _starts)
 check("[体裁] 改ページを挟んでも data-src-line が全ブロックに付く",
       _tagged.count("data-src-line=") == 3, _tagged)
+
+
+# ══════════════════════════════════════════════════════════════
+# 8. mermaid ダイアグラム抽出/復元 (v1.4.4)
+# ══════════════════════════════════════════════════════════════
+def mermaid_pipeline(md_text):
+    """_build_md_html のプレビュー用パイプラインを模倣する
+    (mermaid抽出 → markdown変換 → サニタイズ → 復元)。"""
+    src, store = _extract_mermaid(md_text)
+    html = markdown.markdown(src, extensions=["tables", "fenced_code"])
+    html = _sanitize_html(html)
+    return _restore_mermaid(html, store)
+
+
+_MMD_DOC = "前\n\n```mermaid\nflowchart LR\n A --> B\n```\n\n後"
+_mmd_src, _mmd_store = _extract_mermaid(_MMD_DOC)
+check("[mermaid] 抽出でフェンスの中身が退避される",
+      _mmd_store == ["flowchart LR\n A --> B"], repr(_mmd_store))
+check("[mermaid] 抽出後の本文にコードフェンスが残らない",
+      "```" not in _mmd_src, repr(_mmd_src))
+
+_mmd_html = mermaid_pipeline(_MMD_DOC)
+check("[mermaid] 復元後に <pre class=\"mermaid\"> が出力される",
+      '<pre class="mermaid">' in _mmd_html, _mmd_html)
+check("[mermaid] ダイアグラム本文がHTMLエスケープされて埋め込まれる",
+      "flowchart LR\n A --&gt; B" in _mmd_html, _mmd_html)
+check("[mermaid] 前後の本文はそのまま残る",
+      "<p>前</p>" in _mmd_html and "<p>後</p>" in _mmd_html, _mmd_html)
+
+# 通常のコードフェンス (mermaid以外) は影響を受けない
+_OTHER_DOC = "```python\nprint('mermaid')\n```\n"
+_other_src, _other_store = _extract_mermaid(_OTHER_DOC)
+check("[mermaid] mermaid以外の言語フェンスは抽出されない",
+      _other_store == [] and _other_src == _OTHER_DOC, repr((_other_src, _other_store)))
+
+# 複数ダイアグラムが正しい順序で復元される
+_MULTI_DOC = "```mermaid\nA\n```\n\n中間テキスト\n\n```mermaid\nB\n```\n"
+_multi_html = mermaid_pipeline(_MULTI_DOC)
+check("[mermaid] 複数ブロックが両方とも復元される",
+      _multi_html.count('<pre class="mermaid">') == 2, _multi_html)
+check("[mermaid] 複数ブロックの順序が保たれる",
+      _multi_html.index(">A<") < _multi_html.index("中間テキスト")
+      < _multi_html.index(">B<"), _multi_html)
+
+# 行番号同期用の _split_source_blocks は「抽出前の原文」に対して呼ばれるため、
+# mermaidフェンスを含んでいてもブロック数・開始行が変わってはいけない
+# (main.py の _build_md_html は md_text 自体を書き換えず、_extract_mermaid の
+#  結果は別変数 md_source に入れている点の回帰確認)。
+_sync_doc = "前\n\n```mermaid\nA-->B\n```\n\n後"
+_sync_starts = _split_source_blocks(_sync_doc)
+check("[mermaid] 行番号同期: フェンスは1ブロックとして数えられる (抽出前の原文基準)",
+      _sync_starts == [0, 2, 6], str(_sync_starts))
+
+# _hex_is_dark: パレット色から mermaid の dark/default テーマを選ぶための判定
+check("[mermaid] 黒背景は暗色と判定される", _hex_is_dark("#000000") is True)
+check("[mermaid] 白背景は暗色でないと判定される", _hex_is_dark("#ffffff") is False)
+check("[mermaid] アプリのダークパレット背景は暗色と判定される", _hex_is_dark("#111111") is True)
+check("[mermaid] アプリのライトパレット背景は暗色でないと判定される", _hex_is_dark("#ffffff") is False)
+check("[mermaid] 不正な色文字列はデフォルトで暗色扱い", _hex_is_dark("not-a-color") is True)
 
 
 # ══════════════════════════════════════════════════════════════

@@ -66,7 +66,7 @@ PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
-APP_VERSION   = "1.4.3"
+APP_VERSION   = "1.4.4"
 
 # 開けるファイルの拡張子 (YAML を含む)
 OPEN_FILTER = ("Markdown / Text / YAML "
@@ -2445,6 +2445,94 @@ def _restore_tex_layout(html: str, store: List[str]) -> str:
 
 
 # ════════════════════════════════════════════════
+#  Mermaid ダイアグラム
+#
+#  グラフレイアウトを要するため数式のような自作Pythonレンダラは非現実的。
+#  完全オフラインでバンドルした mermaid.js (assets/mermaid.min.js, MIT
+#  license, ネットワークアクセスなし) を QWebEngineView 上で実行して描画
+#  する。プレビュー限定 (MD編集モードでは他言語同様、生フェンスのまま
+#  編集できるよう抽出しない)。数式/体裁コマンドと同じ
+#  「変換前にプレースホルダへ退避→sanitize後に復元」パターンを使う。
+# ════════════════════════════════════════════════
+_MERMAID_PH_OPEN  = ""
+_MERMAID_PH_CLOSE = ""
+_MERMAID_PH_RE = re.compile(_MERMAID_PH_OPEN + r'(\d+)' + _MERMAID_PH_CLOSE)
+_MERMAID_FENCE_RE = re.compile(r'^(`{3,}|~{3,})[ \t]*mermaid[ \t]*$', re.IGNORECASE)
+
+
+def _extract_mermaid(text: str):
+    """Markdown 変換前に ```mermaid フェンスをプレースホルダへ退避する。
+
+    他のコードフェンス・本文は変更しない。
+    戻り値: (置換後テキスト, [ダイアグラム原文, ...])"""
+    store: List[str] = []
+    chunks = []
+    for is_code, chunk in _split_code_fences(text):
+        if is_code:
+            lines = chunk.split('\n')
+            if len(lines) >= 2 and _MERMAID_FENCE_RE.match(lines[0]):
+                store.append('\n'.join(lines[1:-1]))
+                chunks.append(f"\n\n{_MERMAID_PH_OPEN}{len(store) - 1}{_MERMAID_PH_CLOSE}\n\n")
+                continue
+        chunks.append(chunk)
+    return '\n'.join(chunks), store
+
+
+def _restore_mermaid(html: str, store: List[str]) -> str:
+    """サニタイズ後の HTML にダイアグラム描画用の <pre class="mermaid"> を差し込む。"""
+    if not store:
+        return html
+
+    def sub(m):
+        idx = int(m.group(1))
+        if idx >= len(store):
+            return ''
+        return f'<pre class="mermaid">{_html_mod.escape(store[idx])}</pre>'
+
+    return _MERMAID_PH_RE.sub(sub, html)
+
+
+_MERMAID_JS_CACHE: Optional[str] = None
+
+
+def _mermaid_js_source() -> str:
+    """バンドル済み assets/mermaid.min.js を読み込む (初回のみ・以後メモ化)。"""
+    global _MERMAID_JS_CACHE
+    if _MERMAID_JS_CACHE is not None:
+        return _MERMAID_JS_CACHE
+    candidates = []
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates.append(os.path.join(script_dir, "assets", "mermaid.min.js"))
+    if hasattr(sys, "_MEIPASS"):
+        candidates.append(os.path.join(sys._MEIPASS, "assets", "mermaid.min.js"))
+    exe_dir = os.path.dirname(sys.executable)
+    candidates.append(os.path.join(exe_dir, "..", "Resources", "assets", "mermaid.min.js"))
+    for path in candidates:
+        path = os.path.normpath(path)
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    _MERMAID_JS_CACHE = f.read()
+                    return _MERMAID_JS_CACHE
+            except Exception:
+                pass
+    _MERMAID_JS_CACHE = ""
+    return _MERMAID_JS_CACHE
+
+
+def _hex_is_dark(hex_color: str) -> bool:
+    """パレット色 (#rrggbb) が暗色かどうかを知覚輝度で判定する。"""
+    h = (hex_color or "").lstrip("#")
+    if len(h) != 6:
+        return True
+    try:
+        r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return True
+    return (0.299 * r + 0.587 * g + 0.114 * b) < 128
+
+
+# ════════════════════════════════════════════════
 #  YAML — フロントマター解析 (最小サブセット / 依存追加なし)
 # ════════════════════════════════════════════════
 def _split_front_matter(text: str):
@@ -3821,7 +3909,7 @@ class MDViewerPro(QMainWindow):
             'btn.textContent="✓";btn.style.opacity="1";'
             'setTimeout(function(){btn.textContent=orig;btn.style.opacity="";},1500);}'
             'window.addEventListener("load",function(){'
-            'document.querySelectorAll("pre").forEach(function(p){'
+            'document.querySelectorAll("pre:not(.mermaid)").forEach(function(p){'
             'if(p.querySelector(".mdv-copy-btn"))return;'
             'var b=document.createElement("button");'
             'b.className="mdv-copy-btn";'
@@ -4177,6 +4265,9 @@ class MDViewerPro(QMainWindow):
             f"pre{{position:relative;background:{p['bg3']};border:1px solid {p['border']};"
             "border-radius:6px;padding:16px;overflow-x:auto;margin:14px 0}"
             f"pre code{{background:none;padding:0;color:{p['text']}}}"
+            "pre.mermaid{background:transparent;border:none;padding:12px 0;"
+            "text-align:center;overflow-x:auto}"
+            "pre.mermaid svg{max-width:100%;height:auto}"
             f".mdv-copy-btn{{position:absolute;top:6px;right:8px;padding:2px 10px;"
             f"font-size:11px;line-height:1.5;cursor:pointer;"
             f"border:1px solid {p['border']};border-radius:4px;"
@@ -4543,6 +4634,47 @@ class MDViewerPro(QMainWindow):
             '</script>'
         )
 
+    def _mermaid_html(self, mermaid_store):
+        """mermaid.js 本体とダイアグラム描画を行う <script> を返す。
+
+        mermaid_store が空 (ダイアグラムなし、または編集モード) なら何も
+        返さない — 通常ドキュメントの表示コストに影響しないため。"""
+        if not mermaid_store:
+            return ""
+        src = _mermaid_js_source()
+        if not src:
+            return ""
+        p = self._palette
+        dark = _hex_is_dark(p.get("bg2", p.get("bg", "#ffffff")))
+        cfg = json.dumps({
+            "startOnLoad": False,
+            "securityLevel": "strict",
+            "theme": "dark" if dark else "default",
+            "themeVariables": {
+                "background":         p["bg2"],
+                "primaryColor":       p["bg3"],
+                "primaryTextColor":   p["text"],
+                "primaryBorderColor": p["border"],
+                "lineColor":          p["text_dim"],
+                "textColor":          p["text"],
+                "fontFamily":         "Menlo, Monaco, monospace",
+            },
+        })
+        return (
+            f'<script>{src}</script>'
+            '<script>'
+            'window._mdvMermaidReady=false;'
+            f'try{{mermaid.initialize({cfg});}}catch(e){{}}'
+            'window.addEventListener("load",function(){'
+            'try{'
+            'mermaid.run({querySelector:".wrap pre.mermaid"})'
+            '.then(function(){window._mdvMermaidReady=true;})'
+            '.catch(function(){window._mdvMermaidReady=true;});'
+            '}catch(e){window._mdvMermaidReady=true;}'
+            '});'
+            '</script>'
+        )
+
     def _build_md_html(self, text, editable=False, strip_images=False, sync_lines=False):
         p   = self._palette
         fs  = int(16 * SCALE_STEPS[self.scale_idx])
@@ -4573,8 +4705,17 @@ class MDViewerPro(QMainWindow):
             #     描画されてしまい、目次の Setext 見出し判定も誤作動する)
             fm_text, md_text, body_line_off = _split_front_matter(text)
 
+        # ── mermaid ダイアグラムを退避 (プレビュー限定。編集モードでは
+        #    他言語同様、生フェンスのまま編集させるため抽出しない)。
+        #    md_text 自体は書き換えない ( _split_source_blocks(md_text) の
+        #    行番号がずれ、TXT編集モードの行ハイライトが壊れるため)。──
+        if editable:
+            mermaid_store = []
+            md_source = md_text
+        else:
+            md_source, mermaid_store = _extract_mermaid(md_text)
         # ── LaTeX 数式を退避 (Markdown が `_`/`\` を書き換えるのを防ぐ) ──
-        md_source, math_store = _extract_math(md_text)
+        md_source, math_store = _extract_math(md_source)
         # ── \newpage 等の体裁コマンドを退避 (数式の後。数式の中身は
         #    既にプレースホルダに逃げているので巻き込まない) ──
         md_source, layout_store = _extract_tex_layout(md_source)
@@ -4597,6 +4738,7 @@ class MDViewerPro(QMainWindow):
         # 先に差し込むと <span> の属性やクラスが落とされてしまう)。
         body = _restore_math(body, math_store)
         body = _restore_tex_layout(body, layout_store)
+        body = _restore_mermaid(body, mermaid_store)
         body = self._embed_remote_images(body)
         if strip_images:
             body = re.sub(r'<img[^>]*>', '', body)
@@ -4754,6 +4896,7 @@ class MDViewerPro(QMainWindow):
             f'{webchannel_js}'
             f'{self._copy_plain_js()}'
             f'{toc_js}'
+            f'{self._mermaid_html(mermaid_store)}'
             '</body></html>'
         )
 
@@ -5747,6 +5890,20 @@ class MDViewerPro(QMainWindow):
             f"| {cell} | {cell} | {cell} |\n"
         )
 
+    def _wait_mermaid_then(self, page, callback, attempts=0):
+        """mermaid.js の非同期描画 (window._mdvMermaidReady) が終わるまで
+        短間隔でポーリングしてから callback を呼ぶ。printToPdf() はページの
+        現在の DOM をそのまま撮るため、SVG挿入前に呼ぶと図が空欄になる。
+        上限 (約3秒) を超えたら描画未完了でも印刷を実行する
+        (失敗時に無限待機させないための保険)。"""
+        def check(ready):
+            if ready or attempts >= 40:
+                callback()
+            else:
+                QTimer.singleShot(
+                    75, lambda: self._wait_mermaid_then(page, callback, attempts + 1))
+        page.runJavaScript("window._mdvMermaidReady===true", check)
+
     # ════════════════════════════════════════════
     #  PDF書き出し
     # ════════════════════════════════════════════
@@ -5855,8 +6012,12 @@ class MDViewerPro(QMainWindow):
                 QMessageBox.warning(self, "PDF", self._t("pdf_error"))
                 return
             self._pdf_state = "printing"
-            self._preview_web.page().pdfPrintingFinished.connect(_on_pdf_done)
-            self._preview_web.page().printToPdf(path, layout)
+            page = self._preview_web.page()
+            page.pdfPrintingFinished.connect(_on_pdf_done)
+            if "_mdvMermaidReady" in pdf_html:
+                self._wait_mermaid_then(page, lambda: page.printToPdf(path, layout))
+            else:
+                page.printToPdf(path, layout)
 
         def _on_pdf_timeout():
             # ロードが完了しないまま固まった場合の保険: 表示を復元して通知。

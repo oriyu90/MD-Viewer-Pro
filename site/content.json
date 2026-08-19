@@ -1,6 +1,6 @@
 {
-  "version": "1.4.3",
-  "downloadUrl": "https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.3/MDViewerPro-1.4.3-Installer.dmg",
+  "version": "1.4.4",
+  "downloadUrl": "https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.4/MDViewerPro-1.4.4-Installer.dmg",
   "repoUrl": "https://github.com/oriyu90/MD-Viewer-Pro",
   "siteUrl": "https://md-viewer-pro.pages.dev/",
   "discordUrl": "https://discord.gg/x7KXhNTD8M",
@@ -22,7 +22,7 @@
         "読むことの間をなくす。"
       ],
       "lead": "MD Viewer Pro は、閲覧・編集・数式・書き出しをひとつにまとめた、Mac のための軽量 Markdown ビューアです。",
-      "download": "公開版 v1.4.3 をダウンロード",
+      "download": "公開版 v1.4.4 をダウンロード",
       "github": "GitHub で見る",
       "note": "macOS · DMG 約210 MB · MIT License",
       "strip": [
@@ -30,6 +30,7 @@
         "MD EDIT",
         "TXT EDIT",
         "LATEX",
+        "MERMAID",
         "YAML",
         "PDF / HTML"
       ],
@@ -56,7 +57,7 @@
       "screenKicker": "THE REAL APPLICATION",
       "screenTitle": "Markdown が、文書として立ち上がる。",
       "screenBody": "添付の実画面。上部バーから閲覧・MD編集・TXT編集を切り替え、レイアウトや拡大率、目次、PDF書き出しを操作できます。",
-      "screenCaption": "MD Viewer Pro v1.4.3 — View mode / Dark theme",
+      "screenCaption": "MD Viewer Pro v1.4.4 — View mode / Dark theme",
       "facts": [
         [
           "3",
@@ -77,6 +78,11 @@
           "数式を、オフラインで",
           "LaTeX のインライン・別行数式、行列や分数を追加インストールなしで組版。PDF / HTML にも反映します。",
           "$E = mc^2$"
+        ],
+        [
+          "図も、オフラインで",
+          "```mermaid フェンスのフローチャートやグラフを、mermaid.js 完全同梱で図として描画。ネット接続は不要です。",
+          "A --> B"
         ],
         [
           "見出しから迷わない",
@@ -109,9 +115,9 @@
       "languagesBody": "アプリ本体は日本語、English、Deutsch、Français、简体中文に対応。この紹介サイトは日本語、English、中文、Portuguêsをブラウザ設定から自動で選びます。",
       "downloadKicker": "DOWNLOAD FOR MAC",
       "downloadTitle": "次の .md は、\nダブルクリックで。",
-      "downloadBody": "公開中のインストーラは v1.4.3。リポジトリのソースと README も同じ v1.4.3 です。",
+      "downloadBody": "公開中のインストーラは v1.4.4。リポジトリのソースと README も同じ v1.4.4 です。",
       "downloadButton": "DMG をダウンロード",
-      "sourceButton": "v1.4.3 のソースを見る",
+      "sourceButton": "v1.4.4 のソースを見る",
       "releaseLabel": "PUBLIC INSTALLER",
       "sourceLabel": "SOURCE / README",
       "unsigned": "未署名アプリ",
@@ -144,7 +150,7 @@
         "writing and reading."
       ],
       "lead": "MD Viewer Pro is a lightweight Markdown viewer for Mac, bringing reading, editing, math and export into one focused workspace.",
-      "download": "Download public release v1.4.3",
+      "download": "Download public release v1.4.4",
       "github": "View on GitHub",
       "note": "macOS · DMG about 210 MB · MIT License",
       "strip": [
@@ -152,6 +158,7 @@
         "MD EDIT",
         "TXT EDIT",
         "LATEX",
+        "MERMAID",
         "YAML",
         "PDF / HTML"
       ],
@@ -178,7 +185,7 @@
       "screenKicker": "THE REAL APPLICATION",
       "screenTitle": "Markdown becomes a document.",
       "screenBody": "The actual app in action. The top bar gives you View, MD Edit and TXT Edit, plus layout, zoom, table of contents and PDF export controls.",
-      "screenCaption": "MD Viewer Pro v1.4.3 — View mode / Dark theme",
+      "screenCaption": "MD Viewer Pro v1.4.4 — View mode / Dark theme",
       "facts": [
         [
           "3",
@@ -199,6 +206,11 @@
           "Math, fully offline",
           "Typeset inline and display LaTeX, matrices and fractions without an extra install. Exports keep the result.",
           "$E = mc^2$"
+        ],
+        [
+          "Diagrams, fully offline",
+          "Render ```mermaid fences as flowcharts and graphs with mermaid.js bundled in — no network connection needed.",
+          "A --> B"
         ],
         [
           "Navigate by structure",
@@ -231,9 +243,9 @@
       "languagesBody": "The app supports 日本語, English, Deutsch, Français and 简体中文. This site supports 日本語, English, 中文 and Português, chosen automatically from your browser.",
       "downloadKicker": "DOWNLOAD FOR MAC",
       "downloadTitle": "Make the next .md\na double-click away.",
-      "downloadBody": "The public installer is v1.4.3, matching the repository source and README.",
+      "downloadBody": "The public installer is v1.4.4, matching the repository source and README.",
       "downloadButton": "Download the DMG",
-      "sourceButton": "View v1.4.3 source",
+      "sourceButton": "View v1.4.4 source",
       "releaseLabel": "PUBLIC INSTALLER",
       "sourceLabel": "SOURCE / README",
       "unsigned": "Unsigned app",
@@ -266,7 +278,7 @@
         "自然衔接。"
       ],
       "lead": "MD Viewer Pro 是一款轻量级 Mac Markdown 阅读器，将阅读、编辑、数学公式与导出集中在简洁的工作空间中。",
-      "download": "下载公开版 v1.4.3",
+      "download": "下载公开版 v1.4.4",
       "github": "在 GitHub 查看",
       "note": "macOS · DMG 约210 MB · MIT 许可证",
       "strip": [
@@ -274,6 +286,7 @@
         "MD 编辑",
         "TXT 编辑",
         "LATEX",
+        "MERMAID",
         "YAML",
         "PDF / HTML"
       ],
@@ -300,7 +313,7 @@
       "screenKicker": "真实应用界面",
       "screenTitle": "让 Markdown 成为完整文档。",
       "screenBody": "这是应用的实际界面。顶部栏可切换阅读、MD 编辑、TXT 编辑，并控制布局、缩放、目录和 PDF 导出。",
-      "screenCaption": "MD Viewer Pro v1.4.3 — 阅读模式 / 深色主题",
+      "screenCaption": "MD Viewer Pro v1.4.4 — 阅读模式 / 深色主题",
       "facts": [
         [
           "3",
@@ -321,6 +334,11 @@
           "离线数学公式",
           "无需额外安装即可排版 LaTeX 行内公式、独立公式、矩阵和分数，并保留到导出文件中。",
           "$E = mc^2$"
+        ],
+        [
+          "离线绘制图表",
+          "内置完整的 mermaid.js，将 ```mermaid 代码块渲染为流程图、图表，无需联网。",
+          "A --> B"
         ],
         [
           "按结构导航",
@@ -353,9 +371,9 @@
       "languagesBody": "应用支持日本語、English、Deutsch、Français、简体中文。本网站支持日本語、English、中文、Português，并根据浏览器设置自动选择。",
       "downloadKicker": "MAC 版下载",
       "downloadTitle": "让下一份 .md，\n双击即可打开。",
-      "downloadBody": "当前公开安装包为 v1.4.3，与仓库源码和 README 一致。",
+      "downloadBody": "当前公开安装包为 v1.4.4，与仓库源码和 README 一致。",
       "downloadButton": "下载 DMG",
-      "sourceButton": "查看 v1.4.3 源码",
+      "sourceButton": "查看 v1.4.4 源码",
       "releaseLabel": "公开安装包",
       "sourceLabel": "源码 / README",
       "unsigned": "未签名应用",
@@ -388,7 +406,7 @@
         "escrever e ler."
       ],
       "lead": "MD Viewer Pro é um visualizador Markdown leve para Mac que reúne leitura, edição, matemática e exportação em um único espaço.",
-      "download": "Baixar versão pública v1.4.3",
+      "download": "Baixar versão pública v1.4.4",
       "github": "Ver no GitHub",
       "note": "macOS · DMG aprox. 210 MB · Licença MIT",
       "strip": [
@@ -396,6 +414,7 @@
         "EDIÇÃO MD",
         "EDIÇÃO TXT",
         "LATEX",
+        "MERMAID",
         "YAML",
         "PDF / HTML"
       ],
@@ -422,7 +441,7 @@
       "screenKicker": "O APLICATIVO REAL",
       "screenTitle": "Markdown vira documento.",
       "screenBody": "Esta é a interface real. Na barra superior você alterna entre leitura, MD Edit e TXT Edit e controla layout, zoom, sumário e exportação para PDF.",
-      "screenCaption": "MD Viewer Pro v1.4.3 — modo View / tema escuro",
+      "screenCaption": "MD Viewer Pro v1.4.4 — modo View / tema escuro",
       "facts": [
         [
           "3",
@@ -443,6 +462,11 @@
           "Matemática offline",
           "Componha LaTeX inline, fórmulas destacadas, matrizes e frações sem instalação extra; a exportação preserva tudo.",
           "$E = mc^2$"
+        ],
+        [
+          "Diagramas, offline",
+          "Renderize blocos ```mermaid como fluxogramas e gráficos com o mermaid.js embutido — sem precisar de rede.",
+          "A --> B"
         ],
         [
           "Navegue pela estrutura",
@@ -475,9 +499,9 @@
       "languagesBody": "O app oferece 日本語, English, Deutsch, Français e 简体中文. Este site oferece 日本語, English, 中文 e Português, escolhidos automaticamente pelo navegador.",
       "downloadKicker": "BAIXAR PARA MAC",
       "downloadTitle": "Abra o próximo .md\ncom dois cliques.",
-      "downloadBody": "O instalador público é v1.4.3, igual ao código e ao README do repositório.",
+      "downloadBody": "O instalador público é v1.4.4, igual ao código e ao README do repositório.",
       "downloadButton": "Baixar o DMG",
-      "sourceButton": "Ver código v1.4.3",
+      "sourceButton": "Ver código v1.4.4",
       "releaseLabel": "INSTALADOR PÚBLICO",
       "sourceLabel": "CÓDIGO / README",
       "unsigned": "App não assinado",
