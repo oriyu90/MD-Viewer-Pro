@@ -31,6 +31,7 @@ def build():
     t = c["languages"][lang]
     seo = c["seo"][lang]
     ver, dl, repo = c["version"], c["downloadUrl"], c["repoUrl"]
+    public_base = c["publicBase"]
 
     def nav_links():
         # nav は [機能, 実際の画面, 導入] の3つで、リンク先は固定
@@ -65,10 +66,10 @@ def build():
 <meta name="twitter:title" content="{e(seo['twTitle'])}" data-t-attr="seo.twTitle"/>
 <meta name="twitter:description" content="{e(seo['twDescription'])}" data-t-attr="seo.twDescription"/>
 <link rel="canonical" href="{e(c['siteUrl'])}"/>
-<link rel="shortcut icon" href="/md-viewer-pro-icon.jpeg"/>
-<link rel="icon" href="/md-viewer-pro-icon.jpeg"/>
-<link rel="apple-touch-icon" href="/md-viewer-pro-icon.jpeg"/>
-<link rel="stylesheet" href="/site.css"/>"""
+<link rel="shortcut icon" href="{e(public_base)}md-viewer-pro-icon.jpeg"/>
+<link rel="icon" href="{e(public_base)}md-viewer-pro-icon.jpeg"/>
+<link rel="apple-touch-icon" href="{e(public_base)}md-viewer-pro-icon.jpeg"/>
+<link rel="stylesheet" href="{e(public_base)}site.css"/>"""
 
     ld = {
         "@context": "https://schema.org", "@type": "SoftwareApplication",
@@ -113,7 +114,7 @@ def build():
     body = f"""<main>
 <script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script>
 <header class="site-header">
-<a class="brand" href="#top" aria-label="MD Viewer Pro home"><img src="/md-viewer-pro-icon.jpeg" alt=""/><span>MD Viewer Pro</span></a>
+<a class="brand" href="#top" aria-label="MD Viewer Pro home"><img src="{e(public_base)}md-viewer-pro-icon.jpeg" alt=""/><span>MD Viewer Pro</span></a>
 <nav aria-label="Primary navigation">{nav_links()}
 <label class="language-picker"><span class="sr-only">Language</span><select>{lang_options()}</select></label></nav>
 </header>
@@ -124,7 +125,7 @@ def build():
 <div class="hero-actions"><a class="button button-primary" href="{e(dl)}"><span data-t="download">{e(t['download'])}</span><span aria-hidden="true">↓</span></a>
 <a class="button button-secondary" href="{e(repo)}" target="_blank" rel="noreferrer"><span data-t="github">{e(t['github'])}</span><span aria-hidden="true">↗</span></a></div>
 <p class="download-note" data-t="note">{e(t['note'])}</p></div>
-<div class="hero-visual"><img class="app-icon" src="/md-viewer-pro-icon.jpeg" alt="MD Viewer Pro application icon"/>
+<div class="hero-visual"><img class="app-icon" src="{e(public_base)}md-viewer-pro-icon.jpeg" alt="MD Viewer Pro application icon"/>
 <div class="hero-code" aria-hidden="true"><span># Welcome</span><br/><br/>Write naturally.<br/>Read beautifully.<br/><br/><i>$$ E = mc^2 $$</i></div>
 <span class="version-stamp">v{e(ver)}</span></div>
 </section>
@@ -137,7 +138,7 @@ def build():
 <section class="screen-section" id="screen">
 <div class="screen-intro"><p class="kicker" data-t="screenKicker">{e(t['screenKicker'])}</p>
 <h2 data-t="screenTitle">{e(t['screenTitle'])}</h2><p data-t="screenBody">{e(t['screenBody'])}</p></div>
-<figure><div class="screen-frame"><img src="/md-viewer-pro-screen.png" alt="MD Viewer Pro v{e(ver)}"/></div>
+<figure><div class="screen-frame"><img src="{e(public_base)}md-viewer-pro-screen.png" alt="MD Viewer Pro v{e(ver)}"/></div>
 <figcaption data-t="screenCaption">{e(t['screenCaption'])}</figcaption></figure>
 <div class="facts">{facts}</div>
 </section>
@@ -147,7 +148,7 @@ def build():
 <h2 data-t="languagesTitle">{e(t['languagesTitle'])}</h2><p data-t="languagesBody">{e(t['languagesBody'])}</p></div>
 <div class="language-wheel">{wheel}</div></section>
 <section class="download-section" id="download">
-<div class="download-icon-wrap"><img src="/md-viewer-pro-icon.jpeg" alt="MD Viewer Pro icon"/></div>
+<div class="download-icon-wrap"><img src="{e(public_base)}md-viewer-pro-icon.jpeg" alt="MD Viewer Pro icon"/></div>
 <div class="download-content"><p class="kicker" data-t="downloadKicker">{e(t['downloadKicker'])}</p>
 <h2><span data-t="downloadTitle">{e(t['downloadTitle'])}</span></h2>
 <p data-t="downloadBody">{e(t['downloadBody'])}</p>
@@ -160,7 +161,7 @@ def build():
 <ol>{steps}</ol>
 <aside><strong data-t="gatekeeperTitle">{e(t['gatekeeperTitle'])}</strong><p data-t="gatekeeperBody">{e(t['gatekeeperBody'])}</p></aside></section>
 <footer>
-<div class="footer-brand"><img src="/md-viewer-pro-icon.jpeg" alt=""/><div><strong>MD Viewer Pro</strong><span>A lightweight Markdown viewer for macOS.</span></div></div>
+<div class="footer-brand"><img src="{e(public_base)}md-viewer-pro-icon.jpeg" alt=""/><div><strong>MD Viewer Pro</strong><span>A lightweight Markdown viewer for macOS.</span></div></div>
 <div class="footer-links"><a href="{e(c['discordUrl'])}" target="_blank" rel="noreferrer"><span data-t="community">{e(t['community'])}</span> ↗</a>
 <a href="{e(c['devSiteUrl'])}" target="_blank" rel="noreferrer"><span data-t="official">{e(t['official'])}</span> ↗</a>
 <a href="{e(c['xUrl'])}" target="_blank" rel="noreferrer"><span data-t="x">{e(t['x'])}</span> ↗</a>

@@ -1,6 +1,6 @@
 # 紹介サイトのソース
 
-公開先: https://md-viewer-pro.pages.dev/
+公開先: https://studio-rizi.pages.dev/projects/md-viewer-pro/
 
 ## 直し方
 
