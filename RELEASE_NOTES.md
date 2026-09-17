@@ -1,5 +1,67 @@
 # Release Notes / 更新履歴
 
+## v1.4.5
+
+入力した改行とコードの中身が、保存・再読込の往復で失われる問題を直した
+リリースです。
+
+### 日本語
+
+#### 修正
+
+- **コードブロック内の空行が保存のたびに詰まる問題**: コードブロックの中に
+  入れた連続した空行が、保存 → 開き直しを繰り返すたびに 1 行に詰まって
+  いました。MD編集モードでは画面の内容を Markdown に戻して保存するため、
+  その逆変換のときに段落間の空行を整える処理がコードの中まで効いていたのが
+  原因です。コードの中身（フェンス内・インラインコード）は整形の対象外とし、
+  空行・行頭インデントともに入力したとおりに保存されるようにしました。
+- **改行設定が「オフ」のとき、明示的な改行が消える問題**: 詳細設定で
+  「改行をそのまま改行として表示する」をオフにしていると、行末に半角
+  スペース 2 個を置いて入れた改行が MD編集の保存で失われていました。
+  設定に合わせて、オフ時は行末スペース 2 個として復元するようにしました
+  （オン時は従来どおり改行として復元されます）。
+- **保存中のエラーで既存ファイルが失われる恐れがあった問題**: 保存は
+  直接ファイルを上書きする書き方だったため、書込みの途中でエラーが起きると
+  それまでの内容が失われる恐れがありました。一時ファイルへ書いたうえで
+  置き換える方式（原子的置換）に変え、書込みに失敗したときは既存の
+  ファイルと「未保存」の状態を保つようにしました。
+- **読み取れないファイルを開くと内容が空の文書になる問題**: アクセス権が
+  ないファイルなどを開いたとき、警告のあとに現在の文書が空に置き換わる
+  場合がありました。読み取りに失敗したときは、いま開いている文書を
+  そのまま維持するようにしました。
+- **MD編集の取り込みがタイムアウトしたときの挙動**: 画面からの取り込みが
+  時間切れになった場合に、直前の内容を壊す恐れがあったため、取り込みに
+  失敗したときは現在の内容を維持して保存するようにしました。
+
+---
+
+### English
+
+#### Fixes
+
+- **Blank lines inside code blocks collapsed on every save**: consecutive blank
+  lines inside a fenced code block were collapsed into one each time the file
+  went through MD Edit and a save. The HTML → Markdown converter normalised
+  paragraph boundaries over the whole document, including code content. Code
+  (fenced or inline) is now exempt from that normalisation, so blank lines and
+  indentation are preserved exactly as entered.
+- **Explicit line breaks lost when hard breaks are off**: with "Render a single
+  newline as a line break" turned off in Settings, a line break written as two
+  trailing spaces was dropped when saving from MD Edit. The converter now
+  restores two trailing spaces when the setting is off (and a plain newline
+  when it is on, as before).
+- **A failed save could destroy the existing file**: saving wrote directly over
+  the target file, so an error mid-write could leave the previous content lost.
+  Saving now writes to a temporary file in the same folder and replaces the
+  target atomically; on failure the old file and the unsaved state are kept.
+- **Opening an unreadable file replaced the current document with an empty one**:
+  when a file could not be read (e.g. permission denied), the current document
+  could be blanked after the warning. The current document is now preserved.
+- **Behaviour when MD Edit capture times out**: a timed-out capture no longer
+  risks clobbering the current content; the existing content is kept.
+
+---
+
 ## v1.4.4
 
 Mermaid ダイアグラムの表示に対応したリリースです。

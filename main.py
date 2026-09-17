@@ -66,7 +66,7 @@ PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
-APP_VERSION   = "1.4.4"
+APP_VERSION   = "1.4.5"
 
 # 開けるファイルの拡張子 (YAML を含む)
 OPEN_FILTER = ("Markdown / Text / YAML "
