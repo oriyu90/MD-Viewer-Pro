@@ -1438,8 +1438,8 @@ class _HTML2MD(HTMLParser):
         return text.strip()
 
 
-def _html_to_md(html: str) -> str:
-    parser = _HTML2MD()
+def _html_to_md(html: str, hard_breaks: bool = True) -> str:
+    parser = _HTML2MD(hard_breaks=hard_breaks)
     parser.feed(html)
     return parser.get_result()
 
@@ -4941,7 +4941,9 @@ class MDViewerPro(QMainWindow):
         processed = html_content
         for url, data_uri in self._image_cache.items():
             processed = processed.replace(data_uri, url)
-        return _html_to_md(processed)
+        # 改行設定に合わせて <br> を復元する。nl2br オフ時は行末の
+        # 半角スペース 2 個へ戻す (素の Markdown として有効な明示改行)。
+        return _html_to_md(processed, hard_breaks=self.hard_breaks)
 
     # ════════════════════════════════════════════
     #  テーマ適用
