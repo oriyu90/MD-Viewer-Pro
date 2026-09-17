@@ -477,6 +477,27 @@ check("[取り込み] AAA と BBB が別の行になる",
       and any(l.strip() == "BBB" for l in _shown.split("\n")), repr(_shown))
 
 # ── 入力の直後に閉じると未保存の確認が出る ──
+
+# v1.4.5 回帰: コードブロック内の空行が保存 → 開き直しで残るか
+#   逆変換後の全文圧縮がフェンス内にも効き、コード中の連続空行が
+#   保存のたびに詰まっていた。
+code_path = os.path.join(TMP, "codeblank.md")
+# 変換器の仕様として最終行の改行は strip されるため、比較対象も揃える
+# (末尾改行の有無以外は保存で変化しないことを確認する)。
+CODE_DOC = "```python\na = 1\n\n\n\nb = 2\n```\n"
+open(code_path, "w", encoding="utf-8").write(CODE_DOC)
+win._load_file(code_path)
+wait(1200)
+win._set_mode("md")
+wait(1600)
+win.current_file_path = code_path
+win.file_save()
+_saved_code = open(code_path, encoding="utf-8").read()
+check("[コード空行] 保存でもコード内の連続空行が残る",
+      _saved_code == CODE_DOC.rstrip("\n"), repr(_saved_code))
+win.is_modified = False
+
+win._set_mode("md")
 win._set_mode("md")
 wait(1500)
 focus_web()

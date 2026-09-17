@@ -1120,8 +1120,14 @@ class ClipboardBridge(QObject):
 #  HTML → Markdown 変換 (標準ライブラリのみ使用)
 # ════════════════════════════════════════════════
 class _HTML2MD(HTMLParser):
-    def __init__(self):
+    class _Verbatim(str):
+        pass
+
+    def __init__(self, hard_breaks=True):
         super().__init__()
+        self.hard_breaks = hard_breaks
+        self._pre_start = 0
+        self._code_marks = []
         self.parts: List[str] = []
         self._stack: List[str] = []
         self._in_pre = False
@@ -1149,7 +1155,8 @@ class _HTML2MD(HTMLParser):
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
         attrs_d = dict(attrs)
-        self._stack.append(tag)
+        if tag not in {'br', 'hr', 'img', 'input', 'meta', 'link', 'wbr'}:
+            self._stack.append(tag)
         cls = attrs_d.get('class', '') or ''
         cls_set = set(cls.split())
         if self._skip_at is None:
@@ -1204,7 +1211,7 @@ class _HTML2MD(HTMLParser):
             if any(t in self._stack for t in ('td', 'th')):
                 self.parts.append('<br>')
             else:
-                self.parts.append('\n')
+                self.parts.append('\n' if self.hard_breaks else '  \n')
                 self._after_br = True
         elif tag in ('strong', 'b'):
             self.parts.append('**')
@@ -1220,8 +1227,9 @@ class _HTML2MD(HTMLParser):
                 self.parts.append('\n\n```' + lang + '\n')
                 self._pre_fence_open = True
             else:
-                self.parts.append('`')
+                self._code_marks.append(len(self.parts))
         elif tag == 'pre':
+            self._pre_start = len(self.parts)
             self._in_pre = True
             self._pre_fence_open = False
             # フェンスは <code class="language-xxx"> を見てから開く (言語保持)。
@@ -1307,7 +1315,14 @@ class _HTML2MD(HTMLParser):
         elif tag in ('s', 'del', 'strike'):
             self.parts.append('~~')
         elif tag == 'code' and not self._in_pre:
-            self.parts.append('`')
+            if self._code_marks:
+                start = self._code_marks.pop()
+                code = ''.join(self.parts[start:])
+                del self.parts[start:]
+                fence = '`' * max(1, 1 + max(
+                    (len(m.group()) for m in re.finditer(r'`+', code)), default=0))
+                pad = ' ' if code.startswith(('`', ' ')) or code.endswith(('`', ' ')) else ''
+                self.parts.append(self._Verbatim(fence + pad + code + pad + fence))
         elif tag == 'pre':
             self._in_pre = False
             if not self._pre_fence_open:
@@ -1356,10 +1371,19 @@ class _HTML2MD(HTMLParser):
     def handle_data(self, data):
         if self._skip_at is not None:
             return
+        # <pre> 内のデータはコードの一部なので、整形用の空白判定や
+        # 改行除去の対象にせずそのまま保護する (コード内の連続空行や
+        # 行頭インデントを保存時に残すため)。
+        if self._in_pre:
+            if not self._pre_fence_open:
+                self.parts.append('\n\n```\n')
+                self._pre_fence_open = True
+            self.parts.append(self._Verbatim(data))
+            return
         # markdown の nl2br は "<br />\n" を出力する。<br> で既に改行を1つ
         # 出しているので、直後の実改行はそのまま数えると空行 (段落区切り) に
         # なってしまう。1つだけ取り除いて「改行のまま」往復させる。
-        if self._after_br and not self._in_pre:
+        if self._after_br:
             self._after_br = False
             if data.startswith('\n'):
                 data = data[1:]
@@ -1367,10 +1391,6 @@ class _HTML2MD(HTMLParser):
                     return
         else:
             self._after_br = False
-        # <code> を持たない <pre> の場合はここでフェンスを開く
-        if self._in_pre and not self._pre_fence_open:
-            self.parts.append('\n\n```\n')
-            self._pre_fence_open = True
         # テーブル要素内の空白のみのデータはMarkdown変換を壊すため無視する
         _TABLE_TAGS = {'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td'}
         if data.strip() == '' and any(t in self._stack for t in _TABLE_TAGS):
@@ -1396,8 +1416,25 @@ class _HTML2MD(HTMLParser):
         self.parts.append(data)
 
     def get_result(self) -> str:
-        text = ''.join(self.parts)
-        text = re.sub(r'\n{3,}', '\n\n', text)
+        chunks: List[str] = []
+        buf: List[str] = []
+        # 連続する空行の圧縮は段落境界 (\n\n) の正規化目的なので、コード
+        # (フェンス内 / インラインコード) の中身には適用しない。
+        # コード区間 (_Verbatim) の前後で部分文字列を分け、コードは素通しする。
+        for part in self.parts:
+            if isinstance(part, self._Verbatim):
+                if buf:
+                    chunks.append(''.join(buf))
+                    buf = []
+                chunks.append(part)
+            else:
+                buf.append(part)
+        if buf:
+            chunks.append(''.join(buf))
+        text = ''.join(
+            re.sub(r'(?<=\S)\n{3,}(?=\S)', '\n\n', c)
+            if not isinstance(c, self._Verbatim) else c
+            for c in chunks)
         return text.strip()
 
 
@@ -5245,10 +5282,15 @@ class MDViewerPro(QMainWindow):
         ブラウザ側からの通知は入力が途切れて 400ms 後に届く。保存や
         書き出しがその前に走ると、直前の編集 (Enter で入れた改行など) が
         ファイルに入らないまま書かれてしまう。閉じるときの確認も
-        「変更なし」と誤判定して黙って捨ててしまう。ここで待ち合わせる。"""
+        「変更なし」と誤判定して黙って捨ててしまう。ここで待ち合わせる。
+
+        戻り値: "ok" (取得・反映成功) / "empty" (画面が空 = 有効な空文書)
+        / "failed" (タイムアウト等で取得できず、現在値を維持すべき失敗)。
+        空文書と取得失敗を区別しないと、全消しの編集が保存されなかったり
+        逆にタイムアウトで既存内容が壊れたりする。"""
         web = getattr(self, "_preview_web", None)
         if web is None or self._md_flushing:
-            return
+            return "failed"
         self._md_flushing = True
         box, loop = {}, QEventLoop()
 
@@ -5266,14 +5308,19 @@ class MDViewerPro(QMainWindow):
         finally:
             guard.stop()
             self._md_flushing = False
-        html = box.get("html")
-        if not html:
-            return
-        text = self._html_to_markdown(html)
+        if "html" not in box:
+            # タイムアウト: 取得失敗。画面の内容で置き換えず現状を維持する
+            return "failed"
+        html = box["html"]
+        # "" は JS が .wrap を見つけられなかった場合と空文書の両方で返る。
+        # 空文書のときは DOM 上も空 (<p><br></p> 等が無い) なので、
+        # 逆変換結果が空でもこれは「有効な空」として反映してよい。
+        text = self._html_to_markdown(html) if html else ""
         if text != self._content_text:
             self._content_text = text
             self.is_modified = True
             self._update_title()
+        return "ok"
 
     # 取り込みの待ち時間の上限 (描画側が応答しなくても固まらないための保険)
     _MD_FLUSH_TIMEOUT_MS = 2000
@@ -6121,6 +6168,7 @@ class MDViewerPro(QMainWindow):
 
     def _load_file(self, path):
         text = None
+        read_error = None
         for enc in ("utf-8-sig", "utf-8", "shift_jis", "cp932", "euc-jp", "latin-1"):
             try:
                 with open(path, "r", encoding=enc) as f:
@@ -6128,14 +6176,24 @@ class MDViewerPro(QMainWindow):
                 break
             except (UnicodeDecodeError, LookupError):
                 continue
-        if text is None:
+            # PermissionError / IsADirectoryError / OSError 等はデコード不能とは
+            # 別の失敗。errors="replace" へのフォールバックで黙って開かず、
+            # 現在の文書をそのまま維持する。
+            except OSError as e:
+                read_error = e
+                break
+        if text is None and read_error is None:
             try:
                 with open(path, "rb") as f:
                     raw = f.read()
                 text = raw.decode("utf-8", errors="replace")
+            except OSError as e:
+                read_error = e
             except Exception as e:
-                QMessageBox.warning(self, self._t("read_error"), str(e))
-                return
+                read_error = e
+        if read_error is not None:
+            QMessageBox.warning(self, self._t("read_error"), str(read_error))
+            return
         self._content_text = text
         # YAML ファイルは Markdown ではなく YAML として構文強調表示する
         self.doc_kind = "yaml" if path.lower().endswith(YAML_EXTS) else "md"
@@ -6198,9 +6256,25 @@ class MDViewerPro(QMainWindow):
     def _write(self, path) -> bool:
         self._save_buf()
         try:
-            with open(path, "w", encoding="utf-8") as f:
+            # 直接 open(path, "w") で書くと、書込み中にプロセスが落ちたり
+            # ディスクが一杯になったりしたときに既存ファイルが失われる。
+            # 同一フォルダの一時ファイルへ書いてから原子的に置換する。
+            # os.replace は同一ボリュームでのみ原子的なので、tmp は必ず
+            # 対象と同じフォルダに作る ( tempfile は /tmp 等へ置くので不可 )。
+            import uuid as _uuid
+            tmp_path = f"{path}.{_uuid.uuid4().hex[:8]}.tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 f.write(self._content_text)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, path)
         except Exception as e:
+            # 失敗したときは tmp を掃除し、既存ファイル・dirty状態を維持する
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except Exception:
+                pass
             QMessageBox.warning(self, self._t("save_error"), str(e))
             return False
         self.is_modified = False
