@@ -2,9 +2,11 @@
 
 A simple and fast Markdown viewer built with Python and PySide6 (Qt for Python).
 
-**Current version / 現在のバージョン: v1.4.5**
-See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.4.5).
+**Current version / 現在のバージョン: v1.4.6**
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.4.6).
 更新履歴は [RELEASE_NOTES.md](RELEASE_NOTES.md) をご覧ください。
+
+Apple Silicon macOSでのソース起動・ビルド: `python3 -m venv venv_new` → `venv_new/bin/python -m pip install -r requirements.txt` → `venv_new/bin/python main.py`。DMGは `./build_dmg.sh` で作成します。/ On Apple Silicon macOS, use the same commands to run from source or build the DMG. The published DMG is ad-hoc signed, not notarized.
 
 ---
 
@@ -37,13 +39,17 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 
 ### 初回起動について
 
-本アプリは未署名のため、macOS によって警告が表示される場合があります。
+本アプリはad-hoc署名・未公証のため、macOS によって警告が表示される場合があります。
 
 その場合は以下の手順で起動してください：
 
 1. アプリを右クリック
 2. 「開く」を選択
 3. 再度「開く」を選択
+
+起動が拒否された場合は「システム設定 → プライバシーとセキュリティ」から許可してください。今回の配布物はApple Silicon向けです。
+
+MD編集で内容を変更した場合はHTMLからMarkdownへ変換するため、複雑な原文構造は完全に復元できません。原文の表記を厳密に維持する編集にはTXT編集を使ってください。未編集のMD編集往復は原文を維持します。
 
 ---
 
@@ -245,13 +251,15 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 
 ### First Launch
 
-macOS may block the application because it is not signed.
+This Apple Silicon build is ad-hoc signed and not notarized. macOS may block its first launch.
 
 To open the app:
 
 1. Right-click the application
 2. Click "Open"
 3. Click "Open" again
+
+If macOS still blocks it, allow the app in System Settings → Privacy & Security. Unedited MD Edit round trips preserve the exact Markdown source. Actual visual edits may change complex Markdown syntax during HTML-to-Markdown conversion; use TXT Edit for exact source editing.
 
 ---
 

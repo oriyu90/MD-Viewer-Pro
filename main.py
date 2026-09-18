@@ -66,7 +66,7 @@ PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
-APP_VERSION   = "1.4.5"
+APP_VERSION   = "1.4.6"
 
 # 開けるファイルの拡張子 (YAML を含む)
 OPEN_FILTER = ("Markdown / Text / YAML "
@@ -188,6 +188,7 @@ I18N = {
         "unsaved": "未保存の変更",
         "unsaved_msg": "変更が保存されていません。保存しますか？",
         "read_error": "読み込みエラー", "save_error": "保存エラー",
+        "capture_error": "編集内容を取得できませんでした。文書を開いたまま再試行してください。",
         "settings_title": "詳細設定",
         "font_label": "フォント", "lang_label": "言語", "theme_label": "テーマ",
         "dark": "ダークモード", "light": "ライトモード",
@@ -282,6 +283,7 @@ I18N = {
         "unsaved": "Unsaved Changes",
         "unsaved_msg": "You have unsaved changes. Save now?",
         "read_error": "Read Error", "save_error": "Save Error",
+        "capture_error": "Could not retrieve the edits. Keep the document open and try again.",
         "settings_title": "Settings",
         "font_label": "Font", "lang_label": "Language", "theme_label": "Theme",
         "dark": "Dark Mode", "light": "Light Mode",
@@ -376,6 +378,7 @@ I18N = {
         "unsaved": "Ungespeicherte Änderungen",
         "unsaved_msg": "Sie haben ungespeicherte Änderungen. Jetzt speichern?",
         "read_error": "Lesefehler", "save_error": "Speicherfehler",
+        "capture_error": "Änderungen konnten nicht abgerufen werden. Dokument geöffnet lassen und erneut versuchen.",
         "settings_title": "Einstellungen",
         "font_label": "Schriftart", "lang_label": "Sprache", "theme_label": "Thema",
         "dark": "Dunkelmodus", "light": "Hellmodus",
@@ -470,6 +473,7 @@ I18N = {
         "unsaved": "Modifications non enregistrées",
         "unsaved_msg": "Vous avez des modifications non enregistrées. Enregistrer maintenant?",
         "read_error": "Erreur de lecture", "save_error": "Erreur d'enregistrement",
+        "capture_error": "Impossible de récupérer les modifications. Gardez le document ouvert et réessayez.",
         "settings_title": "Paramètres",
         "font_label": "Police", "lang_label": "Langue", "theme_label": "Thème",
         "dark": "Mode sombre", "light": "Mode clair",
@@ -563,6 +567,7 @@ I18N = {
         "unsaved": "有未保存的更改",
         "unsaved_msg": "有尚未保存的更改。现在保存吗？",
         "read_error": "读取错误", "save_error": "保存错误",
+        "capture_error": "无法获取编辑内容。请保持文档打开并重试。",
         "settings_title": "设置",
         "font_label": "字体", "lang_label": "语言", "theme_label": "主题",
         "dark": "深色模式", "light": "浅色模式",
@@ -4897,8 +4902,9 @@ class MDViewerPro(QMainWindow):
                 # タイマーは window に持たせる。保存や書き出しの直前に
                 # Python 側 (_JS_GRAB_WRAP) から解除して、取り込んだ後に
                 # 古い内容が遅れて届くのを防ぐため。
-                'window._mdvTmr=null;'
+                'window._mdvTmr=null;window._mdvDirty=false;'
                 'w.addEventListener("input",function(){'
+                'window._mdvDirty=true;'
                 'clearTimeout(window._mdvTmr);'
                 'window._mdvTmr=setTimeout('
                 'function(){br.contentChanged(w.innerHTML);},400);'
@@ -5172,7 +5178,9 @@ class MDViewerPro(QMainWindow):
         ※ 別の文書を読み込んだ直後など「中身を入れ替える」再描画では、
            古い画面から取り込んでしまうので使ってはいけない。"""
         if self.edit_mode == "md":
-            self._flush_md_buf()
+            if not self._save_buf():
+                QMessageBox.warning(self, self._t("save_error"), self._t("capture_error"))
+                return
         self._refresh_view()
 
     def _flush_preview(self):
@@ -5271,14 +5279,14 @@ class MDViewerPro(QMainWindow):
     _JS_GRAB_WRAP = (
         "(function(){"
         "try{clearTimeout(window._mdvTmr);}catch(e){}"
-        "var w=document.querySelector('.wrap');if(!w)return '';"
+        "var w=document.querySelector('.wrap');if(!w)return null;"
         "var c=w.cloneNode(true);"
         "c.querySelectorAll('.mdv-copy-btn,.pg-brk,.mdv-table-ctrl')"
         ".forEach(function(el){el.remove();});"
-        "return c.innerHTML;})()"
+        "return JSON.stringify({html:c.innerHTML,dirty:window._mdvDirty===true});})()"
     )
 
-    def _flush_md_buf(self) -> None:
+    def _flush_md_buf(self) -> str:
         """MD編集モードの編集内容を _content_text に取り込む (同期)。
 
         ブラウザ側からの通知は入力が途切れて 400ms 後に届く。保存や
@@ -5310,10 +5318,20 @@ class MDViewerPro(QMainWindow):
         finally:
             guard.stop()
             self._md_flushing = False
-        if "html" not in box:
+        if "html" not in box or not isinstance(box["html"], str):
             # タイムアウト: 取得失敗。画面の内容で置き換えず現状を維持する
             return "failed"
-        html = box["html"]
+        try:
+            snapshot = json.loads(box["html"])
+        except (ValueError, TypeError):
+            return "failed"
+        if not isinstance(snapshot, dict):
+            return "failed"
+        if not snapshot.get("dirty"):
+            return "ok"  # rendered HTML is not a lossless representation of the source
+        html = snapshot.get("html")
+        if not isinstance(html, str):
+            return "failed"
         # "" は JS が .wrap を見つけられなかった場合と空文書の両方で返る。
         # 空文書のときは DOM 上も空 (<p><br></p> 等が無い) なので、
         # 逆変換結果が空でもこれは「有効な空」として反映してよい。
@@ -5434,7 +5452,7 @@ class MDViewerPro(QMainWindow):
             self._preview_web.page().runJavaScript(
                 "(function(){"
                 "var a=" + self._JS_CAPTURE_ANCHOR + ";"
-                "return a+'\\u0001'+" + self._JS_GRAB_WRAP + ";"
+                "return JSON.stringify([a," + self._JS_GRAB_WRAP + "]);"
                 "})()",
                 lambda res: self._finish_mode_switch_from_md(res, mode)
             )
@@ -5448,15 +5466,26 @@ class MDViewerPro(QMainWindow):
             )
 
     def _finish_mode_switch_from_md(self, res, mode):
-        anchor, html_content = None, ""
-        if res:
-            raw, sep, html_content = str(res).partition('\x01')
-            if sep:
-                anchor = self._parse_anchor(raw)
-            else:                       # 区切りが無い = HTML のみ
-                html_content = raw
-        if html_content:
-            self._content_text = self._html_to_markdown(html_content)
+        try:
+            raw, data = json.loads(res)
+            snapshot = json.loads(data)
+        except (ValueError, TypeError):
+            QMessageBox.warning(self, self._t("save_error"), self._t("capture_error"))
+            return  # never leave the editor when its contents cannot be retrieved
+        if not isinstance(snapshot, dict):
+            QMessageBox.warning(self, self._t("save_error"), self._t("capture_error"))
+            return
+        anchor = self._parse_anchor(raw)
+        if snapshot.get("dirty"):
+            html_content = snapshot.get("html")
+            if not isinstance(html_content, str):
+                QMessageBox.warning(self, self._t("save_error"), self._t("capture_error"))
+                return
+            text = self._html_to_markdown(html_content)
+            if text != self._content_text:
+                self._content_text = text
+                self.is_modified = True
+                self._update_title()
         self._do_set_mode(mode, anchor=anchor)
 
     def _do_set_mode(self, mode, anchor=None):
@@ -5735,7 +5764,8 @@ class MDViewerPro(QMainWindow):
         if self.edit_mode == "txt":
             self._content_text = self._md_editor.toPlainText()
         elif self.edit_mode == "md":
-            self._flush_md_buf()
+            return self._flush_md_buf() != "failed"
+        return True
 
     def _set_layout(self, layout):
         self.page_mode = layout
@@ -5957,7 +5987,9 @@ class MDViewerPro(QMainWindow):
     #  PDF書き出し
     # ════════════════════════════════════════════
     def _export_pdf(self):
-        self._save_buf()
+        if not self._save_buf():
+            QMessageBox.warning(self, self._t("save_error"), self._t("capture_error"))
+            return
         dlg = PdfExportDialog(
             self, self.page_mode,
             self.a4_margins, self.b5_margins,
@@ -6090,7 +6122,9 @@ class MDViewerPro(QMainWindow):
     #  HTML書き出し
     # ════════════════════════════════════════════
     def _export_html(self):
-        self._save_buf()
+        if not self._save_buf():
+            QMessageBox.warning(self, self._t("save_error"), self._t("capture_error"))
+            return
         path, _ = QFileDialog.getSaveFileName(
             self, self._t("html_export_menu"),
             os.path.expanduser("~"),
@@ -6239,7 +6273,6 @@ class MDViewerPro(QMainWindow):
             SAVE_FILTER
         )
         if path:
-            self._save_buf()
             ok = self._write(path)
             if ok:
                 self.current_file_path = path
@@ -6256,7 +6289,9 @@ class MDViewerPro(QMainWindow):
         return False
 
     def _write(self, path) -> bool:
-        self._save_buf()
+        if not self._save_buf():
+            QMessageBox.warning(self, self._t("save_error"), self._t("capture_error"))
+            return False
         try:
             # 直接 open(path, "w") で書くと、書込み中にプロセスが落ちたり
             # ディスクが一杯になったりしたときに既存ファイルが失われる。
@@ -6287,7 +6322,9 @@ class MDViewerPro(QMainWindow):
         # MD編集モードの未反映の編集を先に取り込む。これをしないと、
         # 入力直後に閉じたときに「変更なし」と判定して黙って捨ててしまう。
         if not self._readonly_file and self.edit_mode == "md":
-            self._flush_md_buf()
+            if not self._save_buf():
+                QMessageBox.warning(self, self._t("save_error"), self._t("capture_error"))
+                return False
         if self._readonly_file or not self.is_modified:
             return True
         r = QMessageBox.question(

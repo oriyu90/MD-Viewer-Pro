@@ -17,6 +17,11 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
 import main as M
 
+# Offscreen dialogs cannot be dismissed; record unexpected warnings as failures.
+_warnings = []
+M.QMessageBox.warning = staticmethod(
+    lambda _parent, title, message, *args: _warnings.append((title, message)))
+
 # 設定ファイルを一時ディレクトリへ逃がす (利用者の ~/.mdviewer を壊さない)
 _SETTINGS_TMP = tempfile.mkdtemp(prefix="mdvp_settings_")
 M.SETTINGS_DIR = _SETTINGS_TMP
@@ -482,8 +487,7 @@ check("[取り込み] AAA と BBB が別の行になる",
 #   逆変換後の全文圧縮がフェンス内にも効き、コード中の連続空行が
 #   保存のたびに詰まっていた。
 code_path = os.path.join(TMP, "codeblank.md")
-# 変換器の仕様として最終行の改行は strip されるため、比較対象も揃える
-# (末尾改行の有無以外は保存で変化しないことを確認する)。
+# 未編集なら変換器を通さないため、末尾改行まで原文を保持する。
 CODE_DOC = "```python\na = 1\n\n\n\nb = 2\n```\n"
 open(code_path, "w", encoding="utf-8").write(CODE_DOC)
 win._load_file(code_path)
@@ -494,7 +498,7 @@ win.current_file_path = code_path
 win.file_save()
 _saved_code = open(code_path, encoding="utf-8").read()
 check("[コード空行] 保存でもコード内の連続空行が残る",
-      _saved_code == CODE_DOC.rstrip("\n"), repr(_saved_code))
+      _saved_code == CODE_DOC, repr(_saved_code))
 win.is_modified = False
 
 win._set_mode("md")
@@ -667,7 +671,42 @@ for _name, _act in KEEP_CASES:
 win._apply_theme(refresh=False)
 win.is_modified = False
 
+# Unedited visual round trips must not normalize Setext headings, escapes or
+# trailing blank lines. A failed WebEngine capture must not overwrite the file.
+roundtrip_path = os.path.join(TMP, "roundtrip.md")
+ROUNDTRIP = "Setext heading\n==============\n\n\\*literal\\*\n\n\n"
+open(roundtrip_path, "w", encoding="utf-8").write(ROUNDTRIP)
+win._load_file(roundtrip_path)
+wait(1000)
+win._set_mode("md")
+wait(1400)
+check("[原文] 未編集MDの保存に成功", win.file_save(), "")
+check("[原文] 未編集MDをバイト単位で保持",
+      open(roundtrip_path, encoding="utf-8").read() == ROUNDTRIP,
+      repr(open(roundtrip_path, encoding="utf-8").read()))
+win._set_mode("view")
+wait(800)
+check("[原文] 未編集MDから戻っても保持", win._content_text == ROUNDTRIP,
+      repr(win._content_text))
+win._set_mode("md")
+wait(1300)
+original_save_buf = win._save_buf
+original_warning = M.QMessageBox.warning
+try:
+    win._save_buf = lambda: False
+    M.QMessageBox.warning = lambda *args: None
+    check("[保護] 取得失敗時に保存を中止", not win.file_save(), "")
+    check("[保護] 取得失敗時もディスクの原文保持",
+          open(roundtrip_path, encoding="utf-8").read() == ROUNDTRIP, "")
+    check("[保護] 取得失敗時は終了も中止", not win._maybe_save(), "")
+finally:
+    win._save_buf = original_save_buf
+    M.QMessageBox.warning = original_warning
+win._set_mode("view")
+wait(700)
+
 serious = [e for e in errors if "Error" in e or "error" in e]
+check("[e2e] 予期しない警告が出ていない", not _warnings, repr(_warnings[:5]))
 check("[e2e] JS エラーが出ていない", not serious, str(serious[:5]))
 
 print("=" * 60)

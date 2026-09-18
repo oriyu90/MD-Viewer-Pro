@@ -1,5 +1,23 @@
 # Release Notes / 更新履歴
 
+## v1.4.6
+
+### 日本語
+
+- 未編集のMD編集モードから保存・画面切替をしても、Setext見出し、エスケープ、末尾の空行を含む元のMarkdownをそのまま保持します。
+- WebEngineから編集内容を取得できない場合は、古い内容での保存・書き出しや文書を閉じる操作を中止し、再試行できるよう警告します。
+- 編集直後の入力を保存する既存の動作を維持し、追加のWebEngine統合テストで成功・失敗両経路を検証しました。
+- MD編集で実際に内容を変更した場合のHTML→Markdown変換は、複雑な構文を完全には往復できません。原文の細部を維持したい編集にはTXT編集を使用してください。
+
+### English
+
+- Saving or leaving MD Edit without making changes now preserves the original Markdown, including Setext headings, escapes, and trailing blank lines.
+- If WebEngine cannot capture an edit, saving, exporting, and closing are stopped with a retryable warning instead of writing stale content.
+- Existing immediate-save behavior remains covered, with additional real-WebEngine regression tests for success and failure paths.
+- Actual visual edits still use a lossy HTML-to-Markdown conversion for complex syntax. Use TXT Edit when exact source formatting matters.
+
+This macOS build is ad-hoc signed and not notarized. First launch may require approval in System Settings → Privacy & Security.
+
 ## v1.4.5
 
 入力した改行とコードの中身が、保存・再読込の往復で失われる問題を直した
