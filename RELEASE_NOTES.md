@@ -8,6 +8,10 @@
 - PDF書き出しの形式崩れを改善しました。印刷は表示とは別の専用ページで行うため、書き出し中に画面のスクロールやカーソル位置が失われなくなりました。表・コード・図・数式がページの境目で切断されにくく、画面の配色がPDFにも反映されます。
 - 閲覧・MD編集・TXT編集のプレビューで、右側の広い空白と意図しない横スクロールが出ないよう、文書の表示範囲に収まる表示にしました。長いURLや広い表も折り返して表示されます。
 - 回帰テストは計989件（純粋関数506・Qt401・WebEngine統合82）ですべて成功しました。
+- （2026-09-22 追記）同梱の使い方ガイドのファイル名をASCIIのみ（`sample_ja/en/de/fr/zh.md`）に
+  変更しました。`ç` を含む旧名はコピー時にUnicode正規化で別名になり、署名シールが
+  壊れてGatekeeperに「壊れている」と判定される問題がありました。すでに入手済みの
+  DMGで起動できない場合は、新しいDMGをダウンロードし直してください。
 
 ### 初回起動について（v1.4.7 の配布物）
 
@@ -25,6 +29,10 @@ Applications フォルダへ入れ、ターミナルで `xattr -cr /Applications
 - PDF export layout is improved. Printing now uses a dedicated off-screen page, so the on-screen scroll position and cursor are no longer disturbed during export. Tables, code blocks, figures, and math are kept from splitting across page breaks, and on-screen colors carry over to the PDF.
 - View, MD Edit, and TXT Edit previews no longer show a wide blank area on the right or allow accidental horizontal scrolling; content now fits within the document display range. Long URLs and wide tables wrap instead of overflowing.
 - All 989 regression tests pass (506 pure functions, 401 Qt, 82 WebEngine integration).
+- (Added 2026-09-22) Bundled guide filenames are now ASCII-only (`sample_ja/en/de/fr/zh.md`).
+  The old name containing `ç` could change form under Unicode normalization during copying,
+  breaking the signature seal and causing Gatekeeper to report the app as damaged.
+  If the DMG you already downloaded won't open, please download the new DMG.
 
 ### First launch (v1.4.7 distribution)
 

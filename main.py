@@ -6772,13 +6772,16 @@ class MDViewerPro(QMainWindow):
     def _open_guide(self):
         """選択中の言語のsampleファイルを読み取り専用で開く"""
         lang_to_file = {
-            "ja": "sample_日本語.md",
-            "en": "sample_English.md",
-            "de": "sample_Deutsch.md",
-            "fr": "sample_français.md",
-            "zh": "sample_中文.md",
+            # ファイル名はASCIIのみにする。非ASCII名 (ç 等の合成可能文字) は
+            # コピー時にUnicode正規化で別名になり、署名シールが壊れて
+            # Gatekeeper に「壊れている」と判定される (v1.4.7で発覚)。
+            "ja": "sample_ja.md",
+            "en": "sample_en.md",
+            "de": "sample_de.md",
+            "fr": "sample_fr.md",
+            "zh": "sample_zh.md",
         }
-        filename = lang_to_file.get(self.lang, "sample_English.md")
+        filename = lang_to_file.get(self.lang, "sample_en.md")
         candidates = []
         # 開発時: スクリプトと同じディレクトリの資料箱
         script_dir = os.path.dirname(os.path.abspath(__file__))

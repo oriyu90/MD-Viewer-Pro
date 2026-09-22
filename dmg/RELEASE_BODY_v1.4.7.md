@@ -23,3 +23,5 @@ Complex Markdown can still change formatting after an actual visual edit. Use TX
 Apple Silicon macOS build; ad-hoc signed, not Apple-notarized. First launch may require approval under System Settings → Privacy & Security.
 
 **初回起動で「壊れている」と出る場合 / If macOS says the app is damaged**: アプリ自体は壊れていません (The app itself is not damaged). 先にMDViewerPro.app を Applications フォルダへ入れ（DMGの中のまま開かない）、ターミナルで `xattr -cr /Applications/MDViewerPro.app` を実行してから開いてください。DMG 内の `FIRST_LAUNCH.txt` もご覧ください。
+
+（2026-09-22 追記 / Update）同梱ガイドのファイル名をASCIIのみに修正したDMGに差し替えました。旧DMGで起動できない場合は新しいDMGをダウンロードし直してください (Re-download if the old DMG won't open: bundled guide filenames are now ASCII-only to survive Unicode normalization during copying)。

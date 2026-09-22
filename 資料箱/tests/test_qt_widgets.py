@@ -656,11 +656,13 @@ win._sync_tb_labels()
 win._rebuild_fmt_tb()
 
 # 起動時サンプルとガイドが全言語で用意されているか
+# (v1.4.7: 同梱ファイル名はASCIIのみ。非ASCII名はコピー時のUnicode正規化で
+#  署名シールを壊すため sample_<lang>.md に統一)
 _guide_dir = os.path.join(os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))), "資料箱")
-_guide_files = {"ja": "sample_日本語.md", "en": "sample_English.md",
-                "de": "sample_Deutsch.md", "fr": "sample_français.md",
-                "zh": "sample_中文.md"}
+_guide_files = {"ja": "sample_ja.md", "en": "sample_en.md",
+                "de": "sample_de.md", "fr": "sample_fr.md",
+                "zh": "sample_zh.md"}
 for _lg, _fn in _guide_files.items():
     check(f"[言語] {_lg} のガイドがある",
           os.path.exists(os.path.join(_guide_dir, _fn)), _fn)
@@ -767,6 +769,30 @@ check("[PDF] 印刷後にViewを破棄する", "deleteLater" in _pdf_src, "")
 check("[PDF] 表示ViewにPDF用HTMLを載せない",
       "_preview_web.loadFinished.connect(_do_print)" not in _pdf_src, "")
 check("[PDF] 表示の復元処理が残っていない", "_restore_original" not in _pdf_src, "")
+
+# v1.4.7 回帰: 同梱ファイル名はASCIIのみにする
+# (非ASCII名はコピー時のUnicode正規化で別名になり署名シールが壊れる。
+#  実際に sample_français.md の ç が NFD 化して Gatekeeper に
+#  「壊れている」と判定された)
+import unicodedata as _unicodedata
+_sample_files = sorted(f for f in os.listdir(_guide_dir)
+                      if f.startswith("sample_") and f.endswith(".md"))
+check("[同梱名] sampleガイドが5言語分ある", len(_sample_files) == 5,
+      repr(_sample_files))
+check("[同梱名] sampleガイド名はASCIIのみ",
+      all(all(ord(c) < 128 for c in f) for f in _sample_files),
+      repr(_sample_files))
+check("[同梱名] 資料箱内の全ファイル名がNFD安定",
+      all(_unicodedata.normalize("NFD", f) == f for f in os.listdir(_guide_dir)),
+      repr([f for f in os.listdir(_guide_dir)
+            if _unicodedata.normalize("NFD", f) != f]))
+_guide_src = _inspect.getsource(M.MDViewerPro._open_guide)
+for _gf in ("sample_ja.md", "sample_en.md", "sample_de.md",
+            "sample_fr.md", "sample_zh.md"):
+    check(f"[同梱名] ガイド参照に {_gf} がある", _gf in _guide_src, _gf)
+check("[同梱名] 旧非ASCII名の参照が残っていない",
+      "sample_日本語" not in _guide_src and "sample_fran" not in _guide_src
+      and "sample_中文" not in _guide_src, "")
 
 print("=" * 60)
 print(f"PASS: {PASS}   FAIL: {len(FAIL)}")
