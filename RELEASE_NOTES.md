@@ -9,6 +9,14 @@
 - 閲覧・MD編集・TXT編集のプレビューで、右側の広い空白と意図しない横スクロールが出ないよう、文書の表示範囲に収まる表示にしました。長いURLや広い表も折り返して表示されます。
 - 回帰テストは計989件（純粋関数506・Qt401・WebEngine統合82）ですべて成功しました。
 
+### 初回起動について（v1.4.7 の配布物）
+
+本アプリはad-hoc署名・未公証のため、「"MDViewerPro"は壊れているため開けません。」と
+表示されることがありますが、アプリ自体は壊れていません。MDViewerPro.app を
+Applications フォルダへ入れ、ターミナルで `xattr -cr /Applications/MDViewerPro.app`
+を実行してから開いてください。DMG 内の `FIRST_LAUNCH.txt` に同じ手順（日英）を
+入れています。詳しくは README の「初回起動について」をご覧ください。
+
 実際にMD編集で変更した複雑なMarkdownはHTMLからの逆変換で表記が変わることがあります。厳密な原文編集にはTXT編集を使用してください。
 
 ### English
@@ -17,6 +25,14 @@
 - PDF export layout is improved. Printing now uses a dedicated off-screen page, so the on-screen scroll position and cursor are no longer disturbed during export. Tables, code blocks, figures, and math are kept from splitting across page breaks, and on-screen colors carry over to the PDF.
 - View, MD Edit, and TXT Edit previews no longer show a wide blank area on the right or allow accidental horizontal scrolling; content now fits within the document display range. Long URLs and wide tables wrap instead of overflowing.
 - All 989 regression tests pass (506 pure functions, 401 Qt, 82 WebEngine integration).
+
+### First launch (v1.4.7 distribution)
+
+This app is ad-hoc signed and not notarized, so macOS may say "MDViewerPro" is damaged
+and can't be opened. The app itself is not damaged. Put MDViewerPro.app into the
+Applications folder, run `xattr -cr /Applications/MDViewerPro.app` in Terminal, then
+open it. The DMG contains `FIRST_LAUNCH.txt` with the same steps (Japanese and English).
+See "First Launch" in the README for details.
 
 Complex Markdown can still change formatting after an actual visual edit. Use TXT Edit for exact source editing.
 

@@ -40,14 +40,18 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 ### 初回起動について
 
 本アプリはad-hoc署名・未公証のため、macOS によって警告が表示される場合があります。
+特に「"MDViewerPro"は壊れているため開けません。」と出ることがありますが、
+アプリ自体は壊れていません（ad-hoc署名のアプリは quarantine 付きで配布すると
+Gatekeeper に「壊れている」と判定されます）。
 
-その場合は以下の手順で起動してください：
+その場合は以下の手順で起動してください（順番が重要です）：
 
-1. アプリを右クリック
-2. 「開く」を選択
-3. 再度「開く」を選択
+1. MDViewerPro.app を Applications フォルダへ入れる（DMGの中のまま開かない）
+2. 「ターミナル」アプリで次の1行を実行する
+   `xattr -cr /Applications/MDViewerPro.app`
+3. アプリをダブルクリックで開く
 
-起動が拒否された場合は「システム設定 → プライバシーとセキュリティ」から許可してください。今回の配布物はApple Silicon向けです。
+上記で開けない場合は「システム設定 → プライバシーとセキュリティ」から許可してください。今回の配布物はApple Silicon向けです。DMG 内の `FIRST_LAUNCH.txt` に同じ手順（日英）を入れています。
 
 MD編集で内容を変更した場合はHTMLからMarkdownへ変換するため、複雑な原文構造は完全に復元できません。原文の表記を厳密に維持する編集にはTXT編集を使ってください。未編集のMD編集往復は原文を維持します。
 
@@ -251,15 +255,18 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 
 ### First Launch
 
-This Apple Silicon build is ad-hoc signed and not notarized. macOS may block its first launch.
+This Apple Silicon build is ad-hoc signed and not notarized. macOS may block its first launch,
+sometimes saying "MDViewerPro" is damaged and can't be opened. The app itself is not damaged
+(Gatekeeper reports quarantined ad-hoc-signed apps as damaged).
 
-To open the app:
+To open the app (the order matters):
 
-1. Right-click the application
-2. Click "Open"
-3. Click "Open" again
+1. Put MDViewerPro.app into the Applications folder (do not open it inside the DMG)
+2. Open the Terminal app and run this one line:
+   `xattr -cr /Applications/MDViewerPro.app`
+3. Double-click the app to open it
 
-If macOS still blocks it, allow the app in System Settings → Privacy & Security. Unedited MD Edit round trips preserve the exact Markdown source. Actual visual edits may change complex Markdown syntax during HTML-to-Markdown conversion; use TXT Edit for exact source editing.
+If macOS still blocks it, allow the app in System Settings → Privacy & Security. The DMG also contains `FIRST_LAUNCH.txt` with the same steps (Japanese and English). Unedited MD Edit round trips preserve the exact Markdown source. Actual visual edits may change complex Markdown syntax during HTML-to-Markdown conversion; use TXT Edit for exact source editing.
 
 ---
 

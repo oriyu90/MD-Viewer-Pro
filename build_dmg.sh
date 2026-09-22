@@ -30,6 +30,10 @@ echo "[3/5] QtWebEngine フレームワーク構造を修正..."
 bash "$(dirname "$0")/fix_webengine.sh"
 echo "      完了"
 
+echo "[3.5/5] 署名を検証 (失敗したらビルドを中断)..."
+codesign --verify --deep --strict "dist/${APP_NAME}.app"
+echo "      署名は一貫しています (ad-hoc 署名・未公証のため初回起動手順の同梱が必要)"
+
 echo "[4/5] DMG を作成中..."
 mkdir -p dmg_tmp
 cp -R "dist/${APP_NAME}.app" dmg_tmp/
@@ -37,6 +41,11 @@ ln -s /Applications dmg_tmp/Applications
 # LGPL準拠: LICENSE / NOTICE をDMGに同梱
 cp "$(dirname "$0")/LICENSE"   dmg_tmp/ 2>/dev/null || true
 cp "$(dirname "$0")/NOTICE.md" dmg_tmp/ 2>/dev/null || true
+# 初回起動手順 (Gatekeeper で「壊れている」と出た場合の開き方・日英) を同梱
+cp "$(dirname "$0")/dmg/FIRST_LAUNCH.txt" dmg_tmp/ 2>/dev/null || {
+    echo "ERROR: dmg/FIRST_LAUNCH.txt が見つかりません"
+    exit 1
+}
 
 hdiutil create \
     -volname "MD Viewer Pro" \

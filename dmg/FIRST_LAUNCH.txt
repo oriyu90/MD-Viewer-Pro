@@ -1,0 +1,40 @@
+MD Viewer Pro — 初回起動の手順 / First-Launch Steps
+============================================================
+
+【日本語】
+
+このアプリは Apple の Developer ID 署名・公証を受けていないため
+(ad-hoc 署名)、初回起動時に macOS が次のように表示することがあります。
+
+  「"MDViewerPro"は壊れているため開けません。」
+
+アプリ自体は壊れていません。次の手順で開けます。
+（順番が重要です。先にDMGの中のまま開くと直りません）
+
+  1. MDViewerPro.app を「アプリケーション」フォルダに入れる
+     （DMGの中のまま開かないでください）
+  2. 「ターミナル」アプリを開き、次の1行を実行する
+       xattr -cr /Applications/MDViewerPro.app
+  3. MDViewerPro.app をダブルクリックで開く
+
+上記で開けない場合は、「システム設定 → プライバシーとセキュリティ」に
+表示される「開く」ボタンから許可してください。
+
+[English]
+
+This app is ad-hoc signed and not Apple-notarized, so on first launch
+macOS may say:
+
+  "MDViewerPro" is damaged and can't be opened.
+
+The app is not actually damaged. To open it:
+(The order matters. Opening it from inside the DMG first will not fix it.)
+
+  1. Put MDViewerPro.app into the Applications folder
+     (do not open it while it is still inside the DMG)
+  2. Open the Terminal app and run this one line:
+       xattr -cr /Applications/MDViewerPro.app
+  3. Double-click MDViewerPro.app to open it
+
+If it still won't open, allow it with the "Open" button in
+System Settings → Privacy & Security.
