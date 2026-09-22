@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
     QLabel, QSpinBox, QDialog, QDialogButtonBox, QFormLayout,
     QStackedWidget, QPushButton, QSizePolicy, QSlider,
     QComboBox, QGroupBox, QCheckBox,
-    QListWidget, QListWidgetItem,
+    QListWidget, QListWidgetItem, QInputDialog,
 )
 from PySide6.QtGui import (
     QAction, QKeySequence, QTextCursor,
@@ -66,7 +66,7 @@ PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
-APP_VERSION   = "1.4.6"
+APP_VERSION   = "1.4.7"
 
 # 開けるファイルの拡張子 (YAML を含む)
 OPEN_FILTER = ("Markdown / Text / YAML "
@@ -245,6 +245,11 @@ I18N = {
         "link_text_default": "テキスト",
         "img_alt_default": "説明",
         "img_url_prompt": "画像URL",
+        "link_dialog_title": "リンクの挿入",
+        "link_url_label": "URL:",
+        "link_invalid_url": "URLが無効です。http(s)://、mailto:、tel:、#、/、相対パスのいずれかで入力してください。",
+        "img_dialog_title": "画像の挿入",
+        "img_invalid_url": "画像URLが無効です。http(s):// または相対パスで入力してください。",
         "table_col": "列",
         "table_cell": "セル",
         "table_add_col": "+ 列",
@@ -340,6 +345,11 @@ I18N = {
         "link_text_default": "Text",
         "img_alt_default": "Description",
         "img_url_prompt": "Image URL",
+        "link_dialog_title": "Insert Link",
+        "link_url_label": "URL:",
+        "link_invalid_url": "Invalid URL. Use http(s)://, mailto:, tel:, #, /, or a relative path.",
+        "img_dialog_title": "Insert Image",
+        "img_invalid_url": "Invalid image URL. Use http(s):// or a relative path.",
         "table_col": "Col",
         "table_cell": "Cell",
         "table_add_col": "+ Col",
@@ -435,6 +445,11 @@ I18N = {
         "link_text_default": "Text",
         "img_alt_default": "Beschreibung",
         "img_url_prompt": "Bild-URL",
+        "link_dialog_title": "Link einfügen",
+        "link_url_label": "URL:",
+        "link_invalid_url": "Ungültige URL. Verwenden Sie http(s)://, mailto:, tel:, #, / oder einen relativen Pfad.",
+        "img_dialog_title": "Bild einfügen",
+        "img_invalid_url": "Ungültige Bild-URL. Verwenden Sie http(s):// oder einen relativen Pfad.",
         "table_col": "Sp.",
         "table_cell": "Zelle",
         "table_add_col": "+ Sp.",
@@ -530,6 +545,11 @@ I18N = {
         "link_text_default": "Texte",
         "img_alt_default": "Description",
         "img_url_prompt": "URL de l'image",
+        "link_dialog_title": "Insérer un lien",
+        "link_url_label": "URL :",
+        "link_invalid_url": "URL invalide. Utilisez http(s)://, mailto:, tel:, #, / ou un chemin relatif.",
+        "img_dialog_title": "Insérer une image",
+        "img_invalid_url": "URL d'image invalide. Utilisez http(s):// ou un chemin relatif.",
         "table_col": "Col",
         "table_cell": "Cellule",
         "table_add_col": "+ Col",
@@ -614,6 +634,11 @@ I18N = {
         "toc_title": "≡ 目录", "toc_empty": "没有标题",
         "link_text_default": "文字", "img_alt_default": "说明",
         "img_url_prompt": "图片网址",
+        "link_dialog_title": "插入链接",
+        "link_url_label": "URL：",
+        "link_invalid_url": "URL 无效。请使用 http(s)://、mailto:、tel:、#、/ 或相对路径。",
+        "img_dialog_title": "插入图片",
+        "img_invalid_url": "图片 URL 无效。请使用 http(s):// 或相对路径。",
         "table_col": "列", "table_cell": "单元格",
         "table_add_col": "+ 列", "table_add_col_title": "添加列",
         "table_add_row": "+ 行", "table_add_row_title": "添加行",
@@ -3369,6 +3394,12 @@ class MDViewerPro(QMainWindow):
         self._initial_file: Optional[str] = None
         self._show_toc         = bool(_s.get("show_toc", True))
         self._pdf_embed_images = _s.get("pdf_embed_images", True)
+        # PDF書き出し用オフスクリーンViewの参照 (書き出し中のみ保持し、
+        # 終了時に破棄する。表示側 _preview_web には一切触らない)。
+        self._pdf_view = None
+        self._pdf_loader = None
+        self._pdf_layout_ref = None
+        self._pdf_state = "done"
 
         # UI スケール管理 (空文字で初回強制適用)
         self._last_ui_scale_cat = ""
@@ -3696,11 +3727,27 @@ class MDViewerPro(QMainWindow):
         fb("fmt_hr",     txt_wrap="insert", txt_pre="\n---\n", md_cmd="insertHorizontalRule")
         _link_placeholder = f'[{self._t("link_text_default")}](URL)'
         _img_placeholder = f'![{self._t("img_alt_default")}](URL)'
-        _img_prompt_js = json.dumps(self._t("img_url_prompt"))
-        fb("fmt_link",   txt_wrap="insert", txt_pre=_link_placeholder,
-           md_js="(function(){var u=prompt('URL','https://');if(u)document.execCommand('createLink',false,u);var w=document.querySelector('.wrap');if(w)w.dispatchEvent(new Event('input',{bubbles:true}));})();")
-        fb("fmt_img",    txt_wrap="insert", txt_pre=_img_placeholder,
-           md_js=f"(function(){{var u=prompt({_img_prompt_js},'https://');if(u)document.execCommand('insertImage',false,u);var w=document.querySelector('.wrap');if(w)w.dispatchEvent(new Event('input',{{bubbles:true}}));}})();")
+        # MD編集のリンク・画像は QWebEngine 内の JS prompt() では表示できない
+        # (javaScriptPrompt 未実装のため無反応になる) ため、Python 側の
+        # ネイティブダイアログでURLを受け取り _mdvLink/_mdvImage で挿入する。
+        link_btn = PianoBtn(self._t("fmt_link"))
+        link_btn.setObjectName("fmtBtn")
+        def on_link():
+            if self.edit_mode == "txt":
+                self._md_insert(_link_placeholder)
+            elif self.edit_mode == "md":
+                self._on_md_link_button()
+        link_btn.clicked.connect(on_link)
+        lay.addWidget(link_btn)
+        img_btn = PianoBtn(self._t("fmt_img"))
+        img_btn.setObjectName("fmtBtn")
+        def on_img():
+            if self.edit_mode == "txt":
+                self._md_insert(_img_placeholder)
+            elif self.edit_mode == "md":
+                self._on_md_image_button()
+        img_btn.clicked.connect(on_img)
+        lay.addWidget(img_btn)
         fs()
 
         # テーブルボタン（特殊）
@@ -4042,12 +4089,25 @@ class MDViewerPro(QMainWindow):
             # 直近にキャレットがあったブロックを覚えておく (ツールバー押下で
             # Web ビューからフォーカスが外れても対象を見失わないため)
             'window._mdvLastBlock=null;'
+            # ツールバー押下で選択 (Range) 自体が失われるため、インライン用の
+            # 選択範囲も複製して保持する (リンク・画像の挿入で復元する)。
+            'window._mdvSavedRange=null;'
+            'window._mdvSaveRange=function(){'
+            'try{'
+            'var w=document.querySelector(".wrap");if(!w)return;'
+            'var s=window.getSelection();if(!s||!s.rangeCount)return;'
+            'var r=s.getRangeAt(0);'
+            'if(!w.contains(r.startContainer)||!w.contains(r.endContainer))return;'
+            'window._mdvSavedRange=r.cloneRange();'
+            '}catch(e){}'
+            '};'
             'document.addEventListener("selectionchange",function(){'
             'var w=document.querySelector(".wrap");if(!w)return;'
             'var s=window.getSelection();if(!s||!s.rangeCount)return;'
             'if(!w.contains(s.getRangeAt(0).startContainer))return;'
             'var b=window._mdvTopBlock(s.getRangeAt(0).startContainer);'
             'if(b)window._mdvLastBlock=b;'
+            'window._mdvSaveRange();'
             '});'
             # 書式を適用する対象ブロック (選択が失われていれば記憶した位置)
             'window._mdvTargetBlock=function(){'
@@ -4079,6 +4139,88 @@ class MDViewerPro(QMainWindow):
             'if(!nu.firstChild)nu.appendChild(document.createElement("br"));'
             'el.parentNode.replaceChild(nu,el);'
             'return nu;'
+            '};'
+            # ── URL の許可判定 (Python 側 _san_safe_url と同じ方針) ──
+            #    javascript:/data:/vbscript: 等はリンク・画像に使わせない。
+            'window._mdvSafeUrl=function(u){'
+            'if(!u)return false;'
+            'var v=String(u).trim();if(!v)return false;'
+            'var low=v.toLowerCase().replace(/[\\t\\n\\r]/g,"");'
+            'if(low.indexOf("#")===0||low.indexOf("/")===0'
+            '||low.indexOf("./")===0||low.indexOf("../")===0)return true;'
+            'if(low.indexOf("data:")===0)return false;'
+            'var head=low.split("/",1)[0];'
+            'if(head.indexOf(":")>=0){'
+            'return(low.indexOf("http:")===0||low.indexOf("https:")===0'
+            '||low.indexOf("mailto:")===0||low.indexOf("tel:")===0);'
+            '}'
+            'return true;'
+            '};'
+            # ── 保存済み Range を復元する (ツールバー押下で失った選択へ戻る) ──
+            'window._mdvRestoreRange=function(){'
+            'var w=document.querySelector(".wrap");if(!w)return false;'
+            'var s=window.getSelection();if(!s)return false;'
+            'var r=window._mdvSavedRange;'
+            'if(r){try{'
+            'var sc=r.startContainer,ec=r.endContainer;'
+            'if(w.contains(sc)&&w.contains(ec)){'
+            'w.focus();'
+            's.removeAllRanges();s.addRange(r.cloneRange());'
+            'return true;'
+            '}'
+            '}catch(e){}}'
+            # 復元先がない場合は末尾にキャレットを置く
+            'try{'
+            'w.focus();'
+            'var nr=document.createRange();'
+            'nr.selectNodeContents(w);nr.collapse(false);'
+            's.removeAllRanges();s.addRange(nr);'
+            'return true;'
+            '}catch(e){return false;}'
+            '};'
+            # ── リンク挿入 (Python 側のネイティブダイアログから URL を受け取る) ──
+            #    選択範囲があればその文字列をリンク文言にし、なければ既定文言で挿入する。
+            'window._mdvLink=function(url,label){'
+            'if(!window._mdvSafeUrl(url))return false;'
+            'if(!window._mdvRestoreRange())return false;'
+            'var s=window.getSelection();if(!s||!s.rangeCount)return false;'
+            'var r=s.getRangeAt(0);'
+            'var txt=r.toString()||label||"link";'
+            'try{r.deleteContents();}catch(e){return false;}'
+            'var a=document.createElement("a");'
+            'a.setAttribute("href",String(url).trim());'
+            'a.textContent=txt;'
+            'r.insertNode(a);'
+            'try{'
+            'var nr=document.createRange();'
+            'nr.setStartAfter(a);nr.collapse(true);'
+            's.removeAllRanges();s.addRange(nr);'
+            '}catch(e){}'
+            'window._mdvSaveRange();'
+            'var w=document.querySelector(".wrap");'
+            'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
+            'return true;'
+            '};'
+            # ── 画像挿入 (リンクと同様に Range 復元して <img> を挿入) ──
+            'window._mdvImage=function(url,alt){'
+            'if(!window._mdvSafeUrl(url))return false;'
+            'if(!window._mdvRestoreRange())return false;'
+            'var s=window.getSelection();if(!s||!s.rangeCount)return false;'
+            'var r=s.getRangeAt(0);'
+            'try{r.deleteContents();}catch(e){return false;}'
+            'var img=document.createElement("img");'
+            'img.setAttribute("src",String(url).trim());'
+            'img.setAttribute("alt",alt||"");'
+            'r.insertNode(img);'
+            'try{'
+            'var nr=document.createRange();'
+            'nr.setStartAfter(img);nr.collapse(true);'
+            's.removeAllRanges();s.addRange(nr);'
+            '}catch(e){}'
+            'window._mdvSaveRange();'
+            'var w=document.querySelector(".wrap");'
+            'if(w)w.dispatchEvent(new Event("input",{bubbles:true}));'
+            'return true;'
             '};'
             # ── 書式コマンド (HR は <p> を後挿入してカーソル位置を安定させる) ──
             'window._mdvExec=function(cmd){'
@@ -4148,13 +4290,51 @@ class MDViewerPro(QMainWindow):
             '}'
             'w.dispatchEvent(new Event("input",{bubbles:true}));'
             '};'
-            # ── 外部からの貼り付けは書式なし(プレーンテキスト)で挿入 ──
+            # ── 外部からの貼り付け ──
+            #    既定は書式なし(プレーンテキスト)で挿入するが、リンクは活かす:
+            #    1) text/html 中の最初の <a href> をリンクとして挿入
+            #    2) Markdown 記法 [文言](URL) の貼り付けをリンクに変換
+            #    3) 素の URL だけの貼り付けを自動リンク化
+            #    いずれも _mdvSafeUrl で危険スキームを弾く。
             'document.addEventListener("paste",function(e){'
             'var w=document.querySelector(".wrap");'
             'if(!w||!w.contains(e.target))return;'
             'e.preventDefault();'
-            'var t=(e.clipboardData||window.clipboardData).getData("text/plain");'
-            'if(t)document.execCommand("insertText",false,t);'
+            'var cd=e.clipboardData||window.clipboardData;'
+            'var inserted=false;'
+            'try{'
+            'var html=cd?cd.getData("text/html"):"";'
+            'if(html){'
+            'var doc=new DOMParser().parseFromString(html,"text/html");'
+            'var link=doc.querySelector("a[href]");'
+            'if(link&&window._mdvSafeUrl(link.getAttribute("href"))){'
+            'var label=(link.textContent||"").trim()||link.getAttribute("href");'
+            'document.execCommand("insertHTML",false,'
+            '\'<a href="\'+link.getAttribute("href").replace(/"/g,"&quot;")+\'">\''
+            '+label.replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</a>");'
+            'inserted=true;'
+            '}'
+            '}'
+            '}catch(err){}'
+            'if(!inserted){'
+            'var t=cd?cd.getData("text/plain"):"";'
+            'if(t){'
+            'var m=t.trim().match(/^\\[([^\\]]+)\\]\\((\\S+?)\\)$/);'
+            'if(m&&window._mdvSafeUrl(m[2])){'
+            'document.execCommand("insertHTML",false,'
+            '\'<a href="\'+m[2].replace(/"/g,"&quot;")+\'">\''
+            '+m[1].replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</a>");'
+            '}else if(window._mdvSafeUrl(t.trim())'
+            '&&/^(https?:\\/\\/|mailto:|tel:|#[^\\s]*|\\/[^\\s]*)$/i.test(t.trim())){'
+            'var u=t.trim();'
+            'document.execCommand("insertHTML",false,'
+            '\'<a href="\'+u.replace(/"/g,"&quot;")+\'">\''
+            '+u.replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</a>");'
+            '}else{'
+            'document.execCommand("insertText",false,t);'
+            '}'
+            '}'
+            '}'
             'w.dispatchEvent(new Event("input",{bubbles:true}));'
             '},true);'
             # ── Enter の扱い ────────────────────────────────────────
@@ -4291,21 +4471,26 @@ class MDViewerPro(QMainWindow):
         return (
             "*{box-sizing:border-box;margin:0;padding:0}"
             f"html,body{{background:{p['bg']};color:{p['text']};"
-            f"font-family:{ff};font-size:{fs}px;line-height:1.8;font-weight:{fw};}}"
+            f"font-family:{ff};font-size:{fs}px;line-height:1.8;font-weight:{fw};"
+            # 横方向の溢れを文書幅に収める。長い表・URL・数式・コードが
+            # 行の最小内容幅を押し広げ、右側に広い空白と水平スクロールが
+            # 出るのを防ぐ (閲覧/MD編集/TXT編集の共通プレビューCSS)。
+            "max-width:100%;overflow-x:hidden;}}"
             f"h1{{font-size:{int(fs*1.85)}px;color:{p['heading']};"
             f"margin:28px 0 16px}}"
             f"h2{{font-size:{int(fs*1.4)}px;color:{p['heading']};"
             f"margin:22px 0 12px}}"
             f"h3{{font-size:{int(fs*1.15)}px;color:{p['heading']};margin:18px 0 10px}}"
             f"h4,h5,h6{{color:{p['heading']};margin:14px 0 8px}}"
-            "p{margin:10px 0}"
-            f"a{{color:{p['accent']};text-decoration:none}}"
+            "p{margin:10px 0;overflow-wrap:break-word}"
+            "li{overflow-wrap:break-word}"
+            f"a{{color:{p['accent']};text-decoration:none;overflow-wrap:anywhere}}"
             "a:hover{text-decoration:underline}"
             f"code{{background:{p['bg3']};color:{p['code_fg']};"
-            "padding:2px 6px;border-radius:3px;"
+            "padding:2px 6px;border-radius:3px;overflow-wrap:anywhere;"
             "font-family:'Menlo','Monaco',monospace;font-size:.88em}"
             f"pre{{position:relative;background:{p['bg3']};border:1px solid {p['border']};"
-            "border-radius:6px;padding:16px;overflow-x:auto;margin:14px 0}"
+            "border-radius:6px;padding:16px;overflow-x:auto;margin:14px 0;max-width:100%}"
             f"pre code{{background:none;padding:0;color:{p['text']}}}"
             "pre.mermaid{background:transparent;border:none;padding:12px 0;"
             "text-align:center;overflow-x:auto}"
@@ -4320,8 +4505,9 @@ class MDViewerPro(QMainWindow):
             f"blockquote{{border-left:4px solid {p['accent']};background:{p['bg3']};"
             "margin:14px 0;padding:10px 18px;border-radius:0 4px 4px 0;"
             f"color:{p['text_dim']}}}"
-            f"table{{border-collapse:collapse;width:100%;margin:16px 0}}"
-            f"th,td{{border:1px solid {p['border']};padding:9px 14px;text-align:left}}"
+            f"table{{border-collapse:collapse;width:100%;max-width:100%;margin:16px 0}}"
+            f"th,td{{border:1px solid {p['border']};padding:9px 14px;text-align:left;"
+            "overflow-wrap:break-word;word-break:break-word}}"
             f"th{{background:{p['bg3']};color:{p['heading']};font-weight:700}}"
             f"tr:nth-child(even){{background:{p['row_even']}}}"
             "ul,ol{padding-left:1.7em;margin:10px 0}"
@@ -4331,7 +4517,8 @@ class MDViewerPro(QMainWindow):
             # コントラストを少しだけ上げる (テーマごとの雰囲気は保つ)。
             f"hr{{border:none;height:4px;background:{_HR_COLOR};"
             f"margin:24px 0;border-radius:2px}}"
-            "img{max-width:100%;border-radius:4px}"
+            "img{max-width:100%;height:auto;border-radius:4px}"
+            "svg{max-width:100%;height:auto}"
             ".task-list-item{list-style:none;margin-left:-1.4em}"
             ".task-list-item input[type='checkbox']{margin-right:6px;vertical-align:middle}"
             + self._math_css() + self._front_matter_css()
@@ -4349,7 +4536,7 @@ class MDViewerPro(QMainWindow):
             "'Hiragino Mincho ProN',serif;font-weight:400;line-height:1.2;"
             "white-space:nowrap;}"
             ".mdv-math-display{display:block;text-align:center;margin:18px 0;"
-            "font-size:1.15em;overflow-x:auto;overflow-y:hidden;}"
+            "font-size:1.15em;overflow-x:auto;overflow-y:hidden;max-width:100%;}"
             ".mdv-math .mdv-var{font-style:italic;}"
             ".mdv-math .mdv-rm,.mdv-math .mdv-txt{font-style:normal;}"
             # 関数名は立体。直後の引数との間に LaTeX と同じ細い空きを入れる
@@ -4809,6 +4996,16 @@ class MDViewerPro(QMainWindow):
             "break-after:page!important;page-break-after:always!important;}"
             ".mdv-newpage::after{content:none!important;display:none!important;}"
             ".mdv-texcmd{outline:none!important;}"
+            # 印刷時の体裁: 背景の有無を画面表示どおりに保ち、
+            # 表・コード・図・数式・引用が見開きで切断されにくくする。
+            "*{print-color-adjust:exact!important;"
+            "-webkit-print-color-adjust:exact!important;}"
+            "thead{display:table-header-group;}"
+            "tr{break-inside:avoid;page-break-inside:avoid;}"
+            "pre,blockquote,figure,table,"
+            ".mdv-math-display,pre.mermaid,.mdv-fm"
+            "{break-inside:avoid;page-break-inside:avoid;}"
+            "h1,h2,h3,h4,h5,h6{break-after:avoid;page-break-after:avoid;}"
         )
 
         if self.page_mode == "a4":
@@ -4856,7 +5053,10 @@ class MDViewerPro(QMainWindow):
             )
             pg_js = self._page_break_js(page_h)
         else:
-            wrap = "padding:32px 48px;max-width:920px;margin:0 auto;"
+            # width:100% でビューポート幅に追従させ、max-width:920px で
+            # 上限を抑える。中央寄せの両側は地色になるが、行内容が幅を
+            # 押し広げて右側へ広い空白と水平スクロールが出ることはない。
+            wrap = "padding:32px 48px;max-width:920px;width:100%;margin:0 auto;"
             print_css = (
                 # 余白は QPageLayout が管理 (CSS 側は 0 にして二重適用を防ぐ)
                 f"@media print{{@page{{margin:0;}}"
@@ -5969,6 +6169,52 @@ class MDViewerPro(QMainWindow):
             f"| {cell} | {cell} | {cell} |\n"
         )
 
+    # ── MD編集 (WYSIWYG) のリンク・画像挿入 ──
+    #    QWebEngine 内の JS prompt() はダイアログが出ないため、Python 側の
+    #    ネイティブ入力ダイアログでURLを受け取り、JS (_mdvLink/_mdvImage)
+    #    で保存済み選択範囲へ挿入する。URL は _san_safe_url と同じ方針で検証する。
+    def _on_md_link_button(self):
+        if self.edit_mode != "md":
+            return
+        url, ok = QInputDialog.getText(
+            self, self._t("link_dialog_title"),
+            self._t("link_url_label"), text="https://")
+        if not ok:
+            return
+        url = (url or "").strip()
+        if not url or not _san_safe_url(url):
+            QMessageBox.warning(self, self._t("link_dialog_title"),
+                                self._t("link_invalid_url"))
+            return
+        label = self._t("link_text_default")
+        try:
+            self._preview_web.page().runJavaScript(
+                f"window._mdvLink({json.dumps(url)}, {json.dumps(label)})")
+        except Exception:
+            QMessageBox.warning(self, self._t("save_error"),
+                                self._t("capture_error"))
+
+    def _on_md_image_button(self):
+        if self.edit_mode != "md":
+            return
+        url, ok = QInputDialog.getText(
+            self, self._t("img_dialog_title"),
+            self._t("img_url_prompt"), text="https://")
+        if not ok:
+            return
+        url = (url or "").strip()
+        if not url or not _san_safe_url(url, allow_data_image=True):
+            QMessageBox.warning(self, self._t("img_dialog_title"),
+                                self._t("img_invalid_url"))
+            return
+        alt = self._t("img_alt_default")
+        try:
+            self._preview_web.page().runJavaScript(
+                f"window._mdvImage({json.dumps(url)}, {json.dumps(alt)})")
+        except Exception:
+            QMessageBox.warning(self, self._t("save_error"),
+                                self._t("capture_error"))
+
     def _wait_mermaid_then(self, page, callback, attempts=0):
         """mermaid.js の非同期描画 (window._mdvMermaidReady) が終わるまで
         短間隔でポーリングしてから callback を呼ぶ。printToPdf() はページの
@@ -6041,39 +6287,71 @@ class MDViewerPro(QMainWindow):
             self._palette = LIGHT_PALETTE
         elif pdf_theme in self._plugin_themes:
             self._palette = self._plugin_themes[pdf_theme]
+        pdf_palette = self._palette
 
         strip_img = not embed_images
-        pdf_html = self._build_md_html(self._content_text, editable=False, strip_images=strip_img)
-        self._palette = orig_palette  # パレットを元に戻す
-
-        # 現在の表示状態を保持するため元のHTMLも生成
-        orig_html = self._build_md_html(self._content_text, editable=(self.edit_mode == "md"))
+        try:
+            pdf_html = self._build_md_html(self._content_text, editable=False, strip_images=strip_img)
+        finally:
+            self._palette = orig_palette  # パレットを元に戻す
 
         base_path = None
         if self.current_file_path:
             base_path = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
 
+        # ── PDF印刷は表示とは別のオフスクリーンViewで行う ──
+        #    従来は表示中の _preview_web にPDF用HTMLを上書き→印刷→復元して
+        #    いたため、スクロール/カーソル喪失・操作競合・画面とPDFでの改ページ
+        #    ずれが起きていた。独立Viewにすることで表示状態に一切触れない。
+        try:
+            pdf_view = QWebEngineView()
+        except Exception:
+            QMessageBox.warning(self, "PDF", self._t("pdf_error"))
+            self._pdf_layout_ref = None
+            return
+        # self の子にして寿命を管理する (レイアウトに入れないので不可視のまま)。
+        # 終了時は deleteLater で破棄し、参照を外してメモリを解放する。
+        pdf_view.setParent(self)
+        self._pdf_view = pdf_view
+        try:
+            pdf_view.page().setBackgroundColor(QColor(pdf_palette.get("bg", "#ffffff")))
+        except Exception:
+            pass
+        try:
+            pdf_loader = SafeWebLoader(pdf_view, dark=bool(_hex_is_dark(pdf_palette.get("bg", "#ffffff"))))
+        except Exception:
+            pdf_loader = None
+        self._pdf_loader = pdf_loader
+
         # PDF 書き出しの状態管理 ("loading" → "printing" → 終了)。
-        # 小さい HTML では load_html が即座に loadFinished を発火しうるため、
-        # 接続は load_html より「前」に行い、取りこぼしを防ぐ。
+        # 小さい HTML では setHtml/load が即座に loadFinished を発火しうるため、
+        # 接続はロードより「前」に行い、取りこぼしを防ぐ。
         self._pdf_state = "loading"
 
-        def _restore_original():
-            base_path2 = None
-            if self.current_file_path:
-                base_path2 = os.path.dirname(os.path.abspath(self.current_file_path)) + os.sep
-            self._loader.load_html(orig_html, base_path2)
+        def _cleanup_pdf_view():
+            try:
+                pdf_view.page().pdfPrintingFinished.disconnect(_on_pdf_done)
+            except Exception:
+                pass
+            try:
+                pdf_view.loadFinished.disconnect(_do_print)
+            except Exception:
+                pass
+            if getattr(self, "_pdf_view", None) is pdf_view:
+                self._pdf_view = None
+            self._pdf_loader = None
+            self._pdf_layout_ref = None
+            try:
+                pdf_view.setParent(None)
+                pdf_view.deleteLater()
+            except Exception:
+                pass
 
         def _on_pdf_done(pdf_path, ok):
             if self._pdf_state != "printing":
                 return
             self._pdf_state = "done"
-            try:
-                self._preview_web.page().pdfPrintingFinished.disconnect(_on_pdf_done)
-            except Exception:
-                pass
-            self._pdf_layout_ref = None
-            _restore_original()
+            _cleanup_pdf_view()
             if ok:
                 QMessageBox.information(self, "PDF", self._t("pdf_success"))
             else:
@@ -6082,18 +6360,15 @@ class MDViewerPro(QMainWindow):
         def _do_print(ok=True):
             if self._pdf_state != "loading":
                 return
-            try:
-                self._preview_web.loadFinished.disconnect(_do_print)
-            except Exception:
-                pass
+            # loadFinished の切断は _cleanup_pdf_view に一本化する
+            # (ここで切断すると後続の切断が警告になる。再入は状態で防ぐ)。
             if not ok:
                 self._pdf_state = "done"
-                self._pdf_layout_ref = None
-                _restore_original()
+                _cleanup_pdf_view()
                 QMessageBox.warning(self, "PDF", self._t("pdf_error"))
                 return
             self._pdf_state = "printing"
-            page = self._preview_web.page()
+            page = pdf_view.page()
             page.pdfPrintingFinished.connect(_on_pdf_done)
             if "_mdvMermaidReady" in pdf_html:
                 self._wait_mermaid_then(page, lambda: page.printToPdf(path, layout))
@@ -6101,21 +6376,27 @@ class MDViewerPro(QMainWindow):
                 page.printToPdf(path, layout)
 
         def _on_pdf_timeout():
-            # ロードが完了しないまま固まった場合の保険: 表示を復元して通知。
+            # ロードが完了しないまま固まった場合の保険: Viewを破棄して通知。
+            # 表示側には触っていないため復元は不要。
             if self._pdf_state != "loading":
                 return
             self._pdf_state = "done"
-            try:
-                self._preview_web.loadFinished.disconnect(_do_print)
-            except Exception:
-                pass
-            self._pdf_layout_ref = None
-            _restore_original()
+            _cleanup_pdf_view()
             QMessageBox.warning(self, "PDF", self._t("pdf_error"))
 
         # 接続 → ロード の順序を厳守する
-        self._preview_web.loadFinished.connect(_do_print)
-        self._loader.load_html(pdf_html, base_path)
+        pdf_view.loadFinished.connect(_do_print)
+        try:
+            if pdf_loader is not None:
+                pdf_loader.load_html(pdf_html, base_path)
+            else:
+                base_url = QUrl.fromLocalFile(base_path) if base_path else QUrl()
+                pdf_view.setHtml(pdf_html, base_url)
+        except Exception:
+            self._pdf_state = "done"
+            _cleanup_pdf_view()
+            QMessageBox.warning(self, "PDF", self._t("pdf_error"))
+            return
         QTimer.singleShot(20000, _on_pdf_timeout)
 
     # ════════════════════════════════════════════

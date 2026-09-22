@@ -1,5 +1,27 @@
 # Release Notes / 更新履歴
 
+## v1.4.7
+
+### 日本語
+
+- MD編集でリンク・画像が挿入できるようになりました。ツールバーの「リンク」「画像」ボタンがURL入力ダイアログを開き、選択中の文字列をリンク文言にして挿入します。URLや `[文言](URL)` 形式の貼り付けもリンクとして貼り付けられ、危険なスキーム（javascript: 等）は除外されます。
+- PDF書き出しの形式崩れを改善しました。印刷は表示とは別の専用ページで行うため、書き出し中に画面のスクロールやカーソル位置が失われなくなりました。表・コード・図・数式がページの境目で切断されにくく、画面の配色がPDFにも反映されます。
+- 閲覧・MD編集・TXT編集のプレビューで、右側の広い空白と意図しない横スクロールが出ないよう、文書の表示範囲に収まる表示にしました。長いURLや広い表も折り返して表示されます。
+- 回帰テストは計989件（純粋関数506・Qt401・WebEngine統合82）ですべて成功しました。
+
+実際にMD編集で変更した複雑なMarkdownはHTMLからの逆変換で表記が変わることがあります。厳密な原文編集にはTXT編集を使用してください。
+
+### English
+
+- Links and images can now be inserted in MD Edit. The toolbar's Link and Image buttons open a URL dialog and insert the selected text as the link label. Pasting a URL or `[label](URL)` now pastes as a link, and dangerous schemes (such as javascript:) are rejected.
+- PDF export layout is improved. Printing now uses a dedicated off-screen page, so the on-screen scroll position and cursor are no longer disturbed during export. Tables, code blocks, figures, and math are kept from splitting across page breaks, and on-screen colors carry over to the PDF.
+- View, MD Edit, and TXT Edit previews no longer show a wide blank area on the right or allow accidental horizontal scrolling; content now fits within the document display range. Long URLs and wide tables wrap instead of overflowing.
+- All 989 regression tests pass (506 pure functions, 401 Qt, 82 WebEngine integration).
+
+Complex Markdown can still change formatting after an actual visual edit. Use TXT Edit for exact source editing.
+
+This macOS build is ad-hoc signed and not notarized. First launch may require approval in System Settings → Privacy & Security.
+
 ## v1.4.6
 
 ### 日本語

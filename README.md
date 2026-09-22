@@ -2,8 +2,8 @@
 
 A simple and fast Markdown viewer built with Python and PySide6 (Qt for Python).
 
-**Current version / 現在のバージョン: v1.4.6**
-See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.4.6).
+**Current version / 現在のバージョン: v1.4.7**
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.4.7).
 更新履歴は [RELEASE_NOTES.md](RELEASE_NOTES.md) をご覧ください。
 
 Apple Silicon macOSでのソース起動・ビルド: `python3 -m venv venv_new` → `venv_new/bin/python -m pip install -r requirements.txt` → `venv_new/bin/python main.py`。DMGは `./build_dmg.sh` で作成します。/ On Apple Silicon macOS, use the same commands to run from source or build the DMG. The published DMG is ad-hoc signed, not notarized.

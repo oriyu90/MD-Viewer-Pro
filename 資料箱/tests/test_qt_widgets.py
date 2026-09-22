@@ -715,6 +715,59 @@ check("[水平線] 16進以外はそのまま返す",
 check("[水平線] 不正な値でも落ちない", M._mix_hex("#zzzzzz", "#000000", 0.5) == "#zzzzzz",
       "")
 
+# ══════════════════════════════════════════════════
+# v1.4.7 回帰: リンク挿入・PDF独立化・プレビュー横溢れ防止
+# ══════════════════════════════════════════════════
+import inspect as _inspect
+
+# 全言語のキー数が一致する (言語追加時の検査と同様。新規キーは5言語すべてへ)。
+_key_sets = {lg: set(M.I18N[lg].keys()) for lg in M.I18N}
+check("[言語] 全言語のキー集合が一致",
+      len({frozenset(s) for s in _key_sets.values()}) == 1,
+      str({lg: len(s) for lg, s in _key_sets.items()}))
+for _lg in M.I18N:
+    for _k in ("link_dialog_title", "link_url_label", "link_invalid_url",
+               "img_dialog_title", "img_invalid_url"):
+        check(f"[言語] {_lg} に {_k} がある", _k in M.I18N[_lg], _k)
+
+# MD編集のリンク・画像はネイティブダイアログ + _mdvLink/_mdvImage 経路。
+# QWebEngine では JS prompt() が出ないため prompt() 依存は禁止。
+_fmt_js = win._md_edit_fmt_js()
+check("[リンク] 書式JSに prompt() が残っていない", "prompt(" not in _fmt_js, "")
+for _fn in ("window._mdvLink=", "window._mdvImage=", "window._mdvSavedRange",
+            "window._mdvSafeUrl=", "window._mdvRestoreRange="):
+    check(f"[リンク] 書式JSに {_fn} がある", _fn in _fmt_js, _fn)
+check("[リンク] Python側リンク挿入がある", hasattr(win, "_on_md_link_button"), "")
+check("[リンク] Python側画像挿入がある", hasattr(win, "_on_md_image_button"), "")
+
+# プレビュー横溢れ防止 (閲覧/MD編集/TXT編集の共通CSS)。
+for _theme, _pal in (("dark", M.DARK_PALETTE), ("light", M.LIGHT_PALETTE)):
+    win.current_theme = _theme
+    win._palette = _pal
+    _css2 = win._css(16)
+    check(f"[余白] {_theme}: body横溢れ防止", "overflow-x:hidden" in _css2.replace(" ", ""), "")
+    check(f"[余白] {_theme}: リンク・コード折返し",
+          "overflow-wrap:anywhere" in _css2.replace(" ", ""), "")
+    check(f"[余白] {_theme}: 表セル折返し", "word-break:break-word" in _css2.replace(" ", ""), "")
+    check(f"[余白] {_theme}: svg上限", "svg{max-width:100%" in _css2.replace(" ", ""), "")
+win.current_theme = "dark"
+win._palette = M.DARK_PALETTE
+
+# free モードの .wrap はビューポート追従 (右側の広い空白・誤スクロール防止)。
+win.page_mode = "free"
+_free_html = win._build_md_html("# t\n\n本文\n", editable=False)
+check("[余白] freeの.wrapが幅追従する", "width:100%" in _free_html.replace(" ", ""), "")
+check("[余白] 印刷CSSに切断防止がある", "break-inside:avoid" in _free_html, "")
+check("[余白] 印刷CSSに背景保持がある", "print-color-adjust:exact" in _free_html, "")
+
+# PDF書き出しは表示とは別のオフスクリーンViewで行う (表示の状態保持)。
+_pdf_src = _inspect.getsource(M.MDViewerPro._export_pdf)
+check("[PDF] 専用Viewで印刷する", "QWebEngineView()" in _pdf_src, "")
+check("[PDF] 印刷後にViewを破棄する", "deleteLater" in _pdf_src, "")
+check("[PDF] 表示ViewにPDF用HTMLを載せない",
+      "_preview_web.loadFinished.connect(_do_print)" not in _pdf_src, "")
+check("[PDF] 表示の復元処理が残っていない", "_restore_original" not in _pdf_src, "")
+
 print("=" * 60)
 print(f"PASS: {PASS}   FAIL: {len(FAIL)}")
 for f in FAIL:

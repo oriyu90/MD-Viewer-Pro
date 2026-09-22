@@ -891,6 +891,31 @@ check("[mermaid] アプリのライトパレット背景は暗色でないと判
 check("[mermaid] 不正な色文字列はデフォルトで暗色扱い", _hex_is_dark("not-a-color") is True)
 
 
+# v1.4.7 回帰: MD編集のリンク挿入 (WYSIWYG → Markdown 往復でリンクが残る)
+_san_safe_url = ns["_san_safe_url"]
+
+_LINK_HTML = '<p><a href="https://example.com">Example</a></p>'
+check("[リンク] <a> が Markdown リンクに復元される",
+      "[Example](https://example.com)" in _html_to_md(_LINK_HTML),
+      repr(_html_to_md(_LINK_HTML)))
+check("[リンク] https はサニタイズで残る",
+      'href="https://example.com"' in _sanitize_html(_LINK_HTML),
+      repr(_sanitize_html(_LINK_HTML)))
+check("[リンク] mailto はサニタイズで残る",
+      'href="mailto:a@example.com"' in
+      _sanitize_html('<p><a href="mailto:a@example.com">m</a></p>'), "")
+check("[リンク] javascript: はサニタイズで除去される",
+      "javascript:" not in
+      _sanitize_html('<p><a href="javascript:alert(1)">x</a></p>'),
+      repr(_sanitize_html('<p><a href="javascript:alert(1)">x</a></p>')))
+check("[リンク] URL判定: https 許可", _san_safe_url("https://example.com") is True)
+check("[リンク] URL判定: 相対パス許可", _san_safe_url("./doc.md") is True)
+check("[リンク] URL判定: アンカー許可", _san_safe_url("#見出し") is True)
+check("[リンク] URL判定: javascript: 拒否", _san_safe_url("javascript:alert(1)") is False)
+check("[リンク] URL判定: data: 拒否", _san_safe_url("data:text/html,x") is False)
+check("[リンク] URL判定: 空は拒否", _san_safe_url("  ") is False)
+
+
 # ══════════════════════════════════════════════════════════════
 print("=" * 60)
 print(f"PASS: {PASS}   FAIL: {len(FAIL)}")

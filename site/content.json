@@ -1,6 +1,6 @@
 {
-  "version": "1.4.6",
-  "downloadUrl": "https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.6/MDViewerPro-1.4.6-Installer.dmg",
+  "version": "1.4.7",
+  "downloadUrl": "https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.7/MDViewerPro-1.4.7-Installer.dmg",
   "repoUrl": "https://github.com/oriyu90/MD-Viewer-Pro",
   "siteUrl": "https://studio-rizi.pages.dev/projects/md-viewer-pro/",
   "publicBase": "/projects/md-viewer-pro/",
@@ -23,7 +23,7 @@
         "読むことの間をなくす。"
       ],
       "lead": "MD Viewer Pro は、閲覧・編集・数式・書き出しをひとつにまとめた、Mac のための軽量 Markdown ビューアです。",
-      "download": "公開版 v1.4.6 をダウンロード",
+      "download": "公開版 v1.4.7 をダウンロード",
       "github": "GitHub で見る",
       "note": "Apple Silicon macOS · DMG 約176 MB · MIT License",
       "strip": [
@@ -58,7 +58,7 @@
       "screenKicker": "THE REAL APPLICATION",
       "screenTitle": "Markdown が、文書として立ち上がる。",
       "screenBody": "添付の実画面。上部バーから閲覧・MD編集・TXT編集を切り替え、レイアウトや拡大率、目次、PDF書き出しを操作できます。",
-      "screenCaption": "MD Viewer Pro v1.4.6 — View mode / Dark theme",
+      "screenCaption": "MD Viewer Pro v1.4.7 — View mode / Dark theme",
       "facts": [
         [
           "3",
@@ -116,9 +116,9 @@
       "languagesBody": "アプリ本体は日本語、English、Deutsch、Français、简体中文に対応。この紹介サイトは日本語、English、中文、Portuguêsをブラウザ設定から自動で選びます。",
       "downloadKicker": "DOWNLOAD FOR MAC",
       "downloadTitle": "次の .md は、\nダブルクリックで。",
-      "downloadBody": "公開中のインストーラは v1.4.6。リポジトリのソースと README も同じ v1.4.6 です。",
+      "downloadBody": "公開中のインストーラは v1.4.7。リポジトリのソースと README も同じ v1.4.7 です。",
       "downloadButton": "DMG をダウンロード",
-      "sourceButton": "v1.4.6 のソースを見る",
+      "sourceButton": "v1.4.7 のソースを見る",
       "releaseLabel": "PUBLIC INSTALLER",
       "sourceLabel": "SOURCE / README",
       "unsigned": "ad-hoc署名・未公証",
@@ -151,7 +151,7 @@
         "writing and reading."
       ],
       "lead": "MD Viewer Pro is a lightweight Markdown viewer for Mac, bringing reading, editing, math and export into one focused workspace.",
-      "download": "Download public release v1.4.6",
+      "download": "Download public release v1.4.7",
       "github": "View on GitHub",
       "note": "Apple Silicon macOS · DMG about 176 MB · MIT License",
       "strip": [
@@ -186,7 +186,7 @@
       "screenKicker": "THE REAL APPLICATION",
       "screenTitle": "Markdown becomes a document.",
       "screenBody": "The actual app in action. The top bar gives you View, MD Edit and TXT Edit, plus layout, zoom, table of contents and PDF export controls.",
-      "screenCaption": "MD Viewer Pro v1.4.6 — View mode / Dark theme",
+      "screenCaption": "MD Viewer Pro v1.4.7 — View mode / Dark theme",
       "facts": [
         [
           "3",
@@ -244,9 +244,9 @@
       "languagesBody": "The app supports 日本語, English, Deutsch, Français and 简体中文. This site supports 日本語, English, 中文 and Português, chosen automatically from your browser.",
       "downloadKicker": "DOWNLOAD FOR MAC",
       "downloadTitle": "Make the next .md\na double-click away.",
-      "downloadBody": "The public installer is v1.4.6, matching the repository source and README.",
+      "downloadBody": "The public installer is v1.4.7, matching the repository source and README.",
       "downloadButton": "Download the DMG",
-      "sourceButton": "View v1.4.6 source",
+      "sourceButton": "View v1.4.7 source",
       "releaseLabel": "PUBLIC INSTALLER",
       "sourceLabel": "SOURCE / README",
       "unsigned": "Ad-hoc signed; not notarized",
@@ -279,7 +279,7 @@
         "自然衔接。"
       ],
       "lead": "MD Viewer Pro 是一款轻量级 Mac Markdown 阅读器，将阅读、编辑、数学公式与导出集中在简洁的工作空间中。",
-      "download": "下载公开版 v1.4.6",
+      "download": "下载公开版 v1.4.7",
       "github": "在 GitHub 查看",
       "note": "Apple Silicon macOS · DMG 约176 MB · MIT 许可证",
       "strip": [
@@ -314,7 +314,7 @@
       "screenKicker": "真实应用界面",
       "screenTitle": "让 Markdown 成为完整文档。",
       "screenBody": "这是应用的实际界面。顶部栏可切换阅读、MD 编辑、TXT 编辑，并控制布局、缩放、目录和 PDF 导出。",
-      "screenCaption": "MD Viewer Pro v1.4.6 — 阅读模式 / 深色主题",
+      "screenCaption": "MD Viewer Pro v1.4.7 — 阅读模式 / 深色主题",
       "facts": [
         [
           "3",
@@ -372,9 +372,9 @@
       "languagesBody": "应用支持日本語、English、Deutsch、Français、简体中文。本网站支持日本語、English、中文、Português，并根据浏览器设置自动选择。",
       "downloadKicker": "MAC 版下载",
       "downloadTitle": "让下一份 .md，\n双击即可打开。",
-      "downloadBody": "当前公开安装包为 v1.4.6，与仓库源码和 README 一致。",
+      "downloadBody": "当前公开安装包为 v1.4.7，与仓库源码和 README 一致。",
       "downloadButton": "下载 DMG",
-      "sourceButton": "查看 v1.4.6 源码",
+      "sourceButton": "查看 v1.4.7 源码",
       "releaseLabel": "公开安装包",
       "sourceLabel": "源码 / README",
       "unsigned": "临时签名、未经公证",
@@ -407,7 +407,7 @@
         "escrever e ler."
       ],
       "lead": "MD Viewer Pro é um visualizador Markdown leve para Mac que reúne leitura, edição, matemática e exportação em um único espaço.",
-      "download": "Baixar versão pública v1.4.6",
+      "download": "Baixar versão pública v1.4.7",
       "github": "Ver no GitHub",
       "note": "Apple Silicon macOS · DMG aprox. 176 MB · Licença MIT",
       "strip": [
@@ -442,7 +442,7 @@
       "screenKicker": "O APLICATIVO REAL",
       "screenTitle": "Markdown vira documento.",
       "screenBody": "Esta é a interface real. Na barra superior você alterna entre leitura, MD Edit e TXT Edit e controla layout, zoom, sumário e exportação para PDF.",
-      "screenCaption": "MD Viewer Pro v1.4.6 — modo View / tema escuro",
+      "screenCaption": "MD Viewer Pro v1.4.7 — modo View / tema escuro",
       "facts": [
         [
           "3",
@@ -500,9 +500,9 @@
       "languagesBody": "O app oferece 日本語, English, Deutsch, Français e 简体中文. Este site oferece 日本語, English, 中文 e Português, escolhidos automaticamente pelo navegador.",
       "downloadKicker": "BAIXAR PARA MAC",
       "downloadTitle": "Abra o próximo .md\ncom dois cliques.",
-      "downloadBody": "O instalador público é v1.4.6, igual ao código e ao README do repositório.",
+      "downloadBody": "O instalador público é v1.4.7, igual ao código e ao README do repositório.",
       "downloadButton": "Baixar o DMG",
-      "sourceButton": "Ver código v1.4.6",
+      "sourceButton": "Ver código v1.4.7",
       "releaseLabel": "INSTALADOR PÚBLICO",
       "sourceLabel": "CÓDIGO / README",
       "unsigned": "Assinatura ad-hoc; não autenticado",
