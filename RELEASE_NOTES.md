@@ -23,6 +23,18 @@ Applications フォルダへ入れ、ターミナルで `xattr -cr /Applications
 
 実際にMD編集で変更した複雑なMarkdownはHTMLからの逆変換で表記が変わることがあります。厳密な原文編集にはTXT編集を使用してください。
 
+### Windows版の追加（v1.4.7）
+
+- Windows 10/11 64-bit用ポータブル版（`MDViewerPro-1.4.7-win64-portable.zip`）
+  を追加しました。ZIPを展開して `MDViewerPro.exe` を開くだけで使えます。
+- アプリ本体はmacOS版 v1.4.7 と同じソースです。Windowsでのみ必要な調整
+  （macOS固有設定の無効化、最小ウィンドウ幅でのツールバーボタンのはみ出し修正）
+  を含みます。回帰テストはWindows 10実機でも計998件
+  （純粋関数506・Qtウィジェット410・WebEngine統合82）すべて成功しました。
+- 32-bit版Windowsには対応していません（Qt6/PySide6に32-bit用配布物がないため）。
+- 署名なしポータブルのため、初回起動時にSmartScreenが出ることがあります。
+  詳しくは README の「初回起動について（Windows）」をご覧ください。
+
 ### English
 
 - Links and images can now be inserted in MD Edit. The toolbar's Link and Image buttons open a URL dialog and insert the selected text as the link label. Pasting a URL or `[label](URL)` now pastes as a link, and dangerous schemes (such as javascript:) are rejected.
@@ -43,6 +55,19 @@ open it. The DMG contains `FIRST_LAUNCH.txt` with the same steps (Japanese and E
 See "First Launch" in the README for details.
 
 Complex Markdown can still change formatting after an actual visual edit. Use TXT Edit for exact source editing.
+
+### Windows build added (v1.4.7)
+
+- Added a portable build for Windows 10/11 64-bit
+  (`MDViewerPro-1.4.7-win64-portable.zip`). Extract the ZIP and open
+  `MDViewerPro.exe` (no installation required).
+- The app is the same v1.4.7 source as the macOS build, plus Windows-only
+  adjustments (macOS-specific settings disabled, toolbar button overflow fix
+  at minimum window width). All 998 regression tests pass on a Windows 10
+  machine too (506 pure functions, 410 Qt widgets, 82 WebEngine integration).
+- 32-bit Windows is not supported (Qt6/PySide6 ships no 32-bit binaries).
+- The build is unsigned, so SmartScreen may appear on first launch.
+  See "First Launch (Windows)" in the README for details.
 
 This macOS build is ad-hoc signed and not notarized. First launch may require approval in System Settings → Privacy & Security.
 

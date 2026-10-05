@@ -35,6 +35,20 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 3. **MDViewerPro.app** を Applications フォルダへドラッグ
 4. アプリを起動
 
+### ダウンロード（Windows 10/11 64-bit）
+
+Windows版（ポータブルZIP）は同じリリースページからダウンロードできます。
+ファイル名: `MDViewerPro-1.4.7-win64-portable.zip`
+
+#### インストール手順（インストール不要）
+
+1. ZIPを任意のフォルダに展開する
+2. `MDViewerPro\MDViewerPro.exe` をダブルクリックで起動する
+
+32-bit版Windowsには対応していません（Qt6/PySide6に32-bit用配布物がないため）。
+Windows 11に32-bit版は存在しないため、対象はWindows 10/11 64-bitです。
+ZIP内の `FIRST_LAUNCH_WINDOWS.txt` に同じ手順（日英）を入れています。
+
 ---
 
 ### 初回起動について
@@ -52,6 +66,10 @@ Gatekeeper に「壊れている」と判定されます）。
 3. アプリをダブルクリックで開く
 
 上記で開けない場合は「システム設定 → プライバシーとセキュリティ」から許可してください。今回の配布物はApple Silicon向けです。DMG 内の `FIRST_LAUNCH.txt` に同じ手順（日英）を入れています。
+
+### 初回起動について（Windows）
+
+Windows版は署名なしポータブルのため、初回起動時にSmartScreen（「WindowsによってPCが保護されました」）が出ることがあります。アプリ自体は壊れていません。「詳細情報」→「実行」で起動してください。ZIP展開前に `unblock-File` でブロック解除しておくと確実です。ZIP内の `FIRST_LAUNCH_WINDOWS.txt` に同じ手順（日英）を入れています。
 
 MD編集で内容を変更した場合はHTMLからMarkdownへ変換するため、複雑な原文構造は完全に復元できません。原文の表記を厳密に維持する編集にはTXT編集を使ってください。未編集のMD編集往復は原文を維持します。
 
@@ -251,6 +269,20 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 3. Drag **MDViewerPro.app** into the Applications folder
 4. Launch the application
 
+### Download (Windows 10/11 64-bit)
+
+The Windows portable ZIP is on the same releases page.
+File name: `MDViewerPro-1.4.7-win64-portable.zip`
+
+#### Installation (no install required)
+
+1. Extract the ZIP to any folder
+2. Double-click `MDViewerPro\MDViewerPro.exe` to launch
+
+32-bit Windows is not supported (Qt6/PySide6 ships no 32-bit binaries).
+There is no 32-bit edition of Windows 11, so Windows 10/11 64-bit is required.
+The ZIP contains `FIRST_LAUNCH_WINDOWS.txt` with the same steps (Japanese and English).
+
 ---
 
 ### First Launch
@@ -267,6 +299,10 @@ To open the app (the order matters):
 3. Double-click the app to open it
 
 If macOS still blocks it, allow the app in System Settings → Privacy & Security. The DMG also contains `FIRST_LAUNCH.txt` with the same steps (Japanese and English). Unedited MD Edit round trips preserve the exact Markdown source. Actual visual edits may change complex Markdown syntax during HTML-to-Markdown conversion; use TXT Edit for exact source editing.
+
+### First Launch (Windows)
+
+The Windows build is an unsigned portable app, so SmartScreen ("Windows protected your PC") may appear on first launch. The app itself is not damaged. Choose "More info" → "Run anyway". Unblocking the ZIP with `unblock-File` before extracting avoids the warning. The ZIP contains `FIRST_LAUNCH_WINDOWS.txt` with the same steps (Japanese and English).
 
 ---
 
