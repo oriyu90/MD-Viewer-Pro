@@ -29,7 +29,9 @@ from html.parser import HTMLParser
 if os.environ.get("MDVP_DISABLE_SANDBOX") == "1":
     os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"
 os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu")
-os.environ.setdefault("QT_MAC_WANTS_LAYER", "1")
+if sys.platform == "darwin":
+    # macOS固有: レイヤーベース描画の有効化。Windows/Linuxでは設定しない。
+    os.environ.setdefault("QT_MAC_WANTS_LAYER", "1")
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPlainTextEdit, QFileDialog,
@@ -3861,7 +3863,7 @@ class MDViewerPro(QMainWindow):
         "small":  {"tb_fs": 12, "btn_pad": 6,  "fmt_fs": 11, "fmt_pad": 5,
                    "lbl_fs": 11, "min_w": 26, "slider_w": 80,  "val_w": 40},
         "xsmall": {"tb_fs": 11, "btn_pad": 4,  "fmt_fs": 10, "fmt_pad": 3,
-                   "lbl_fs": 10, "min_w": 22, "slider_w": 58,  "val_w": 34},
+                   "lbl_fs": 10, "min_w": 24, "slider_w": 58,  "val_w": 34},
     }
 
     def _apply_responsive_style(self):
