@@ -17,7 +17,7 @@ Apple Silicon macOSでのソース起動・ビルド: `python3 -m venv venv_new`
 MD Viewer Pro は、Python で開発された軽量な Markdown ビューアです。
 シンプルで直感的なUIにより、Markdownの閲覧・編集・書き出しを快適に行えます。
 
-公式紹介サイト: https://studio-rizi.pages.dev/projects/md-viewer-pro/
+公式紹介サイト: https://studio-rizi.pages.dev/projects/md-viewer-pro/（日本語・English・中文・Português の4言語静的ページ。macOS / Windows のダウンロードボタン横並び）
 （文言は `site/content.json` を編集して `python3 site/build.py` で生成します。
 詳しくは [site/README.md](site/README.md) を参照してください）
 
@@ -251,7 +251,7 @@ $$
 MD Viewer Pro is a lightweight Markdown viewer built with Python.
 It provides fast rendering, editing, and exporting with a clean interface.
 
-Official website: https://studio-rizi.pages.dev/projects/md-viewer-pro/
+Official website: https://studio-rizi.pages.dev/projects/md-viewer-pro/ (static pages in 4 languages with side-by-side macOS / Windows download buttons)
 (edit `site/content.json` and run `python3 site/build.py` to regenerate it —
 see [site/README.md](site/README.md))
 

@@ -18,7 +18,7 @@
         "実際の画面",
         "導入"
       ],
-      "eyebrow": "Markdown for macOS — crafted for reading",
+      "eyebrow": "Markdown for macOS & Windows — crafted for reading",
       "title": [
         "書くことと、",
         "読むことの間をなくす。"
@@ -115,7 +115,7 @@
       "languagesLabel": "APP LANGUAGES",
       "languagesTitle": "5つの言語で、同じ使い心地。",
       "languagesBody": "アプリ本体は日本語、English、Deutsch、Français、简体中文に対応。この紹介サイトは日本語、English、中文、Portuguêsをブラウザ設定から自動で選びます。",
-      "downloadKicker": "DOWNLOAD FOR MAC",
+      "downloadKicker": "MAC & WINDOWS に対応",
       "downloadTitle": "次の .md は、\nダブルクリックで。",
       "downloadBody": "公開中のインストーラは v1.4.7。リポジトリのソースと README も同じ v1.4.7 です。",
       "downloadButton": "DMG をダウンロード",
@@ -147,7 +147,13 @@
       "official": "開発者公式サイト",
       "x": "X / Twitter",
       "footerLine": "macOSとWindowsで使える軽量Markdownビューア。",
-      "backTop": "ページ上部へ"
+      "backTop": "ページ上部へ",
+      "osMac": "macOS版",
+      "osWin": "Windows版",
+      "macFile": "MDViewerPro-1.4.7-Installer.dmg · 約176 MB",
+      "winFile": "MDViewerPro-1.4.7-win64-portable.zip · 約229 MB",
+      "macReq": "Apple Silicon · ad-hoc署名・未公証",
+      "winReq": "Windows 10/11 64-bit · portable · 署名なし"
     },
     "en": {
       "language": "English",
@@ -156,7 +162,7 @@
         "In action",
         "Install"
       ],
-      "eyebrow": "Markdown for macOS — crafted for reading",
+      "eyebrow": "Markdown for macOS & Windows — crafted for reading",
       "title": [
         "No gap between",
         "writing and reading."
@@ -253,7 +259,7 @@
       "languagesLabel": "APP LANGUAGES",
       "languagesTitle": "The same flow in five languages.",
       "languagesBody": "The app supports 日本語, English, Deutsch, Français and 简体中文. This site supports 日本語, English, 中文 and Português, chosen automatically from your browser.",
-      "downloadKicker": "DOWNLOAD FOR MAC",
+      "downloadKicker": "FOR MAC & WINDOWS",
       "downloadTitle": "Make the next .md\na double-click away.",
       "downloadBody": "The public installer is v1.4.7, matching the repository source and README.",
       "downloadButton": "Download the DMG",
@@ -285,7 +291,13 @@
       "official": "Developer website",
       "x": "X / Twitter",
       "footerLine": "A lightweight Markdown viewer for macOS and Windows.",
-      "backTop": "Back to top"
+      "backTop": "Back to top",
+      "osMac": "macOS build",
+      "osWin": "Windows build",
+      "macFile": "MDViewerPro-1.4.7-Installer.dmg · about 176 MB",
+      "winFile": "MDViewerPro-1.4.7-win64-portable.zip · about 229 MB",
+      "macReq": "Apple Silicon · ad-hoc signed, not notarized",
+      "winReq": "Windows 10/11 64-bit · portable · unsigned"
     },
     "zh": {
       "language": "中文",
@@ -294,7 +306,7 @@
         "实际界面",
         "安装"
       ],
-      "eyebrow": "专为阅读打造的 macOS Markdown 工具",
+      "eyebrow": "专为阅读打造的 macOS 与 Windows Markdown 工具",
       "title": [
         "让书写与阅读，",
         "自然衔接。"
@@ -391,7 +403,7 @@
       "languagesLabel": "应用语言",
       "languagesTitle": "五种语言，相同的流畅体验。",
       "languagesBody": "应用支持日本語、English、Deutsch、Français、简体中文。本网站支持日本語、English、中文、Português，并根据浏览器设置自动选择。",
-      "downloadKicker": "MAC 版下载",
+      "downloadKicker": "支持 MAC 与 WINDOWS",
       "downloadTitle": "让下一份 .md，\n双击即可打开。",
       "downloadBody": "当前公开安装包为 v1.4.7，与仓库源码和 README 一致。",
       "downloadButton": "下载 DMG",
@@ -423,7 +435,13 @@
       "official": "开发者官网",
       "x": "X / Twitter",
       "footerLine": "适用于 macOS 与 Windows 的轻量级 Markdown 阅读器。",
-      "backTop": "返回顶部"
+      "backTop": "返回顶部",
+      "osMac": "macOS 版",
+      "osWin": "Windows 版",
+      "macFile": "MDViewerPro-1.4.7-Installer.dmg · 约176 MB",
+      "winFile": "MDViewerPro-1.4.7-win64-portable.zip · 约229 MB",
+      "macReq": "Apple Silicon · 临时签名、未经公证",
+      "winReq": "Windows 10/11 64 位 · 便携版 · 未签名"
     },
     "pt": {
       "language": "Português",
@@ -432,7 +450,7 @@
         "Na prática",
         "Instalação"
       ],
-      "eyebrow": "Markdown para macOS — feito para leitura",
+      "eyebrow": "Markdown para macOS & Windows — feito para leitura",
       "title": [
         "Sem distância entre",
         "escrever e ler."
@@ -529,7 +547,7 @@
       "languagesLabel": "IDIOMAS DO APP",
       "languagesTitle": "O mesmo fluxo em cinco idiomas.",
       "languagesBody": "O app oferece 日本語, English, Deutsch, Français e 简体中文. Este site oferece 日本語, English, 中文 e Português, escolhidos automaticamente pelo navegador.",
-      "downloadKicker": "BAIXAR PARA MAC",
+      "downloadKicker": "PARA MAC & WINDOWS",
       "downloadTitle": "Abra o próximo .md\ncom dois cliques.",
       "downloadBody": "O instalador público é v1.4.7, igual ao código e ao README do repositório.",
       "downloadButton": "Baixar o DMG",
@@ -561,46 +579,52 @@
       "official": "Site do desenvolvedor",
       "x": "X / Twitter",
       "footerLine": "Um visualizador Markdown leve para macOS e Windows.",
-      "backTop": "Voltar ao topo"
+      "backTop": "Voltar ao topo",
+      "osMac": "Versão macOS",
+      "osWin": "Versão Windows",
+      "macFile": "MDViewerPro-1.4.7-Installer.dmg · aprox. 176 MB",
+      "winFile": "MDViewerPro-1.4.7-win64-portable.zip · aprox. 229 MB",
+      "macReq": "Apple Silicon · assinatura ad-hoc, sem autenticação",
+      "winReq": "Windows 10/11 64 bits · portátil · sem assinatura"
     }
   },
   "seo": {
     "ja": {
-      "title": "MD Viewer Pro — Mac用Markdownビューア・エディタ",
+      "title": "MD Viewer Pro — Mac・Windows用Markdownビューア・エディタ",
       "description": "MD Viewer Pro（MDビューアー Pro）は、折田悠希が開発するmacOS向けMarkdownビューア。閲覧、編集、LaTeX数式、YAML、PDF・HTML書き出しに対応。Windows 10/11 64-bit用ポータブル版あり。",
       "ogTitle": "MD Viewer Pro — 書くことと、読むことの間をなくす。",
-      "ogDescription": "閲覧・編集・LaTeX数式・PDF / HTML書き出しをひとつにした、Macのための軽量Markdownビューア。",
+      "ogDescription": "閲覧・編集・LaTeX数式・PDF / HTML書き出しをひとつにした、MacとWindowsのための軽量Markdownビューア。",
       "twTitle": "MD Viewer Pro — Mac用Markdownビューア",
-      "twDescription": "読む、直す、届ける。macOS向けの軽量Markdownビューア。",
+      "twDescription": "読む、直す、届ける。Mac・Windows向けの軽量Markdownビューア。",
       "locale": "ja_JP"
     },
     "en": {
-      "title": "MD Viewer Pro — Markdown viewer and editor for macOS",
+      "title": "MD Viewer Pro — Markdown viewer and editor for macOS and Windows",
       "description": "MD Viewer Pro is a lightweight Markdown viewer for macOS by Yuki Orita (折田悠希). Reading, editing, LaTeX math, YAML and PDF / HTML export. A Windows 10/11 64-bit portable build is also available.",
       "ogTitle": "MD Viewer Pro — Close the gap between writing and reading.",
-      "ogDescription": "Reading, editing, LaTeX math and PDF / HTML export in one lightweight Markdown viewer for Mac.",
+      "ogDescription": "Reading, editing, LaTeX math and PDF / HTML export in one lightweight Markdown viewer for Mac and Windows.",
       "twTitle": "MD Viewer Pro — Markdown viewer for Mac",
-      "twDescription": "Read, revise, deliver. A lightweight Markdown viewer for macOS.",
+      "twDescription": "Read, revise, deliver. A lightweight Markdown viewer for macOS and Windows.",
       "locale": "en_US"
     },
     "zh": {
-      "title": "MD Viewer Pro — 面向 macOS 的 Markdown 阅读器与编辑器",
+      "title": "MD Viewer Pro — 面向 macOS 与 Windows 的 Markdown 阅读器与编辑器",
       "description": "MD Viewer Pro 是折田悠希（Yuki_Orita）开发的 macOS Markdown 阅读器，支持阅读、编辑、LaTeX 公式、YAML 以及 PDF / HTML 导出。另提供 Windows 10/11 64 位便携版。",
       "ogTitle": "MD Viewer Pro — 让书写与阅读之间不再有距离。",
-      "ogDescription": "将阅读、编辑、LaTeX 公式与 PDF / HTML 导出集于一身的轻量级 Mac Markdown 阅读器。",
+      "ogDescription": "将阅读、编辑、LaTeX 公式与 PDF / HTML 导出集于一身的轻量级 Mac 与 Windows Markdown 阅读器。",
       "twTitle": "MD Viewer Pro — Mac 版 Markdown 阅读器",
-      "twDescription": "阅读、修改、交付。面向 macOS 的轻量级 Markdown 阅读器。",
+      "twDescription": "阅读、修改、交付。面向 macOS 与 Windows 的轻量级 Markdown 阅读器。",
       "locale": "zh_CN"
     },
     "pt": {
-      "title": "MD Viewer Pro — visualizador e editor de Markdown para macOS",
+      "title": "MD Viewer Pro — visualizador e editor de Markdown para macOS e Windows",
       "description": "MD Viewer Pro é um visualizador de Markdown para macOS criado por Yuki Orita (折田悠希). Leitura, edição, fórmulas LaTeX, YAML e exportação para PDF / HTML. Versão portátil para Windows 10/11 de 64 bits também disponível.",
       "ogTitle": "MD Viewer Pro — sem distância entre escrever e ler.",
-      "ogDescription": "Leitura, edição, fórmulas LaTeX e exportação para PDF / HTML em um visualizador de Markdown leve para Mac.",
+      "ogDescription": "Leitura, edição, fórmulas LaTeX e exportação para PDF / HTML em um visualizador de Markdown leve para Mac e Windows.",
       "twTitle": "MD Viewer Pro — visualizador de Markdown para Mac",
-      "twDescription": "Ler, revisar, entregar. Um visualizador de Markdown leve para macOS.",
+      "twDescription": "Ler, revisar, entregar. Um visualizador de Markdown leve para macOS e Windows.",
       "locale": "pt_BR"
     }
   },
-  "keywords": "MD Viewer Pro,MDビューアー Pro,Markdown viewer macOS,Markdown editor Mac,Windows portable,折田悠希,おりたゆうき,Yuki_Orita,github"
+  "keywords": "MD Viewer Pro,MDビューアー Pro,Markdown viewer macOS,Markdown viewer Windows,Markdown editor Mac,Windows portable,折田悠希,おりたゆうき,Yuki_Orita,github"
 }

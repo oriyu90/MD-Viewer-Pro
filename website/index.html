@@ -1,137 +1,100 @@
-<!DOCTYPE html><html lang="ja"><head>
+<!doctype html>
+<html lang="ja">
+<head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title data-t="seo.title">MD Viewer Pro — Mac用Markdownビューア・エディタ</title>
-<meta name="description" content="MD Viewer Pro（MDビューアー Pro）は、折田悠希が開発するmacOS向けMarkdownビューア。閲覧、編集、LaTeX数式、YAML、PDF・HTML書き出しに対応。Windows 10/11 64-bit用ポータブル版あり。" data-t-attr="seo.description"/>
-<meta name="keywords" content="MD Viewer Pro,MDビューアー Pro,Markdown viewer macOS,Markdown editor Mac,Windows portable,折田悠希,おりたゆうき,Yuki_Orita,github"/>
+<title>MD Viewer Pro — Mac・Windows用Markdownビューア・エディタ</title>
+<meta name="description" content="MD Viewer Pro（MDビューアー Pro）は、折田悠希が開発するmacOS向けMarkdownビューア。閲覧、編集、LaTeX数式、YAML、PDF・HTML書き出しに対応。Windows 10/11 64-bit用ポータブル版あり。"/>
+<meta name="keywords" content="MD Viewer Pro,MDビューアー Pro,Markdown viewer macOS,Markdown viewer Windows,Markdown editor Mac,Windows portable,折田悠希,おりたゆうき,Yuki_Orita,github"/>
 <meta name="author" content="Yuki_Orita"/>
 <link rel="author" href="https://github.com/oriyu90"/>
-<meta name="creator" content="Yuki_Orita"/>
-<meta name="publisher" content="Yuki_Orita"/>
 <meta name="robots" content="index, follow"/>
-<meta property="og:title" content="MD Viewer Pro — 書くことと、読むことの間をなくす。" data-t-attr="seo.ogTitle"/>
-<meta property="og:description" content="閲覧・編集・LaTeX数式・PDF / HTML書き出しをひとつにした、Macのための軽量Markdownビューア。" data-t-attr="seo.ogDescription"/>
-<meta property="og:site_name" content="MD Viewer Pro"/>
+<meta name="theme-color" content="#f2efe6"/>
+<link rel="canonical" href="https://studio-rizi.pages.dev/projects/md-viewer-pro/"/><link rel="alternate" hreflang="ja" href="https://studio-rizi.pages.dev/projects/md-viewer-pro/"/><link rel="alternate" hreflang="en" href="https://studio-rizi.pages.dev/projects/md-viewer-pro/en/"/><link rel="alternate" hreflang="zh-Hans" href="https://studio-rizi.pages.dev/projects/md-viewer-pro/zh/"/><link rel="alternate" hreflang="pt" href="https://studio-rizi.pages.dev/projects/md-viewer-pro/pt/"/><link rel="alternate" hreflang="x-default" href="https://studio-rizi.pages.dev/projects/md-viewer-pro/"/><link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
 <meta property="og:type" content="website"/>
-<meta property="og:locale" content="ja_JP" data-t-attr="seo.locale"/>
+<meta property="og:site_name" content="MD Viewer Pro"/>
+<meta property="og:locale" content="ja_JP"/>
+<meta property="og:title" content="MD Viewer Pro — 書くことと、読むことの間をなくす。"/>
+<meta property="og:description" content="閲覧・編集・LaTeX数式・PDF / HTML書き出しをひとつにした、MacとWindowsのための軽量Markdownビューア。"/>
 <meta property="og:url" content="https://studio-rizi.pages.dev/projects/md-viewer-pro/"/>
 <meta property="og:image" content="https://studio-rizi.pages.dev/projects/md-viewer-pro/md-viewer-pro-icon.jpeg"/>
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="MD Viewer Pro — Mac用Markdownビューア" data-t-attr="seo.twTitle"/>
-<meta name="twitter:description" content="読む、直す、届ける。macOS向けの軽量Markdownビューア。" data-t-attr="seo.twDescription"/>
-<link rel="canonical" href="https://studio-rizi.pages.dev/projects/md-viewer-pro/"/>
-<link rel="shortcut icon" href="/projects/md-viewer-pro/md-viewer-pro-icon.jpeg"/>
+<meta name="twitter:site" content="@InovateofRIZI"/>
+<meta name="twitter:title" content="MD Viewer Pro — Mac用Markdownビューア"/>
+<meta name="twitter:description" content="読む、直す、届ける。Mac・Windows向けの軽量Markdownビューア。"/>
 <link rel="icon" href="/projects/md-viewer-pro/md-viewer-pro-icon.jpeg"/>
 <link rel="apple-touch-icon" href="/projects/md-viewer-pro/md-viewer-pro-icon.jpeg"/>
-<link rel="stylesheet" href="/projects/md-viewer-pro/site.css"/>
+<link rel="stylesheet" href="/projects/md-viewer-pro/tokens.css"/>
+<link rel="stylesheet" href="/projects/md-viewer-pro/styles.css"/>
 </head>
 <body>
-<main>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "MD Viewer Pro", "alternateName": "MDビューアー Pro", "operatingSystem": "macOS, Windows", "applicationCategory": "DeveloperApplication", "softwareVersion": "1.4.7", "downloadUrl": "https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.7/MDViewerPro-1.4.7-Installer.dmg", "codeRepository": "https://github.com/oriyu90/MD-Viewer-Pro", "author": {"@type": "Person", "name": "Yuki Orita", "alternateName": ["Yuki_Orita", "折田悠希", "おりたゆうき"]}, "license": "https://opensource.org/license/mit"}</script>
-<header class="site-header">
-<a class="brand" href="#top" aria-label="MD Viewer Pro home"><img src="/projects/md-viewer-pro/md-viewer-pro-icon.jpeg" alt=""/><span>MD Viewer Pro</span></a>
-<nav aria-label="Primary navigation"><a href="#features" data-t="nav.0">機能</a><a href="#screen" data-t="nav.1">実際の画面</a><a href="#download" data-t="nav.2">導入</a>
-<label class="language-picker"><span class="sr-only">Language</span><select><option value="ja" selected>日本語</option><option value="en">English</option><option value="zh">中文</option><option value="pt">Português</option></select></label></nav>
-</header>
-<section class="hero" id="top">
-<div class="hero-copy"><p class="eyebrow" data-t="eyebrow">Markdown for macOS — crafted for reading</p>
-<h1><span data-t="title.0">書くことと、</span><span data-t="title.1">読むことの間をなくす。</span></h1>
-<p class="lead" data-t="lead">MD Viewer Pro は、閲覧・編集・数式・書き出しをひとつにまとめた、Mac のための軽量 Markdown ビューアです。</p>
-<div class="hero-actions"><a class="button button-primary" href="https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.7/MDViewerPro-1.4.7-Installer.dmg"><span data-t="download">公開版 v1.4.7 をダウンロード</span><span aria-hidden="true">↓</span></a>
-<a class="button button-secondary" href="https://github.com/oriyu90/MD-Viewer-Pro" target="_blank" rel="noreferrer"><span data-t="github">GitHub で見る</span><span aria-hidden="true">↗</span></a></div>
-<p class="download-note" data-t="note">Apple Silicon macOS · DMG 約176 MB ＋ Windows 10/11 64-bit · ZIP 約229 MB · MIT License</p></div>
-<div class="hero-visual"><img class="app-icon" src="/projects/md-viewer-pro/md-viewer-pro-icon.jpeg" alt="MD Viewer Pro application icon"/>
-<div class="hero-code" aria-hidden="true"><span># Welcome</span><br/><br/>Write naturally.<br/>Read beautifully.<br/><br/><i>$$ E = mc^2 $$</i></div>
-<span class="version-stamp">v1.4.7</span></div>
-</section>
-<div class="feature-strip" aria-hidden="true"><span data-t="strip.0">VIEW</span><b>✦</b><span data-t="strip.1">MD EDIT</span><b>✦</b><span data-t="strip.2">TXT EDIT</span><b>✦</b><span data-t="strip.3">LATEX</span><b>✦</b><span data-t="strip.4">MERMAID</span><b>✦</b><span data-t="strip.5">YAML</span><b>✦</b><span data-t="strip.6">PDF / HTML</span><b>✦</b><span data-t="strip.0">VIEW</span><b>✦</b><span data-t="strip.1">MD EDIT</span><b>✦</b><span data-t="strip.2">TXT EDIT</span><b>✦</b><span data-t="strip.3">LATEX</span><b>✦</b><span data-t="strip.4">MERMAID</span><b>✦</b><span data-t="strip.5">YAML</span><b>✦</b><span data-t="strip.6">PDF / HTML</span><b>✦</b></div>
-<section class="section features" id="features">
-<div class="section-heading"><p class="kicker" data-t="featuresKicker">ONE DOCUMENT, THREE WAYS TO WORK</p>
-<h2 data-t="featuresTitle">読む。整える。届ける。</h2><p data-t="featuresLead">ファイルを開いた瞬間から、完成した文書を書き出すまで。Markdown の流れを止めません。</p></div>
-<div class="feature-cards"><article><span data-t="cards.0.0">01</span><h3 data-t="cards.0.1">美しく読む</h3><p data-t="cards.0.2">見出し目次、コードハイライト、表、画像、YAML フロントマターを、落ち着いたレイアウトで表示します。</p><i aria-hidden="true">↘</i></article><article><span data-t="cards.1.0">02</span><h3 data-t="cards.1.1">その場で直す</h3><p data-t="cards.1.2">レンダリングされた文書を直接整える MD編集と、左右分割のリアルタイムプレビューを備えた TXT編集。</p><i aria-hidden="true">↘</i></article><article><span data-t="cards.2.0">03</span><h3 data-t="cards.2.1">見たまま届ける</h3><p data-t="cards.2.2">A4・B5の文書レイアウトに対応。画面の仕上がりを保ったまま PDF / HTML へ書き出せます。</p><i aria-hidden="true">↘</i></article></div>
-</section>
-<section class="screen-section" id="screen">
-<div class="screen-intro"><p class="kicker" data-t="screenKicker">THE REAL APPLICATION</p>
-<h2 data-t="screenTitle">Markdown が、文書として立ち上がる。</h2><p data-t="screenBody">添付の実画面。上部バーから閲覧・MD編集・TXT編集を切り替え、レイアウトや拡大率、目次、PDF書き出しを操作できます。</p></div>
-<figure><div class="screen-frame"><img src="/projects/md-viewer-pro/md-viewer-pro-screen.png" alt="MD Viewer Pro v1.4.7"/></div>
-<figcaption data-t="screenCaption">MD Viewer Pro v1.4.7 — View mode / Dark theme</figcaption></figure>
-<div class="facts"><div><strong data-t="facts.0.0">3</strong><span data-t="facts.0.1">作業モード</span></div><div><strong data-t="facts.1.0">5</strong><span data-t="facts.1.1">アプリ表示言語</span></div><div><strong data-t="facts.2.0">0</strong><span data-t="facts.2.1">数式表示のネット接続</span></div></div>
-</section>
-<section class="section detail-section"><h2 data-t="detailTitle">文書づくりに必要なものだけ。</h2>
-<div class="detail-grid"><article><span class="detail-number">01</span><code data-t="details.0.0">数式を、オフラインで</code><h3 data-t="details.0.1">LaTeX のインライン・別行数式、行列や分数を追加インストールなしで組版。PDF / HTML にも反映します。</h3><p data-t="details.0.2">$E = mc^2$</p></article><article><span class="detail-number">02</span><code data-t="details.1.0">図も、オフラインで</code><h3 data-t="details.1.1">```mermaid フェンスのフローチャートやグラフを、mermaid.js 完全同梱で図として描画。ネット接続は不要です。</h3><p data-t="details.1.2">A --&gt; B</p></article><article><span class="detail-number">03</span><code data-t="details.2.0">見出しから迷わない</code><h3 data-t="details.2.1">標準オンの TOC パネルで文書全体を把握。見出しを選ぶだけで、その場所へ移動できます。</h3><p data-t="details.2.2">H1  H2  H3</p></article><article><span class="detail-number">04</span><code data-t="details.3.0">書いた改行を、そのまま</code><h3 data-t="details.3.1">Enter で入れた単一改行をそのまま表示。必要なら標準 Markdown の挙動へ戻せます。</h3><p data-t="details.3.2">↵ = line break</p></article><article><span class="detail-number">05</span><code data-t="details.4.0">YAML も、文書の一部</code><h3 data-t="details.4.1">フロントマターはメタ情報パネルとして表示。.yml / .yaml ファイルも構文強調付きで開けます。</h3><p data-t="details.4.2">---  title:</p></article><article><span class="detail-number">06</span><code data-t="details.5.0">自分の書体とテーマ</code><h3 data-t="details.5.1">TTF / OTF / TTC を本文フォントとして追加。JSON のプラグインテーマで表示も拡張できます。</h3><p data-t="details.5.2">Aa  +  { }</p></article><article><span class="detail-number">07</span><code data-t="details.6.0">ページを意識して整える</code><h3 data-t="details.6.1">A4・B5・フリー表示、余白設定、LaTeX の改ページコマンドに対応しています。</h3><p data-t="details.6.2">A4 / B5</p></article></div></section>
-<section class="language-section"><div><p class="kicker" data-t="languagesLabel">APP LANGUAGES</p>
-<h2 data-t="languagesTitle">5つの言語で、同じ使い心地。</h2><p data-t="languagesBody">アプリ本体は日本語、English、Deutsch、Français、简体中文に対応。この紹介サイトは日本語、English、中文、Portuguêsをブラウザ設定から自動で選びます。</p></div>
-<div class="language-wheel"><span>日本語</span><span>English</span><span>中文</span><span>Português</span></div></section>
-<section class="download-section" id="download">
-<div class="download-icon-wrap"><img src="/projects/md-viewer-pro/md-viewer-pro-icon.jpeg" alt="MD Viewer Pro icon"/></div>
-<div class="download-content"><p class="kicker" data-t="downloadKicker">DOWNLOAD FOR MAC</p>
-<h2><span data-t="downloadTitle">次の .md は、
-ダブルクリックで。</span></h2>
-<p data-t="downloadBody">公開中のインストーラは v1.4.7。リポジトリのソースと README も同じ v1.4.7 です。</p>
-<div class="release-status"><div><small data-t="releaseLabel">PUBLIC INSTALLER</small><strong>v1.4.7</strong><span data-t="unsigned">ad-hoc署名・未公証</span></div>
-<div><small data-t="sourceLabel">SOURCE / README</small><strong>v1.4.7</strong><span>GitHub / main</span></div></div>
-<div class="hero-actions"><a class="button button-light" href="https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.7/MDViewerPro-1.4.7-Installer.dmg"><span data-t="downloadButton">DMG をダウンロード</span><span>↓</span></a>
-<a class="button button-light" href="https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.7/MDViewerPro-1.4.7-win64-portable.zip"><span data-t="downloadButtonWin">Windows版 (ZIP) をダウンロード</span><span>↓</span></a>
-<a class="button button-outline" href="https://github.com/oriyu90/MD-Viewer-Pro" target="_blank" rel="noreferrer"><span data-t="sourceButton">v1.4.7 のソースを見る</span><span>↗</span></a></div>
-<p data-t="winBody">Windows 10/11 64-bit用ポータブル版（インストール不要・署名なし）。32-bit版Windowsには対応していません。</p></div></div>
-</section>
-<section class="section install-section"><h2 data-t="installTitle">インストールは4ステップ。</h2>
-<ol><li><span>01</span><p data-t="steps.0">DMG をダウンロード</p></li><li><span>02</span><p data-t="steps.1">ファイルを開く</p></li><li><span>03</span><p data-t="steps.2">MDViewerPro.app を Applications へドラッグ</p></li><li><span>04</span><p data-t="steps.3">アプリを起動</p></li></ol>
-<aside><strong data-t="gatekeeperTitle">初回起動で警告が出た場合</strong><p data-t="gatekeeperBody">現在の公開版はad-hoc署名・未公証です。「壊れているため開けません」と出てもアプリ自体は壊れていません。先にMDViewerPro.app をアプリケーションフォルダへ入れ（DMGの中のまま開かない）、ターミナルで xattr -cr /Applications/MDViewerPro.app を実行してから開いてください。開けない場合は「システム設定 → プライバシーとセキュリティ」で許可してください。</p></aside>
-<h2 data-t="installTitleWin">Windows版の起動は3ステップ。</h2>
-<ol><li><span>01</span><p data-t="stepsWin.0">ZIP をダウンロード</p></li><li><span>02</span><p data-t="stepsWin.1">任意のフォルダに展開</p></li><li><span>03</span><p data-t="stepsWin.2">MDViewerPro.exe を開く</p></li></ol>
-<aside><strong data-t="smartscreenTitle">SmartScreenが出た場合</strong><p data-t="smartscreenBody">Windows版は署名なしのため「WindowsによってPCが保護されました」と出ることがあります。アプリ自体は壊れていません。「詳細情報」→「実行」で起動してください。展開前にunblock-Fileでブロック解除しておくと確実です。</p></aside></section>
-<footer>
-<div class="footer-brand"><img src="/projects/md-viewer-pro/md-viewer-pro-icon.jpeg" alt=""/><div><strong>MD Viewer Pro</strong><span>A lightweight Markdown viewer for macOS.</span></div></div>
-<div class="footer-links"><a href="https://discord.gg/x7KXhNTD8M" target="_blank" rel="noreferrer"><span data-t="community">不具合報告とお知らせ</span> ↗</a>
-<a href="https://studio-rizi.pages.dev/" target="_blank" rel="noreferrer"><span data-t="official">開発者公式サイト</span> ↗</a>
-<a href="https://x.com/InovateofRIZI" target="_blank" rel="noreferrer"><span data-t="x">X / Twitter</span> ↗</a>
-<a href="https://github.com/oriyu90/MD-Viewer-Pro" target="_blank" rel="noreferrer">GitHub ↗</a></div>
-<div class="footer-bottom"><span data-t="creator">Created by Yuki_Orita / 折田悠希（おりたゆうき）</span><span data-t="footerLine">macOSとWindowsで使える軽量Markdownビューア。</span>
-<a href="#top"><span data-t="backTop">ページ上部へ</span> ↑</a></div>
-</footer>
+<a class="skip-link" href="#main">Skip</a>
+<header class="site-header"><nav class="nav shell" aria-label="Primary">
+<a class="brand" href="/projects/md-viewer-pro/" aria-label="MD Viewer Pro home"><img src="/projects/md-viewer-pro/md-viewer-pro-icon.jpeg" alt=""/> <span>MD Viewer Pro</span></a>
+<div class="nav-links"><a href="#features">機能</a><a href="#screen">実際の画面</a><a href="#download">導入</a>
+<a class="command-pill" href="https://github.com/oriyu90/MD-Viewer-Pro" target="_blank" rel="noreferrer">GitHub ↗</a>
+<details class="language-switcher"><summary aria-label="Language">JA</summary><div class="language-menu"><a href="/projects/md-viewer-pro/" hreflang="ja" lang="ja" aria-current="page">日本語</a><a href="/projects/md-viewer-pro/en/" hreflang="en" lang="en">English</a><a href="/projects/md-viewer-pro/zh/" hreflang="zh-Hans" lang="zh-CN">中文</a><a href="/projects/md-viewer-pro/pt/" hreflang="pt" lang="pt">Português</a></div></details>
+<a class="button button-primary" href="#download">↓</a></div></nav></header>
+<main id="main">
+<section class="hero"><div class="shell hero-grid"><div class="hero-copy">
+<p class="eyebrow">Markdown for macOS &amp; Windows — crafted for reading</p>
+<h1><span>書くことと、</span><span>読むことの間をなくす。</span></h1>
+<p class="hero-lede">MD Viewer Pro は、閲覧・編集・数式・書き出しをひとつにまとめた、Mac のための軽量 Markdown ビューアです。</p>
+<div class="hero-actions">
+<a class="button button-primary" href="https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.7/MDViewerPro-1.4.7-Installer.dmg"><span class="os-icon" aria-hidden="true">🍎</span><span>DMG をダウンロード<br/><small>macOS · DMG</small></span><span aria-hidden="true">↓</span></a>
+<a class="button button-secondary" href="https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.7/MDViewerPro-1.4.7-win64-portable.zip"><span class="os-icon" aria-hidden="true">🪟</span><span>Windows版 (ZIP) をダウンロード<br/><small>Windows · ZIP</small></span><span aria-hidden="true">↓</span></a>
+</div>
+<p class="hero-note">Apple Silicon macOS · DMG 約176 MB ＋ Windows 10/11 64-bit · ZIP 約229 MB · MIT License</p>
+<p><a class="button button-quiet" href="https://github.com/oriyu90/MD-Viewer-Pro" target="_blank" rel="noreferrer">GitHub で見る ↗</a></p>
+</div>
+<div class="hero-visual"><figure><div class="screen-frame"><img src="/projects/md-viewer-pro/md-viewer-pro-screen.png" alt="MD Viewer Pro v1.4.7"/></div>
+<figcaption class="screen-caption">MD Viewer Pro v1.4.7 — View mode / Dark theme</figcaption></figure>
+<div class="version-row"><span class="version-stamp">v1.4.7</span><span class="version-stamp">PUBLIC INSTALLER</span></div>
+</div></div></section>
+<div class="feature-strip" aria-hidden="true"><span>VIEW</span><b>✦</b><span>MD EDIT</span><b>✦</b><span>TXT EDIT</span><b>✦</b><span>LATEX</span><b>✦</b><span>MERMAID</span><b>✦</b><span>YAML</span><b>✦</b><span>PDF / HTML</span><b>✦</b><span>VIEW</span><b>✦</b><span>MD EDIT</span><b>✦</b><span>TXT EDIT</span><b>✦</b><span>LATEX</span><b>✦</b><span>MERMAID</span><b>✦</b><span>YAML</span><b>✦</b><span>PDF / HTML</span><b>✦</b></div>
+<section class="section" id="features"><div class="shell"><div class="section-header">
+<p class="kicker">ONE DOCUMENT, THREE WAYS TO WORK</p><h2>読む。整える。届ける。</h2><p>ファイルを開いた瞬間から、完成した文書を書き出すまで。Markdown の流れを止めません。</p></div>
+<div class="feature-cards"><article><span>01</span><h3>美しく読む</h3><p>見出し目次、コードハイライト、表、画像、YAML フロントマターを、落ち着いたレイアウトで表示します。</p></article><article><span>02</span><h3>その場で直す</h3><p>レンダリングされた文書を直接整える MD編集と、左右分割のリアルタイムプレビューを備えた TXT編集。</p></article><article><span>03</span><h3>見たまま届ける</h3><p>A4・B5の文書レイアウトに対応。画面の仕上がりを保ったまま PDF / HTML へ書き出せます。</p></article></div></div></section>
+<section class="screen-section" id="screen"><div class="shell"><div class="screen-intro">
+<div><p class="kicker">THE REAL APPLICATION</p><h2>Markdown が、文書として立ち上がる。</h2></div><p>添付の実画面。上部バーから閲覧・MD編集・TXT編集を切り替え、レイアウトや拡大率、目次、PDF書き出しを操作できます。</p></div>
+<div class="facts"><div><strong>3</strong><span>作業モード</span></div><div><strong>5</strong><span>アプリ表示言語</span></div><div><strong>0</strong><span>数式表示のネット接続</span></div></div></div></section>
+<section class="section detail-section"><div class="shell"><div class="section-header"><h2>文書づくりに必要なものだけ。</h2></div>
+<div class="detail-grid"><article><span class="detail-number">01</span><code>数式を、オフラインで</code><h3>LaTeX のインライン・別行数式、行列や分数を追加インストールなしで組版。PDF / HTML にも反映します。</h3><p>$E = mc^2$</p></article><article><span class="detail-number">02</span><code>図も、オフラインで</code><h3>```mermaid フェンスのフローチャートやグラフを、mermaid.js 完全同梱で図として描画。ネット接続は不要です。</h3><p>A --&gt; B</p></article><article><span class="detail-number">03</span><code>見出しから迷わない</code><h3>標準オンの TOC パネルで文書全体を把握。見出しを選ぶだけで、その場所へ移動できます。</h3><p>H1  H2  H3</p></article><article><span class="detail-number">04</span><code>書いた改行を、そのまま</code><h3>Enter で入れた単一改行をそのまま表示。必要なら標準 Markdown の挙動へ戻せます。</h3><p>↵ = line break</p></article><article><span class="detail-number">05</span><code>YAML も、文書の一部</code><h3>フロントマターはメタ情報パネルとして表示。.yml / .yaml ファイルも構文強調付きで開けます。</h3><p>---  title:</p></article><article><span class="detail-number">06</span><code>自分の書体とテーマ</code><h3>TTF / OTF / TTC を本文フォントとして追加。JSON のプラグインテーマで表示も拡張できます。</h3><p>Aa  +  { }</p></article><article><span class="detail-number">07</span><code>ページを意識して整える</code><h3>A4・B5・フリー表示、余白設定、LaTeX の改ページコマンドに対応しています。</h3><p>A4 / B5</p></article></div></div></section>
+<section class="language-section"><div class="shell language-panel"><div>
+<p class="kicker">APP LANGUAGES</p><h2>5つの言語で、同じ使い心地。</h2><p>アプリ本体は日本語、English、Deutsch、Français、简体中文に対応。この紹介サイトは日本語、English、中文、Portuguêsをブラウザ設定から自動で選びます。</p></div>
+<div class="language-dots"><span>日本語</span><span>English</span><span>中文</span><span>Português</span></div></div></section>
+<section class="section" id="download"><div class="shell download-panel"><div class="download-content">
+<p class="kicker">MAC &amp; WINDOWS に対応</p>
+<h2>次の .md は、<br/>ダブルクリックで。</h2>
+<p>公開中のインストーラは v1.4.7。リポジトリのソースと README も同じ v1.4.7 です。</p>
+<div class="release-meta"><div><small>PUBLIC INSTALLER</small><strong>v1.4.7</strong><span>ad-hoc署名・未公証</span></div>
+<div><small>SOURCE / README</small><strong>v1.4.7</strong><span>GitHub / main</span></div></div>
+<div class="os-grid">
+<div class="os-card"><h3><span class="os-icon" aria-hidden="true">🍎</span>macOS版</h3>
+<p class="os-file">MDViewerPro-1.4.7-Installer.dmg · 約176 MB</p><p class="os-req">Apple Silicon · ad-hoc署名・未公証</p>
+<a class="button button-primary" href="https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.7/MDViewerPro-1.4.7-Installer.dmg"><span>DMG をダウンロード</span><span aria-hidden="true">↓</span></a>
+<div class="os-steps"><p><strong>インストールは4ステップ。</strong></p><ol><li><span>01</span><p>DMG をダウンロード</p></li><li><span>02</span><p>ファイルを開く</p></li><li><span>03</span><p>MDViewerPro.app を Applications へドラッグ</p></li><li><span>04</span><p>アプリを起動</p></li></ol></div>
+<div class="os-note"><strong>初回起動で警告が出た場合</strong><p>現在の公開版はad-hoc署名・未公証です。「壊れているため開けません」と出てもアプリ自体は壊れていません。先にMDViewerPro.app をアプリケーションフォルダへ入れ（DMGの中のまま開かない）、ターミナルで xattr -cr /Applications/MDViewerPro.app を実行してから開いてください。開けない場合は「システム設定 → プライバシーとセキュリティ」で許可してください。</p></div></div>
+<div class="os-card"><h3><span class="os-icon" aria-hidden="true">🪟</span>Windows版</h3>
+<p class="os-file">MDViewerPro-1.4.7-win64-portable.zip · 約229 MB</p><p class="os-req">Windows 10/11 64-bit · portable · 署名なし</p>
+<a class="button button-secondary" href="https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.7/MDViewerPro-1.4.7-win64-portable.zip"><span>Windows版 (ZIP) をダウンロード</span><span aria-hidden="true">↓</span></a>
+<p>Windows 10/11 64-bit用ポータブル版（インストール不要・署名なし）。32-bit版Windowsには対応していません。</p>
+<div class="os-steps"><p><strong>Windows版の起動は3ステップ。</strong></p><ol><li><span>01</span><p>ZIP をダウンロード</p></li><li><span>02</span><p>任意のフォルダに展開</p></li><li><span>03</span><p>MDViewerPro.exe を開く</p></li></ol></div>
+<div class="os-note"><strong>SmartScreenが出た場合</strong><p>Windows版は署名なしのため「WindowsによってPCが保護されました」と出ることがあります。アプリ自体は壊れていません。「詳細情報」→「実行」で起動してください。展開前にunblock-Fileでブロック解除しておくと確実です。</p></div></div>
+</div>
+<div class="source-row"><a class="button button-quiet" href="https://github.com/oriyu90/MD-Viewer-Pro" target="_blank" rel="noreferrer">v1.4.7 のソースを見る ↗</a>
+<a class="button button-quiet" href="https://discord.gg/x7KXhNTD8M" target="_blank" rel="noreferrer">不具合報告とお知らせ ↗</a></div>
+</div></div></section>
 </main>
-<script id="i18n" type="application/json">{"languages":{"ja":{"language":"日本語","nav":["機能","実際の画面","導入"],"eyebrow":"Markdown for macOS — crafted for reading","title":["書くことと、","読むことの間をなくす。"],"lead":"MD Viewer Pro は、閲覧・編集・数式・書き出しをひとつにまとめた、Mac のための軽量 Markdown ビューアです。","download":"公開版 v1.4.7 をダウンロード","github":"GitHub で見る","note":"Apple Silicon macOS · DMG 約176 MB ＋ Windows 10/11 64-bit · ZIP 約229 MB · MIT License","strip":["VIEW","MD EDIT","TXT EDIT","LATEX","MERMAID","YAML","PDF / HTML"],"featuresKicker":"ONE DOCUMENT, THREE WAYS TO WORK","featuresTitle":"読む。整える。届ける。","featuresLead":"ファイルを開いた瞬間から、完成した文書を書き出すまで。Markdown の流れを止めません。","cards":[["01","美しく読む","見出し目次、コードハイライト、表、画像、YAML フロントマターを、落ち着いたレイアウトで表示します。"],["02","その場で直す","レンダリングされた文書を直接整える MD編集と、左右分割のリアルタイムプレビューを備えた TXT編集。"],["03","見たまま届ける","A4・B5の文書レイアウトに対応。画面の仕上がりを保ったまま PDF / HTML へ書き出せます。"]],"screenKicker":"THE REAL APPLICATION","screenTitle":"Markdown が、文書として立ち上がる。","screenBody":"添付の実画面。上部バーから閲覧・MD編集・TXT編集を切り替え、レイアウトや拡大率、目次、PDF書き出しを操作できます。","screenCaption":"MD Viewer Pro v1.4.7 — View mode / Dark theme","facts":[["3","作業モード"],["5","アプリ表示言語"],["0","数式表示のネット接続"]],"detailTitle":"文書づくりに必要なものだけ。","details":[["数式を、オフラインで","LaTeX のインライン・別行数式、行列や分数を追加インストールなしで組版。PDF / HTML にも反映します。","$E = mc^2$"],["図も、オフラインで","```mermaid フェンスのフローチャートやグラフを、mermaid.js 完全同梱で図として描画。ネット接続は不要です。","A --> B"],["見出しから迷わない","標準オンの TOC パネルで文書全体を把握。見出しを選ぶだけで、その場所へ移動できます。","H1  H2  H3"],["書いた改行を、そのまま","Enter で入れた単一改行をそのまま表示。必要なら標準 Markdown の挙動へ戻せます。","↵ = line break"],["YAML も、文書の一部","フロントマターはメタ情報パネルとして表示。.yml / .yaml ファイルも構文強調付きで開けます。","---  title:"],["自分の書体とテーマ","TTF / OTF / TTC を本文フォントとして追加。JSON のプラグインテーマで表示も拡張できます。","Aa  +  { }"],["ページを意識して整える","A4・B5・フリー表示、余白設定、LaTeX の改ページコマンドに対応しています。","A4 / B5"]],"languagesLabel":"APP LANGUAGES","languagesTitle":"5つの言語で、同じ使い心地。","languagesBody":"アプリ本体は日本語、English、Deutsch、Français、简体中文に対応。この紹介サイトは日本語、English、中文、Portuguêsをブラウザ設定から自動で選びます。","downloadKicker":"DOWNLOAD FOR MAC","downloadTitle":"次の .md は、\nダブルクリックで。","downloadBody":"公開中のインストーラは v1.4.7。リポジトリのソースと README も同じ v1.4.7 です。","downloadButton":"DMG をダウンロード","downloadButtonWin":"Windows版 (ZIP) をダウンロード","winBody":"Windows 10/11 64-bit用ポータブル版（インストール不要・署名なし）。32-bit版Windowsには対応していません。","sourceButton":"v1.4.7 のソースを見る","releaseLabel":"PUBLIC INSTALLER","sourceLabel":"SOURCE / README","unsigned":"ad-hoc署名・未公証","installTitle":"インストールは4ステップ。","steps":["DMG をダウンロード","ファイルを開く","MDViewerPro.app を Applications へドラッグ","アプリを起動"],"gatekeeperTitle":"初回起動で警告が出た場合","gatekeeperBody":"現在の公開版はad-hoc署名・未公証です。「壊れているため開けません」と出てもアプリ自体は壊れていません。先にMDViewerPro.app をアプリケーションフォルダへ入れ（DMGの中のまま開かない）、ターミナルで xattr -cr /Applications/MDViewerPro.app を実行してから開いてください。開けない場合は「システム設定 → プライバシーとセキュリティ」で許可してください。","installTitleWin":"Windows版の起動は3ステップ。","stepsWin":["ZIP をダウンロード","任意のフォルダに展開","MDViewerPro.exe を開く"],"smartscreenTitle":"SmartScreenが出た場合","smartscreenBody":"Windows版は署名なしのため「WindowsによってPCが保護されました」と出ることがあります。アプリ自体は壊れていません。「詳細情報」→「実行」で起動してください。展開前にunblock-Fileでブロック解除しておくと確実です。","creator":"Created by Yuki_Orita / 折田悠希（おりたゆうき）","community":"不具合報告とお知らせ","official":"開発者公式サイト","x":"X / Twitter","footerLine":"macOSとWindowsで使える軽量Markdownビューア。","backTop":"ページ上部へ"},"en":{"language":"English","nav":["Features","In action","Install"],"eyebrow":"Markdown for macOS — crafted for reading","title":["No gap between","writing and reading."],"lead":"MD Viewer Pro is a lightweight Markdown viewer for Mac, bringing reading, editing, math and export into one focused workspace.","download":"Download public release v1.4.7","github":"View on GitHub","note":"Apple Silicon macOS · DMG about 176 MB + Windows 10/11 64-bit · ZIP about 229 MB · MIT License","strip":["VIEW","MD EDIT","TXT EDIT","LATEX","MERMAID","YAML","PDF / HTML"],"featuresKicker":"ONE DOCUMENT, THREE WAYS TO WORK","featuresTitle":"Read. Refine. Deliver.","featuresLead":"From the moment a file opens to the final export, your Markdown workflow stays uninterrupted.","cards":[["01","Read beautifully","Headings, code, tables, images and YAML front matter settle into a calm, navigable document."],["02","Edit in place","Shape the rendered document in MD Edit or use TXT Edit for a split editor with synchronized live preview."],["03","Share what you see","Work in A4 or B5 layouts, then export the finished document to PDF or HTML without losing its character."]],"screenKicker":"THE REAL APPLICATION","screenTitle":"Markdown becomes a document.","screenBody":"The actual app in action. The top bar gives you View, MD Edit and TXT Edit, plus layout, zoom, table of contents and PDF export controls.","screenCaption":"MD Viewer Pro v1.4.7 — View mode / Dark theme","facts":[["3","work modes"],["5","app languages"],["0","network needed for math"]],"detailTitle":"Only what document work needs.","details":[["Math, fully offline","Typeset inline and display LaTeX, matrices and fractions without an extra install. Exports keep the result.","$E = mc^2$"],["Diagrams, fully offline","Render ```mermaid fences as flowcharts and graphs with mermaid.js bundled in — no network connection needed.","A --> B"],["Navigate by structure","The TOC panel is on by default. Scan every heading and jump to the section you need.","H1  H2  H3"],["Keep the breaks you type","A single Enter renders as a line break. Switch back to standard Markdown behavior whenever you need it.","↵ = line break"],["YAML belongs too","Front matter becomes a metadata panel, while .yml and .yaml files open with syntax highlighting.","---  title:"],["Your type, your theme","Add TTF, OTF or TTC body fonts, then extend the interface with JSON plugin themes.","Aa  +  { }"],["Think in pages","Choose Free, A4 or B5, tune margins and use LaTeX page-break commands where they matter.","A4 / B5"]],"languagesLabel":"APP LANGUAGES","languagesTitle":"The same flow in five languages.","languagesBody":"The app supports 日本語, English, Deutsch, Français and 简体中文. This site supports 日本語, English, 中文 and Português, chosen automatically from your browser.","downloadKicker":"DOWNLOAD FOR MAC","downloadTitle":"Make the next .md\na double-click away.","downloadBody":"The public installer is v1.4.7, matching the repository source and README.","downloadButton":"Download the DMG","downloadButtonWin":"Download for Windows (ZIP)","winBody":"Portable build for Windows 10/11 64-bit (no install, unsigned). 32-bit Windows is not supported.","sourceButton":"View v1.4.7 source","releaseLabel":"PUBLIC INSTALLER","sourceLabel":"SOURCE / README","unsigned":"Ad-hoc signed; not notarized","installTitle":"Four steps to install.","steps":["Download the DMG","Open the file","Drag MDViewerPro.app to Applications","Launch the app"],"gatekeeperTitle":"If macOS warns on first launch","gatekeeperBody":"The current public release is ad-hoc signed and not Apple-notarized. If macOS says the app is damaged, the app itself is not damaged. First put MDViewerPro.app into the Applications folder (do not open it inside the DMG), run xattr -cr /Applications/MDViewerPro.app in Terminal, then open it. If it still won't open, allow it in System Settings → Privacy & Security.","installTitleWin":"Three steps on Windows.","stepsWin":["Download the ZIP","Extract it anywhere","Open MDViewerPro.exe"],"smartscreenTitle":"If SmartScreen appears","smartscreenBody":"The Windows build is unsigned, so SmartScreen may say \"Windows protected your PC\". The app itself is not damaged. Choose \"More info\" → \"Run anyway\". Unblocking the ZIP with unblock-File before extracting avoids the warning.","creator":"Created by Yuki_Orita / Yuki Orita","community":"Bugs & announcements","official":"Developer website","x":"X / Twitter","footerLine":"A lightweight Markdown viewer for macOS and Windows.","backTop":"Back to top"},"zh":{"language":"中文","nav":["功能","实际界面","安装"],"eyebrow":"专为阅读打造的 macOS Markdown 工具","title":["让书写与阅读，","自然衔接。"],"lead":"MD Viewer Pro 是一款轻量级 Mac Markdown 阅读器，将阅读、编辑、数学公式与导出集中在简洁的工作空间中。","download":"下载公开版 v1.4.7","github":"在 GitHub 查看","note":"Apple Silicon macOS · DMG 约176 MB ＋ Windows 10/11 64位 · ZIP 约229 MB · MIT 许可证","strip":["阅读","MD 编辑","TXT 编辑","LATEX","MERMAID","YAML","PDF / HTML"],"featuresKicker":"一份文档，三种工作方式","featuresTitle":"阅读。整理。交付。","featuresLead":"从打开文件到导出成品，让 Markdown 工作流始终连贯。","cards":[["01","舒适阅读","以清晰、易导航的版式呈现标题、代码、表格、图片与 YAML 前置元数据。"],["02","即时编辑","可直接编辑渲染后的文档，也可使用左右分栏与实时预览的 TXT 编辑模式。"],["03","如实导出","支持 A4、B5 文档布局，并可将当前效果导出为 PDF 或 HTML。"]],"screenKicker":"真实应用界面","screenTitle":"让 Markdown 成为完整文档。","screenBody":"这是应用的实际界面。顶部栏可切换阅读、MD 编辑、TXT 编辑，并控制布局、缩放、目录和 PDF 导出。","screenCaption":"MD Viewer Pro v1.4.7 — 阅读模式 / 深色主题","facts":[["3","种工作模式"],["5","种应用语言"],["0","公式渲染所需网络"]],"detailTitle":"只保留文档工作真正需要的功能。","details":[["离线数学公式","无需额外安装即可排版 LaTeX 行内公式、独立公式、矩阵和分数，并保留到导出文件中。","$E = mc^2$"],["离线绘制图表","内置完整的 mermaid.js，将 ```mermaid 代码块渲染为流程图、图表，无需联网。","A --> B"],["按结构导航","目录面板默认开启，可浏览所有标题并快速跳转。","H1  H2  H3"],["保留输入的换行","按一次 Enter 即显示换行，也可随时恢复标准 Markdown 行为。","↵ = 换行"],["支持 YAML","前置元数据以信息面板呈现，.yml 和 .yaml 文件支持语法高亮。","---  title:"],["字体与主题","可添加 TTF、OTF、TTC 字体，并通过 JSON 插件主题扩展显示效果。","Aa  +  { }"],["按页面整理","支持自由、A4、B5 布局、页边距设置与 LaTeX 分页命令。","A4 / B5"]],"languagesLabel":"应用语言","languagesTitle":"五种语言，相同的流畅体验。","languagesBody":"应用支持日本語、English、Deutsch、Français、简体中文。本网站支持日本語、English、中文、Português，并根据浏览器设置自动选择。","downloadKicker":"MAC 版下载","downloadTitle":"让下一份 .md，\n双击即可打开。","downloadBody":"当前公开安装包为 v1.4.7，与仓库源码和 README 一致。","downloadButton":"下载 DMG","downloadButtonWin":"下载 Windows 版 (ZIP)","winBody":"适用于 Windows 10/11 64 位的便携版（免安装、未签名）。不支持 32 位 Windows。","sourceButton":"查看 v1.4.7 源码","releaseLabel":"公开安装包","sourceLabel":"源码 / README","unsigned":"临时签名、未经公证","installTitle":"四步完成安装。","steps":["下载 DMG","打开文件","将 MDViewerPro.app 拖入 Applications","启动应用"],"gatekeeperTitle":"首次启动出现警告时","gatekeeperBody":"当前公开版本采用临时签名，未经 Apple 公证。若提示“已损坏”，应用本身并未损坏。请先将 MDViewerPro.app 放入应用程序文件夹（不要在 DMG 内直接打开），在终端运行 xattr -cr /Applications/MDViewerPro.app 后再打开。仍无法打开时，请在“系统设置 → 隐私与安全性”中允许打开。","installTitleWin":"Windows 版三步启动。","stepsWin":["下载 ZIP","解压到任意文件夹","打开 MDViewerPro.exe"],"smartscreenTitle":"出现 SmartScreen 时","smartscreenBody":"Windows 版未签名，可能提示“Windows 已保护你的电脑”。应用本身并未损坏。请选择“更多信息”→“仍要运行”。解压前用 unblock-File 解除阻止最为稳妥。","creator":"开发者 Yuki_Orita / 折田悠希","community":"问题反馈与公告","official":"开发者官网","x":"X / Twitter","footerLine":"适用于 macOS 与 Windows 的轻量级 Markdown 阅读器。","backTop":"返回顶部"},"pt":{"language":"Português","nav":["Recursos","Na prática","Instalação"],"eyebrow":"Markdown para macOS — feito para leitura","title":["Sem distância entre","escrever e ler."],"lead":"MD Viewer Pro é um visualizador Markdown leve para Mac que reúne leitura, edição, matemática e exportação em um único espaço.","download":"Baixar versão pública v1.4.7","github":"Ver no GitHub","note":"Apple Silicon macOS · DMG aprox. 176 MB + Windows 10/11 64 bits · ZIP aprox. 229 MB · Licença MIT","strip":["LEITURA","EDIÇÃO MD","EDIÇÃO TXT","LATEX","MERMAID","YAML","PDF / HTML"],"featuresKicker":"UM DOCUMENTO, TRÊS FORMAS DE TRABALHAR","featuresTitle":"Leia. Refine. Entregue.","featuresLead":"Da abertura do arquivo à exportação final, seu fluxo Markdown continua sem interrupções.","cards":[["01","Leia com clareza","Títulos, código, tabelas, imagens e front matter YAML em um documento calmo e fácil de navegar."],["02","Edite no lugar","Ajuste o documento renderizado em MD Edit ou use o editor dividido com prévia ao vivo do TXT Edit."],["03","Exporte o que vê","Trabalhe em layouts A4 ou B5 e exporte o resultado para PDF ou HTML sem perder o acabamento."]],"screenKicker":"O APLICATIVO REAL","screenTitle":"Markdown vira documento.","screenBody":"Esta é a interface real. Na barra superior você alterna entre leitura, MD Edit e TXT Edit e controla layout, zoom, sumário e exportação para PDF.","screenCaption":"MD Viewer Pro v1.4.7 — modo View / tema escuro","facts":[["3","modos de trabalho"],["5","idiomas no app"],["0","rede para renderizar fórmulas"]],"detailTitle":"Somente o que o trabalho com documentos precisa.","details":[["Matemática offline","Componha LaTeX inline, fórmulas destacadas, matrizes e frações sem instalação extra; a exportação preserva tudo.","$E = mc^2$"],["Diagramas, offline","Renderize blocos ```mermaid como fluxogramas e gráficos com o mermaid.js embutido — sem precisar de rede.","A --> B"],["Navegue pela estrutura","O painel de sumário vem ativo e permite saltar para qualquer título.","H1  H2  H3"],["Mantenha suas quebras","Um Enter aparece como quebra de linha. Volte ao Markdown padrão quando quiser.","↵ = nova linha"],["YAML também","Front matter vira um painel de metadados; arquivos .yml e .yaml têm destaque de sintaxe.","---  title:"],["Sua fonte e seu tema","Adicione fontes TTF, OTF ou TTC e amplie a interface com temas JSON.","Aa  +  { }"],["Pense em páginas","Use layouts Livre, A4 ou B5, ajuste margens e interprete comandos LaTeX de quebra de página.","A4 / B5"]],"languagesLabel":"IDIOMAS DO APP","languagesTitle":"O mesmo fluxo em cinco idiomas.","languagesBody":"O app oferece 日本語, English, Deutsch, Français e 简体中文. Este site oferece 日本語, English, 中文 e Português, escolhidos automaticamente pelo navegador.","downloadKicker":"BAIXAR PARA MAC","downloadTitle":"Abra o próximo .md\ncom dois cliques.","downloadBody":"O instalador público é v1.4.7, igual ao código e ao README do repositório.","downloadButton":"Baixar o DMG","downloadButtonWin":"Baixar para Windows (ZIP)","winBody":"Versão portátil para Windows 10/11 de 64 bits (sem instalação, sem assinatura). Windows de 32 bits não é suportado.","sourceButton":"Ver código v1.4.7","releaseLabel":"INSTALADOR PÚBLICO","sourceLabel":"CÓDIGO / README","unsigned":"Assinatura ad-hoc; não autenticado","installTitle":"Instale em quatro passos.","steps":["Baixe o DMG","Abra o arquivo","Arraste MDViewerPro.app para Applications","Abra o aplicativo"],"gatekeeperTitle":"Se o macOS alertar no primeiro uso","gatekeeperBody":"A versão pública tem assinatura ad-hoc e não foi autenticada pela Apple. Se o macOS disser que o app está danificado, o app em si não está danificado. Primeiro coloque o MDViewerPro.app na pasta Aplicativos (não o abra dentro do DMG), execute xattr -cr /Applications/MDViewerPro.app no Terminal e abra-o. Se ainda assim não abrir, permita-o em Ajustes do Sistema → Privacidade e Segurança.","installTitleWin":"Três passos no Windows.","stepsWin":["Baixe o ZIP","Extraia em qualquer pasta","Abra o MDViewerPro.exe"],"smartscreenTitle":"Se o SmartScreen aparecer","smartscreenBody":"A versão para Windows não é assinada, então o SmartScreen pode dizer que o Windows protegeu o PC. O app em si não está danificado. Escolha \"Mais informações\" → \"Executar assim mesmo\". Desbloquear o ZIP com unblock-File antes de extrair evita o aviso.","creator":"Criado por Yuki_Orita / Yuki Orita","community":"Bugs e anúncios","official":"Site do desenvolvedor","x":"X / Twitter","footerLine":"Um visualizador Markdown leve para macOS e Windows.","backTop":"Voltar ao topo"}},"seo":{"ja":{"title":"MD Viewer Pro — Mac用Markdownビューア・エディタ","description":"MD Viewer Pro（MDビューアー Pro）は、折田悠希が開発するmacOS向けMarkdownビューア。閲覧、編集、LaTeX数式、YAML、PDF・HTML書き出しに対応。Windows 10/11 64-bit用ポータブル版あり。","ogTitle":"MD Viewer Pro — 書くことと、読むことの間をなくす。","ogDescription":"閲覧・編集・LaTeX数式・PDF / HTML書き出しをひとつにした、Macのための軽量Markdownビューア。","twTitle":"MD Viewer Pro — Mac用Markdownビューア","twDescription":"読む、直す、届ける。macOS向けの軽量Markdownビューア。","locale":"ja_JP"},"en":{"title":"MD Viewer Pro — Markdown viewer and editor for macOS","description":"MD Viewer Pro is a lightweight Markdown viewer for macOS by Yuki Orita (折田悠希). Reading, editing, LaTeX math, YAML and PDF / HTML export. A Windows 10/11 64-bit portable build is also available.","ogTitle":"MD Viewer Pro — Close the gap between writing and reading.","ogDescription":"Reading, editing, LaTeX math and PDF / HTML export in one lightweight Markdown viewer for Mac.","twTitle":"MD Viewer Pro — Markdown viewer for Mac","twDescription":"Read, revise, deliver. A lightweight Markdown viewer for macOS.","locale":"en_US"},"zh":{"title":"MD Viewer Pro — 面向 macOS 的 Markdown 阅读器与编辑器","description":"MD Viewer Pro 是折田悠希（Yuki_Orita）开发的 macOS Markdown 阅读器，支持阅读、编辑、LaTeX 公式、YAML 以及 PDF / HTML 导出。另提供 Windows 10/11 64 位便携版。","ogTitle":"MD Viewer Pro — 让书写与阅读之间不再有距离。","ogDescription":"将阅读、编辑、LaTeX 公式与 PDF / HTML 导出集于一身的轻量级 Mac Markdown 阅读器。","twTitle":"MD Viewer Pro — Mac 版 Markdown 阅读器","twDescription":"阅读、修改、交付。面向 macOS 的轻量级 Markdown 阅读器。","locale":"zh_CN"},"pt":{"title":"MD Viewer Pro — visualizador e editor de Markdown para macOS","description":"MD Viewer Pro é um visualizador de Markdown para macOS criado por Yuki Orita (折田悠希). Leitura, edição, fórmulas LaTeX, YAML e exportação para PDF / HTML. Versão portátil para Windows 10/11 de 64 bits também disponível.","ogTitle":"MD Viewer Pro — sem distância entre escrever e ler.","ogDescription":"Leitura, edição, fórmulas LaTeX e exportação para PDF / HTML em um visualizador de Markdown leve para Mac.","twTitle":"MD Viewer Pro — visualizador de Markdown para Mac","twDescription":"Ler, revisar, entregar. Um visualizador de Markdown leve para macOS.","locale":"pt_BR"}},"defaultLang":"ja"}</script>
-<script>
-(function () {
-  var D = JSON.parse(document.getElementById('i18n').textContent);
-  var L = D.languages, S = D.seo, DEF = D.defaultLang;
-  function pick(o, path) {
-    return path.split('.').reduce(function (v, k) {
-      return v == null ? v : v[/^\d+$/.test(k) ? Number(k) : k];
-    }, o);
-  }
-  function apply(code) {
-    var t = L[code]; if (!t) return;
-    document.documentElement.lang = code;
-    document.querySelectorAll('[data-t]').forEach(function (el) {
-      var p = el.getAttribute('data-t');
-      var v = p.indexOf('seo.') === 0 ? pick(S[code], p.slice(4)) : pick(t, p);
-      if (typeof v === 'string') el.textContent = v;
-    });
-    document.querySelectorAll('[data-t-attr]').forEach(function (el) {
-      var p = el.getAttribute('data-t-attr');
-      var v = p.indexOf('seo.') === 0 ? pick(S[code], p.slice(4)) : pick(t, p);
-      if (typeof v === 'string') el.setAttribute('content', v);
-    });
-    var sel = document.querySelector('.language-picker select');
-    if (sel && sel.value !== code) sel.value = code;
-    try { localStorage.setItem('mdvp-lang', code); } catch (e) {}
-  }
-  // ブラウザの言語を自動判別 (保存済みの選択があればそれを優先)
-  var saved = null;
-  try { saved = localStorage.getItem('mdvp-lang'); } catch (e) {}
-  var want = saved;
-  if (!want) {
-    var navs = navigator.languages || [navigator.language || ''];
-    for (var i = 0; i < navs.length && !want; i++) {
-      var base = String(navs[i]).toLowerCase().split('-')[0];
-      if (L[base]) want = base;
-    }
-  }
-  if (want && want !== DEF) apply(want);
-  var sel = document.querySelector('.language-picker select');
-  if (sel) sel.addEventListener('change', function () { apply(this.value); });
-})();
-</script>
-</body></html>
+<footer class="site-footer"><div class="shell footer-line">
+<a class="brand" href="/projects/md-viewer-pro/"><img src="/projects/md-viewer-pro/md-viewer-pro-icon.jpeg" alt=""/> <span>MD Viewer Pro</span></a>
+<span>© 2026 Yuki_Orita</span>
+<a href="https://github.com/oriyu90/MD-Viewer-Pro" target="_blank" rel="noreferrer">GitHub</a>
+<a href="https://discord.gg/x7KXhNTD8M" target="_blank" rel="noreferrer">Discord</a>
+<a href="https://x.com/InovateofRIZI" target="_blank" rel="noreferrer">X</a>
+<a href="https://studio-rizi.pages.dev/" target="_blank" rel="noreferrer">Studio RIZI</a>
+</div>
+<div class="shell footer-meta"><span>Created by Yuki_Orita / 折田悠希（おりたゆうき）</span><span>macOSとWindowsで使える軽量Markdownビューア。</span><a href="#main">ページ上部へ ↑</a></div></footer>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "MD Viewer Pro", "alternateName": ["MDビューアー Pro", "MD Viewer Pro"], "description": "MD Viewer Pro（MDビューアー Pro）は、折田悠希が開発するmacOS向けMarkdownビューア。閲覧、編集、LaTeX数式、YAML、PDF・HTML書き出しに対応。Windows 10/11 64-bit用ポータブル版あり。", "operatingSystem": ["macOS", "Windows"], "applicationCategory": "DeveloperApplication", "softwareVersion": "1.4.7", "url": "https://studio-rizi.pages.dev/projects/md-viewer-pro/", "downloadUrl": ["https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.7/MDViewerPro-1.4.7-Installer.dmg", "https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.4.7/MDViewerPro-1.4.7-win64-portable.zip"], "codeRepository": "https://github.com/oriyu90/MD-Viewer-Pro", "inLanguage": ["ja", "en", "zh-Hans", "pt"], "author": {"@type": "Person", "name": "Yuki Orita", "alternateName": ["Yuki_Orita", "折田悠希", "おりたゆうき"]}, "license": "https://opensource.org/license/mit"}</script>
+</body>
+</html>
