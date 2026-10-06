@@ -1,4 +1,4 @@
-# MD Viewer Pro — Windows (x64) portable build script.
+﻿# MD Viewer Pro — Windows (x64) portable build script.
 # Requires: 64-bit Python 3.11+ (python.org), Windows 10/11 64-bit.
 # 32-bit Windows is NOT supported (Qt6/PySide6 ships no 32-bit binaries).
 #
@@ -30,6 +30,8 @@ $STAGE = "dist-win\portable\MDViewerPro"
 New-Item -ItemType Directory -Force $STAGE | Out-Null
 Copy-Item -Recurse -Force "dist\MDViewerPro\*" $STAGE
 Copy-Item -Force "windows\FIRST_LAUNCH_WINDOWS.txt" "$STAGE\FIRST_LAUNCH_WINDOWS.txt"
+New-Item -ItemType Directory -Force "$STAGE\windows" | Out-Null
+Copy-Item -Force "windows\register_assoc.ps1", "windows\unregister_assoc.ps1" "$STAGE\windows\"
 
 $ZIP = "dist-win\MDViewerPro-1.4.7-win64-portable.zip"
 if (Test-Path $ZIP) { Remove-Item $ZIP }

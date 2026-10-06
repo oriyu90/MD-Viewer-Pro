@@ -16,6 +16,12 @@ MD Viewer Pro — 初回起動の手順 (Windows) / First-Launch Steps (Windows)
 4. .md ファイルを関連付けたい場合は、エクスプローラーで
    .mdファイルを右クリック →「プログラムから開く」→
    MDViewerPro.exe を選択してください。
+   または windows\register_assoc.ps1 を実行すると
+   現在のユーザーの関連付けを登録できます
+   （管理者権限不要。解除は unregister_assoc.ps1）。
+   登録後に「常時このアプリを使って開く」を選ぶと標準のアプリになります。
+   二重起動防止のため、関連付けから開いた文書は起動中の
+   MD Viewer Pro で開かれます。
 
 注意:
 - 32-bit版Windowsには対応していません。64-bit版の
@@ -38,6 +44,10 @@ MD Viewer Pro — 初回起動の手順 (Windows) / First-Launch Steps (Windows)
    to allow it (unblock-File on the ZIP before extracting).
 4. To associate .md files, right-click a .md file in Explorer →
    "Open with" → select MDViewerPro.exe.
+   Or run windows\register_assoc.ps1 to register the association for the
+   current user (no admin rights needed; unregister_assoc.ps1 removes it).
+   Choose "Always use this app" to make it the default.
+   Single-instance handling opens documents in the running MD Viewer Pro.
 
 Notes:
 - 32-bit Windows is not supported. Use 64-bit Windows 10 / 11.

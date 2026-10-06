@@ -45,6 +45,12 @@ Windows版（ポータブルZIP）は同じリリースページからダウン�
 1. ZIPを任意のフォルダに展開する
 2. `MDViewerPro\MDViewerPro.exe` をダブルクリックで起動する
 
+標準のアプリに設定するには、`.md`ファイルを右クリック→「プログラムから開く」で
+MDViewerPro.exeを選び「常時このアプリを使って開く」にチェックします。
+`MDViewerPro\windows\register_assoc.ps1` を実行すると現在のユーザーの関連付けを
+登録できます（管理者権限不要。解除は `unregister_assoc.ps1`）。
+関連付けから開いた文書は、起動中のMD Viewer Proで開かれます（二重起動防止）。
+
 32-bit版Windowsには対応していません（Qt6/PySide6に32-bit用配布物がないため）。
 Windows 11に32-bit版は存在しないため、対象はWindows 10/11 64-bitです。
 ZIP内の `FIRST_LAUNCH_WINDOWS.txt` に同じ手順（日英）を入れています。
@@ -278,6 +284,13 @@ File name: `MDViewerPro-1.4.7-win64-portable.zip`
 
 1. Extract the ZIP to any folder
 2. Double-click `MDViewerPro\MDViewerPro.exe` to launch
+
+To make it the default app, right-click a `.md` file → "Open with",
+choose MDViewerPro.exe and check "Always use this app".
+Running `MDViewerPro\windows\register_assoc.ps1` registers the association
+for the current user (no admin rights needed; `unregister_assoc.ps1` removes it).
+Documents opened from an association reuse the running MD Viewer Pro
+(single-instance).
 
 32-bit Windows is not supported (Qt6/PySide6 ships no 32-bit binaries).
 There is no 32-bit edition of Windows 11, so Windows 10/11 64-bit is required.

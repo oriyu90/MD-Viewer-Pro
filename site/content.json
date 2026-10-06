@@ -26,7 +26,7 @@
       "lead": "MD Viewer Pro は、閲覧・編集・数式・書き出しをひとつにまとめた、Mac のための軽量 Markdown ビューアです。",
       "download": "公開版 v1.4.7 をダウンロード",
       "github": "GitHub で見る",
-      "note": "Apple Silicon macOS · DMG 約176 MB ＋ Windows 10/11 64-bit · ZIP 約229 MB · MIT License",
+      "note": "Apple Silicon macOS · DMG 約176 MB ＋ Windows 10/11 64-bit · ZIP 約166 MB · MIT License",
       "strip": [
         "VIEW",
         "MD EDIT",
@@ -164,7 +164,7 @@
       "lead": "MD Viewer Pro is a lightweight Markdown viewer for Mac, bringing reading, editing, math and export into one focused workspace.",
       "download": "Download public release v1.4.7",
       "github": "View on GitHub",
-      "note": "Apple Silicon macOS · DMG about 176 MB + Windows 10/11 64-bit · ZIP about 229 MB · MIT License",
+      "note": "Apple Silicon macOS · DMG about 176 MB + Windows 10/11 64-bit · ZIP about 166 MB · MIT License",
       "strip": [
         "VIEW",
         "MD EDIT",
@@ -302,7 +302,7 @@
       "lead": "MD Viewer Pro 是一款轻量级 Mac Markdown 阅读器，将阅读、编辑、数学公式与导出集中在简洁的工作空间中。",
       "download": "下载公开版 v1.4.7",
       "github": "在 GitHub 查看",
-      "note": "Apple Silicon macOS · DMG 约176 MB ＋ Windows 10/11 64位 · ZIP 约229 MB · MIT 许可证",
+      "note": "Apple Silicon macOS · DMG 约176 MB ＋ Windows 10/11 64位 · ZIP 约166 MB · MIT 许可证",
       "strip": [
         "阅读",
         "MD 编辑",
@@ -440,7 +440,7 @@
       "lead": "MD Viewer Pro é um visualizador Markdown leve para Mac que reúne leitura, edição, matemática e exportação em um único espaço.",
       "download": "Baixar versão pública v1.4.7",
       "github": "Ver no GitHub",
-      "note": "Apple Silicon macOS · DMG aprox. 176 MB + Windows 10/11 64 bits · ZIP aprox. 229 MB · Licença MIT",
+      "note": "Apple Silicon macOS · DMG aprox. 176 MB + Windows 10/11 64 bits · ZIP aprox. 166 MB · Licença MIT",
       "strip": [
         "LEITURA",
         "EDIÇÃO MD",

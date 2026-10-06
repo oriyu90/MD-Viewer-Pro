@@ -31,6 +31,14 @@ Applications フォルダへ入れ、ターミナルで `xattr -cr /Applications
   （macOS固有設定の無効化、最小ウィンドウ幅でのツールバーボタンのはみ出し修正）
   を含みます。回帰テストはWindows 10実機でも計998件
   （純粋関数506・Qtウィジェット410・WebEngine統合82）すべて成功しました。
+- 標準のアプリに設定できます。関連付けから開いた文書は起動中のアプリで
+  開かれます（二重起動防止）。`windows\register_assoc.ps1` で現在の
+  ユーザーの関連付けを登録できます（管理者権限不要）。
+- 配布物を軽量化しました。デバッグ用リソース・未使用Qtモジュール・
+  未使用言語の翻訳を除外しています。
+- Windowsでは設定・テーマ・追加フォントを `%APPDATA%\MDViewerPro` に保存します
+  （旧 `~/.mdviewer` があれば初回に引き継ぎ）。既定フォントは Yu Gothic UI、
+  保存時の改行はLFに統一しています。
 - 32-bit版Windowsには対応していません（Qt6/PySide6に32-bit用配布物がないため）。
 - 署名なしポータブルのため、初回起動時にSmartScreenが出ることがあります。
   詳しくは README の「初回起動について（Windows）」をご覧ください。
@@ -65,6 +73,14 @@ Complex Markdown can still change formatting after an actual visual edit. Use TX
   adjustments (macOS-specific settings disabled, toolbar button overflow fix
   at minimum window width). All 998 regression tests pass on a Windows 10
   machine too (506 pure functions, 410 Qt widgets, 82 WebEngine integration).
+- It can be set as the default app for .md files. Documents opened from an
+  association reuse the running app (single-instance). `windows\register_assoc.ps1`
+  registers the association for the current user (no admin rights needed).
+- The package is slimmed down: debug resources, unused Qt modules and unused
+  language translations are excluded.
+- On Windows, settings, themes and extra fonts live under `%APPDATA%\MDViewerPro`
+  (migrated from `~/.mdviewer` on first run). The default font is Yu Gothic UI
+  and saved files use LF line endings.
 - 32-bit Windows is not supported (Qt6/PySide6 ships no 32-bit binaries).
 - The build is unsigned, so SmartScreen may appear on first launch.
   See "First Launch (Windows)" in the README for details.
