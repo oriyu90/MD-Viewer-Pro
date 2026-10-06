@@ -31,6 +31,7 @@ def build():
     t = c["languages"][lang]
     seo = c["seo"][lang]
     ver, dl, repo = c["version"], c["downloadUrl"], c["repoUrl"]
+    dlwin = c.get("downloadUrlWin", dl)
     public_base = c["publicBase"]
 
     def nav_links():
@@ -74,7 +75,7 @@ def build():
     ld = {
         "@context": "https://schema.org", "@type": "SoftwareApplication",
         "name": "MD Viewer Pro", "alternateName": "MDビューアー Pro",
-        "operatingSystem": "macOS", "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Windows", "applicationCategory": "DeveloperApplication",
         "softwareVersion": ver, "downloadUrl": dl, "codeRepository": repo,
         "author": {"@type": "Person", "name": "Yuki Orita",
                    "alternateName": ["Yuki_Orita", "折田悠希", "おりたゆうき"]},
@@ -107,6 +108,10 @@ def build():
     steps = "".join(
         f'<li><span>{i + 1:02d}</span><p data-t="steps.{i}">{e(s)}</p></li>'
         for i, s in enumerate(t["steps"]))
+
+    steps_win = "".join(
+        f'<li><span>{i + 1:02d}</span><p data-t="stepsWin.{i}">{e(s)}</p></li>'
+        for i, s in enumerate(t.get("stepsWin", [])))
 
     title_lines = "".join(f'<span data-t="title.{i}">{e(v)}</span>'
                           for i, v in enumerate(t["title"]))
@@ -155,11 +160,16 @@ def build():
 <div class="release-status"><div><small data-t="releaseLabel">{e(t['releaseLabel'])}</small><strong>v{e(ver)}</strong><span data-t="unsigned">{e(t['unsigned'])}</span></div>
 <div><small data-t="sourceLabel">{e(t['sourceLabel'])}</small><strong>v{e(ver)}</strong><span>GitHub / main</span></div></div>
 <div class="hero-actions"><a class="button button-light" href="{e(dl)}"><span data-t="downloadButton">{e(t['downloadButton'])}</span><span>↓</span></a>
-<a class="button button-outline" href="{e(repo)}" target="_blank" rel="noreferrer"><span data-t="sourceButton">{e(t['sourceButton'])}</span><span>↗</span></a></div></div>
+<a class="button button-light" href="{e(dlwin)}"><span data-t="downloadButtonWin">{e(t['downloadButtonWin'])}</span><span>↓</span></a>
+<a class="button button-outline" href="{e(repo)}" target="_blank" rel="noreferrer"><span data-t="sourceButton">{e(t['sourceButton'])}</span><span>↗</span></a></div>
+<p data-t="winBody">{e(t['winBody'])}</p></div></div>
 </section>
 <section class="section install-section"><h2 data-t="installTitle">{e(t['installTitle'])}</h2>
 <ol>{steps}</ol>
-<aside><strong data-t="gatekeeperTitle">{e(t['gatekeeperTitle'])}</strong><p data-t="gatekeeperBody">{e(t['gatekeeperBody'])}</p></aside></section>
+<aside><strong data-t="gatekeeperTitle">{e(t['gatekeeperTitle'])}</strong><p data-t="gatekeeperBody">{e(t['gatekeeperBody'])}</p></aside>
+<h2 data-t="installTitleWin">{e(t['installTitleWin'])}</h2>
+<ol>{steps_win}</ol>
+<aside><strong data-t="smartscreenTitle">{e(t['smartscreenTitle'])}</strong><p data-t="smartscreenBody">{e(t['smartscreenBody'])}</p></aside></section>
 <footer>
 <div class="footer-brand"><img src="{e(public_base)}md-viewer-pro-icon.jpeg" alt=""/><div><strong>MD Viewer Pro</strong><span>A lightweight Markdown viewer for macOS.</span></div></div>
 <div class="footer-links"><a href="{e(c['discordUrl'])}" target="_blank" rel="noreferrer"><span data-t="community">{e(t['community'])}</span> ↗</a>

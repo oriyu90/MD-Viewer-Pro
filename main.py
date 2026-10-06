@@ -29,7 +29,9 @@ from html.parser import HTMLParser
 if os.environ.get("MDVP_DISABLE_SANDBOX") == "1":
     os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"
 os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu")
-os.environ.setdefault("QT_MAC_WANTS_LAYER", "1")
+if sys.platform == "darwin":
+    # macOS固有: レイヤーベース描画の有効化。Windows/Linuxでは設定しない。
+    os.environ.setdefault("QT_MAC_WANTS_LAYER", "1")
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPlainTextEdit, QFileDialog,
@@ -42,15 +44,16 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import (
     QAction, QKeySequence, QTextCursor,
     QPageLayout, QPageSize, QFont, QColor, QDesktopServices,
-    QFileOpenEvent, QFontMetrics, QFontDatabase,
+    QFileOpenEvent, QFontMetrics, QFontDatabase, QIcon,
 )
 from PySide6.QtCore import (
     Qt, QMarginsF, QTimer, QUrl, QSizeF, QObject, Slot, QEvent, Signal, QEventLoop,
-    QByteArray, QThread, QSize,
+    QByteArray, QThread, QSize, QLockFile, QDir,
 )
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings
 from PySide6.QtWebChannel import QWebChannel
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
 
 # ════════════════════════════════════════════════
 #  定数
@@ -64,6 +67,37 @@ LANGS = {"日本語": "ja", "English": "en", "Deutsch": "de", "Français": "fr",
          "简体中文": "zh"}
 PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
+
+
+def _default_settings_dir() -> str:
+    """プラットフォーム既定の設定ディレクトリ。
+    Windowsでは %APPDATA%/MDViewerPro を正とし、旧 ~/.mdviewer があれば
+    初回に中身を引き継ぐ (macOS/Linuxは従来どおり ~/.mdviewer)。"""
+    if sys.platform != "win32":
+        return os.path.expanduser("~/.mdviewer")
+    appdata = os.environ.get("APPDATA") or os.path.expanduser("~")
+    new_dir = os.path.join(appdata, "MDViewerPro")
+    old_dir = os.path.expanduser("~/.mdviewer")
+    if os.path.isdir(old_dir) and not os.path.isdir(new_dir):
+        try:
+            os.makedirs(new_dir, exist_ok=True)
+            for name in ("settings.json",):
+                src = os.path.join(old_dir, name)
+                if os.path.isfile(src):
+                    import shutil as _sh
+                    _sh.copy2(src, os.path.join(new_dir, name))
+            for sub in ("themes", "fonts"):
+                sdir, ddir = os.path.join(old_dir, sub), os.path.join(new_dir, sub)
+                if os.path.isdir(sdir) and not os.path.isdir(ddir):
+                    import shutil as _sh
+                    _sh.copytree(sdir, ddir)
+        except Exception:
+            pass
+    return new_dir
+
+
+SETTINGS_DIR = _default_settings_dir()
+PLUGIN_DIR = os.path.join(SETTINGS_DIR, "themes")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
 APP_VERSION   = "1.4.7"
@@ -75,9 +109,15 @@ SAVE_FILTER = ("Markdown (*.md);;Text (*.txt);;"
                "YAML (*.yml *.yaml);;All Files (*)")
 YAML_EXTS = (".yml", ".yaml")
 
+# プラットフォーム既定の本文フォント。Windowsに存在しないHiragino等を
+# 既定にするとTahomaへ解決されるため、OS別に実在フォントを既定にする。
+_DEFAULT_FONT_FAMILY = "Yu Gothic UI" if sys.platform == "win32" else "Helvetica Neue"
+
 # 推奨フォント。表示名 → 実際に登録されうるファミリ名の候補(先に見つかった方を使う)。
 # IPAmj明朝 / Source Han Serif は環境によってファミリ名が異なるため別名も見る。
 RECOMMENDED_FONTS = [
+    ("Yu Gothic UI",   ["Yu Gothic UI", "Yu Gothic"]),  # Windows 10/11 標準
+    ("Meiryo",         ["Meiryo UI", "Meiryo"]),         # Windows 標準
     ("Helvetica Neue",   ["Helvetica Neue", "Helvetica"]),
     ("Hiragino Sans",    ["Hiragino Sans", "Hiragino Kaku Gothic ProN"]),
     ("Hiragino Mincho",  ["Hiragino Mincho ProN", "Hiragino Mincho Pro"]),
@@ -664,7 +704,7 @@ I18N = {
 _SETTINGS_DEFAULTS: dict = {
     "lang":             "ja",
     "theme":            "dark",
-    "font_family":      "Helvetica Neue",
+    "font_family":      _DEFAULT_FONT_FAMILY,
     "bold_mode":        False,
     "scale_idx":        DEFAULT_SCALE_IDX,
     "last_pdf_dir":     "",
@@ -793,10 +833,27 @@ def remove_user_font(family: str) -> bool:
 
 
 
+def _bundled_file(*parts: str) -> Optional[str]:
+    """同梱ファイルの実パス。PyInstaller (_MEIPASS) とソース実行の両対応。
+    見つからなければ None。"""
+    if hasattr(sys, "_MEIPASS"):
+        p = os.path.join(sys._MEIPASS, *parts)
+        if os.path.isfile(p):
+            return p
+    base = os.path.dirname(os.path.abspath(__file__))
+    p = os.path.join(base, *parts)
+    return p if os.path.isfile(p) else None
+
+
 # ════════════════════════════════════════════════
 #  QApplication サブクラス — macOS ファイルオープンイベント / マルチウィンドウ対応
 # ════════════════════════════════════════════════
 class MDApplication(QApplication):
+    # 二重起動防止のローカルサーバー名。2つ目以降の起動はここへ
+    # ファイルパスを送り、既存プロセス側で開いて終了する。
+    # (Windowsで .md をダブルクリックし続けてもプロセスが増えないように)
+    _SINGLE_INSTANCE_NAME = "MDViewerPro-single-instance"
+
     def __init__(self, argv):
         super().__init__(argv)
         self._windows: List["MDViewerPro"] = []
@@ -806,6 +863,10 @@ class MDApplication(QApplication):
         load_user_fonts()
         self._dock_menu: Optional[object] = None
         self._setup_dock_menu()
+        self._local_server: Optional[QLocalServer] = None
+        self._lock_file: Optional[QLockFile] = None
+        self._is_primary = False
+        self._acquire_primary()
 
     # ─── 新規ウィンドウ ──────────────────────────
     def new_window(self) -> "MDViewerPro":
@@ -822,6 +883,93 @@ class MDApplication(QApplication):
             self._windows.remove(win)
         if not self._windows:
             self.quit()
+
+    # ─── シングルインスタンス ──────────────────────
+    # プライマリ判定は QLockFile で行う。QLocalServer.listen() は Windows で
+    # 同名パイプの二重待ち受けを成功扱いにすることがあるため、listen の成否を
+    # プライマリ判定に使わない。メッセージ転送のパイプ自体は QLocalServer を使う。
+    def _acquire_primary(self) -> bool:
+        """ロックが取れれば待ち受けて True。取れなければ False (転送側に回る)。
+        判定不能時は True (通常起動。二重起動の可能性は残る)。"""
+        try:
+            if self._lock_file is None:
+                self._lock_file = QLockFile(
+                    QDir.temp().absoluteFilePath("MDViewerPro-single-instance.lock"))
+            if not self._lock_file.tryLock(0):
+                self._is_primary = False
+                return False
+            try:
+                server = QLocalServer(self)
+                if server.listen(self._SINGLE_INSTANCE_NAME):
+                    server.newConnection.connect(self._on_single_instance_message)
+                    self._local_server = server
+            except Exception:
+                pass
+            self._is_primary = True
+            return True
+        except Exception:
+            self._is_primary = True
+            return True
+
+    def is_primary_instance(self) -> bool:
+        return self._is_primary
+
+    def forward_to_primary(self, path: Optional[str]) -> bool:
+        """既存プロセスへパスを送れたら True。送れなければ False。
+        古いサーバー名が残っているだけの場合は取り除いて False を返す
+        (呼び出し側は待ち受け直して通常起動する)。"""
+        try:
+            sock = QLocalSocket(self)
+            sock.connectToServer(self._SINGLE_INSTANCE_NAME)
+            if not sock.waitForConnected(500):
+                try:
+                    QLocalServer.removeServer(self._SINGLE_INSTANCE_NAME)
+                except Exception:
+                    pass
+                return False
+            if path:
+                sock.write((path + "\n").encode("utf-8"))
+                sock.flush()
+                sock.waitForBytesWritten(1000)
+            sock.disconnectFromServer()
+            return True
+        except Exception:
+            return False
+
+    def take_over_as_primary(self) -> None:
+        """転送失敗時 (プライマリ不在) に確保し直して通常起動する。"""
+        self._acquire_primary()
+
+    def _on_single_instance_message(self) -> None:
+        try:
+            assert self._local_server is not None
+            sock = self._local_server.nextPendingConnection()
+            if sock is None:
+                return
+            sock.waitForReadyRead(1000)
+            data = bytes(sock.readAll().data()).decode("utf-8", errors="ignore")
+            sock.disconnectFromServer()
+            for line in data.splitlines():
+                self.open_path_external(line.strip())
+        except Exception:
+            pass
+
+    def open_path_external(self, path: str) -> None:
+        """起動中プロセスへの外部オープン (関連付け/2重起動転送)。
+        空のウィンドウがあればそこで開き、なければ新規ウィンドウで開く
+        (macOSの QFileOpenEvent 処理と同方針)。"""
+        if not path or not os.path.isfile(path):
+            return
+        target = self._windows[-1] if self._windows else None
+        if target is not None and getattr(target, "_startup_done", False):
+            if target.current_file_path is None and not target._content_text.strip():
+                target._load_file(path)
+                target.showNormal()
+                target.raise_()
+                target.activateWindow()
+                return
+        new_win = self.new_window()
+        new_win._load_file(path)
 
     # ─── macOS Dock メニュー ─────────────────────
     def _setup_dock_menu(self):
@@ -3010,10 +3158,10 @@ class SettingsDialog(QDialog):
         ) != QMessageBox.StandardButton.Yes:
             return
         remove_user_font(fam)
-        self._populate_fonts("Helvetica Neue")
+        self._populate_fonts(_DEFAULT_FONT_FAMILY)
 
     def get_result(self):
-        font = self._current_font_family() or "Helvetica Neue"
+        font = self._current_font_family() or _DEFAULT_FONT_FAMILY
         lang = LANGS[self._lang_cb.currentText()]
         bold = self._bold_cb.isChecked()
         idx  = self._theme_cb.currentIndex()
@@ -3358,6 +3506,9 @@ class MDViewerPro(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("MD Viewer Pro")
+        _icon_path = _bundled_file("assets", "favicon.ico")
+        if _icon_path:
+            self.setWindowIcon(QIcon(_icon_path))
         self.resize(1280, 900)
         self.setMinimumSize(480, 360)
 
@@ -3441,7 +3592,7 @@ class MDViewerPro(QMainWindow):
 
     def _apply_app_font(self):
         """UI 全体の既定フォントを設定に合わせる。"""
-        af = QFont(self.ui_font_family if self.ui_font_family else "Helvetica Neue")
+        af = QFont(self.ui_font_family if self.ui_font_family else _DEFAULT_FONT_FAMILY)
         af.setPointSize(15)
         af.setBold(True)
         QApplication.setFont(af)
@@ -3861,7 +4012,7 @@ class MDViewerPro(QMainWindow):
         "small":  {"tb_fs": 12, "btn_pad": 6,  "fmt_fs": 11, "fmt_pad": 5,
                    "lbl_fs": 11, "min_w": 26, "slider_w": 80,  "val_w": 40},
         "xsmall": {"tb_fs": 11, "btn_pad": 4,  "fmt_fs": 10, "fmt_pad": 3,
-                   "lbl_fs": 10, "min_w": 22, "slider_w": 58,  "val_w": 34},
+                   "lbl_fs": 10, "min_w": 24, "slider_w": 58,  "val_w": 34},
     }
 
     def _apply_responsive_style(self):
@@ -4464,9 +4615,14 @@ class MDViewerPro(QMainWindow):
         # 水平線の色: 枠線色と淡色テキストの中間
         _HR_COLOR = _mix_hex(p["border"], p["text_dim"], 0.5)
         fw = "600" if self.bold_mode else "400"
-        ff = ("'Helvetica Neue', '-apple-system', "
-              "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif")
-        if self.ui_font_family and self.ui_font_family not in ("Helvetica Neue", "-apple-system"):
+        if sys.platform == "win32":
+            ff = ("'Yu Gothic UI', 'Meiryo', 'Segoe UI', "
+                  "'Noto Sans JP', sans-serif")
+        else:
+            ff = ("'Helvetica Neue', '-apple-system', "
+                  "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif")
+        if self.ui_font_family and self.ui_font_family not in (
+                "Helvetica Neue", "-apple-system", "Yu Gothic UI", "Segoe UI"):
             ff = f"'{self.ui_font_family}', " + ff
         return (
             "*{box-sizing:border-box;margin:0;padding:0}"
@@ -6581,7 +6737,9 @@ class MDViewerPro(QMainWindow):
             # 対象と同じフォルダに作る ( tempfile は /tmp 等へ置くので不可 )。
             import uuid as _uuid
             tmp_path = f"{path}.{_uuid.uuid4().hex[:8]}.tmp"
-            with open(tmp_path, "w", encoding="utf-8") as f:
+            # 改行は LF に統一する。text mode の既定では Windows で CRLF 化され、
+            # macOS/Linux 版との差分が出るため (読取側は universal newlines で両対応)。
+            with open(tmp_path, "w", encoding="utf-8", newline="\n") as f:
                 f.write(self._content_text)
                 f.flush()
                 os.fsync(f.fileno())
@@ -6762,6 +6920,10 @@ class MDViewerPro(QMainWindow):
             ),
         }
         s = _samples.get(self.lang, _samples["en"])
+        if sys.platform == "win32":
+            # Windowsでは設定場所が %APPDATA%/MDViewerPro のため表示を合わせる
+            s = s.replace("~/.mdviewer/themes/",
+                          "%APPDATA%\\MDViewerPro\\themes")
         self._content_text = s
         self._md_editor.blockSignals(True)
         self._md_editor.setPlainText(s)
@@ -6839,13 +7001,19 @@ if __name__ == "__main__":
     app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
     app.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
 
-    win = app.new_window()
-
     # コマンドライン引数でファイルが指定された場合
     args = app.arguments()
-    if len(args) > 1:
-        _arg_path = args[1]
-        if os.path.isfile(_arg_path):
-            win._initial_file = _arg_path
+    _arg_path = args[1] if len(args) > 1 and os.path.isfile(args[1]) else None
+
+    if not app.is_primary_instance():
+        # 既存プロセスへ転送して終了。転送できなければ残骸とみなし通常起動。
+        if app.forward_to_primary(_arg_path):
+            sys.exit(0)
+        app.take_over_as_primary()
+
+    win = app.new_window()
+
+    if _arg_path is not None:
+        win._initial_file = _arg_path
 
     sys.exit(app.exec())

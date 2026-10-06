@@ -1,0 +1,58 @@
+MD Viewer Pro — 初回起動の手順 (Windows) / First-Launch Steps (Windows)
+============================================================
+対象: MDViewerPro-1.4.7-win64-portable.zip (Windows 10/11 64-bit)
+
+【日本語】
+
+1. ZIPを任意のフォルダに展開してください
+   （例: C:\Apps\MDViewerPro）。インストール作業は不要です。
+2. MDViewerPro\MDViewerPro.exe をダブルクリックで起動します。
+3. 初回起動時にSmartScreen（「WindowsによってPCが保護されました」）
+   が表示されることがあります。アプリ自体は壊れていません。
+   その場合は「詳細情報」→「実行」を選んで起動してください。
+   组织的に配布されたPCでは実行がブロックされる場合があります。
+   その場合は管理者に unblock-File での許可を依頼してください:
+     unblock-File MDViewerPro-1.4.7-win64-portable.zip (展開前)
+4. .md ファイルを関連付けたい場合は、エクスプローラーで
+   .mdファイルを右クリック →「プログラムから開く」→
+   MDViewerPro.exe を選択してください。
+   または windows\register_assoc.ps1 を実行すると
+   現在のユーザーの関連付けを登録できます
+   （管理者権限不要。解除は unregister_assoc.ps1）。
+   登録後に「常時このアプリを使って開く」を選ぶと標準のアプリになります。
+   二重起動防止のため、関連付けから開いた文書は起動中の
+   MD Viewer Pro で開かれます。
+
+注意:
+- 32-bit版Windowsには対応していません。64-bit版の
+  Windows 10 / Windows 11 でご利用ください。
+  (Qt6/PySide6に32-bit用配布物がないため)
+- 設定・テーマ・追加フォントはユーザーフォルダ配下に保存されます。
+- MD編集で内容を変更した場合はHTMLからMarkdownへ変換するため、
+  複雑な原文構造は完全に復元できません。原文の表記を厳密に
+  維持する編集にはTXT編集を使ってください。
+
+[English]
+
+1. Extract the ZIP to any folder (e.g. C:\Apps\MDViewerPro).
+   No installation is required (portable).
+2. Double-click MDViewerPro\MDViewerPro.exe to launch.
+3. On first launch, SmartScreen ("Windows protected your PC")
+   may appear. The app itself is not damaged.
+   Choose "More info" → "Run anyway".
+   On managed PCs execution may be blocked; ask your administrator
+   to allow it (unblock-File on the ZIP before extracting).
+4. To associate .md files, right-click a .md file in Explorer →
+   "Open with" → select MDViewerPro.exe.
+   Or run windows\register_assoc.ps1 to register the association for the
+   current user (no admin rights needed; unregister_assoc.ps1 removes it).
+   Choose "Always use this app" to make it the default.
+   Single-instance handling opens documents in the running MD Viewer Pro.
+
+Notes:
+- 32-bit Windows is not supported. Use 64-bit Windows 10 / 11.
+  (Qt6/PySide6 ships no 32-bit binaries.)
+- Settings, themes and extra fonts are stored under your user folder.
+- Visual edits in MD Edit convert HTML back to Markdown, so complex
+  source structures may not round-trip exactly. Use TXT Edit when
+  the exact source notation must be preserved.
