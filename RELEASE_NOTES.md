@@ -1,5 +1,27 @@
 # Release Notes / 更新履歴
 
+## v1.5.0
+
+### 日本語
+
+- 詳細設定に「テーマ色」を追加しました。従来の青色固定から、青・緑・オレンジ・赤・紫・ティールのプリセットとカスタム色（カラーピッカー）を選択できます。リンク・見出し・ボタン等の強調色に反映され、PDF書き出しやプラグインテーマ使用時にも適用されます。ライト背景ではコントラストを保つため黒へ寄せ、見出し色も自動導出します。設定は次回起動時も維持され、不正値は既定に戻ります。
+- 右側にクリップボードパネルを追加しました（目次と対称のスライドパネル、全モードから利用可）。+ ボタンで開くポップアップに貼り付けると強制プレーンテキストで保存され、OKでフレーズが追加されます。フレーズを押すとシステムクリップボードへコピーされ、各フレーズ左下の小さな削除ボタンから確認ポップアップ経由で削除できます。保存先は `~/.mdviewer/clipboard.json`（最大200件・1件5000文字・合計1MB）。破損時は空として起動します。
+- 狭幅ウィンドウでのツールバー溢れを改善しました。クリップボードボタンは短称表示（例：日本語「クリップ」）＋全称ツールチップとし、スライダー幅等を調整して480px幅でも文字切れしないようにしました。
+- 回帰テストは計998件（純粋関数506・Qt410・WebEngine統合82）ですべて成功し、新機能の検証93件も成功しました。
+
+実際にMD編集で変更した複雑なMarkdownはHTMLからの逆変換で表記が変わることがあります。厳密な原文編集にはTXT編集を使用してください。
+
+### English
+
+- Added “Accent color” to Settings. The highlight was previously fixed to blue; you can now choose blue, green, orange, red, purple, or teal presets, or a custom color from a color picker. It applies to links, headings, buttons, and related UI, including PDF export and on top of plugin themes. On light backgrounds the color is darkened toward black to keep contrast, and heading colors are derived automatically. The choice persists across launches, and invalid values fall back to the default.
+- Added a Clipboard panel on the right (a slide panel mirroring the TOC, available in every mode). Press + to open a popup and paste there; pasting is forced to plain text and OK saves the phrase. Clicking a phrase copies it to the system clipboard, and each phrase’s small bottom-left Delete button removes it after a confirmation popup. Phrases live in `~/.mdviewer/clipboard.json` (up to 200 phrases, 5000 characters each, 1 MB total). A corrupt file loads as empty.
+- Improved toolbar overflow on narrow windows. The clipboard button shows a short label (e.g., “Clip”) with the full name in its tooltip, and slider widths were tuned so nothing is clipped at 480 px.
+- All 998 regression tests pass (506 pure, 410 Qt, 82 WebEngine integration), plus 93 new-feature checks.
+
+Complex Markdown can still change formatting after an actual visual edit. Use TXT Edit for exact source editing.
+
+This macOS build is ad-hoc signed and not notarized. First launch may require approval in System Settings → Privacy & Security.
+
 ## v1.4.7
 
 ### 日本語

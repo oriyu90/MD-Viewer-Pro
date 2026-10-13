@@ -2,8 +2,8 @@
 
 A simple and fast Markdown viewer built with Python and PySide6 (Qt for Python).
 
-**Current version / 現在のバージョン: v1.4.7**
-See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.4.7).
+**Current version / 現在のバージョン: v1.5.0**
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.5.0).
 更新履歴は [RELEASE_NOTES.md](RELEASE_NOTES.md) をご覧ください。
 
 Apple Silicon macOSでのソース起動・ビルド: `python3 -m venv venv_new` → `venv_new/bin/python -m pip install -r requirements.txt` → `venv_new/bin/python main.py`。DMGは `./build_dmg.sh` で作成します。/ On Apple Silicon macOS, use the same commands to run from source or build the DMG. The published DMG is ad-hoc signed, not notarized.
@@ -71,8 +71,10 @@ MD編集で内容を変更した場合はHTMLからMarkdownへ変換するため
 | Mermaid ダイアグラム | ` ```mermaid ` フェンスをフローチャート・グラフ等として描画（オフライン同梱） |
 | YAML 対応  | フロントマターをメタ情報として表示、`.yml`/`.yaml` も閲覧可 |
 | A4文書     | 印刷向けA4レイアウト・余白設定                      |
-| 詳細設定     | フォント・言語・テーマ・表示設定の変更（日本語 / 英語 / ドイツ語 / フランス語 / 中国語） |
+| 詳細設定     | フォント・言語・テーマ・テーマ色・表示設定の変更（日本語 / 英語 / ドイツ語 / フランス語 / 中国語） |
 | フォント追加   | TTF/OTF を取り込んで本文フォントに追加（削除も可）         |
+| テーマ色 | 詳細設定でリンク・見出し・ボタンの強調色を変更（プリセット＋カスタム） |
+| クリップボード | 右側パネルに定型文を保存。押すとコピー、左下の小さな削除で整理（プレーンテキスト固定） |
 | プラグインテーマ | `~/.mdviewer/themes/` にJSONを配置してテーマ追加 |
 
 ---
@@ -89,6 +91,8 @@ MD編集で内容を変更した場合はHTMLからMarkdownへ変換するため
 * 5 言語の表示（日本語 / English / Deutsch / Français / 简体中文）
 * ユーザーフォントの追加・削除
 * PDF / HTML 書き出し
+* テーマ色の変更（プリセット＋カスタム、PDFにも反映）
+* クリップボード（フレーズ保存・ワンクリックでコピー・確認付き削除）
 * プラグインテーマ対応
 
 ---
@@ -226,6 +230,28 @@ $$
 
 ---
 
+### テーマ色の変更（v1.5.0）
+
+詳細設定の「テーマ色」で、リンク・見出し・ボタン等の強調色を変更できます。
+
+* **既定（青）** に加え、青・緑・オレンジ・赤・紫・ティールのプリセットと、カスタム色（カラーピッカー）を選択できます。
+* ダーク背景では選択色をそのまま、ライト背景では黒へ寄せてコントラストを保ちます。見出し色も自動で導出します。
+* 選択は設定ファイルに保存され、次回起動時も維持されます。不正な値は既定に戻ります。
+* PDF書き出しにも同じ強調色が反映されます。プラグインテーマ使用時も上書きできます。
+
+---
+
+### クリップボード（v1.5.0）
+
+右側のスライドパネルに定型文（フレーズ）を保存できます。目次パネルと対称の配置で、全モードから引き出せます。
+
+* **+ 追加ボタン** を押すとポップアップが開き、そこへ貼り付けできます。貼り付けは強制プレーンテキスト（書式・HTMLは除去）で、OKで保存されます。
+* 保存したフレーズを押すとシステムクリップボードへコピーされます。
+* 各フレーズの左下にある小さな **削除** ボタンを押すと確認ポップアップが出て、承認すると削除されます。
+* 保存先は `~/.mdviewer/clipboard.json`（最大200件・1件あたり最大5000文字・合計1MBまで）。破損時は空として起動し、クラッシュしません。
+
+---
+
 ## English
 
 ### Overview
@@ -284,8 +310,10 @@ If macOS still blocks it, allow the app in System Settings → Privacy & Securit
 | Mermaid Diagrams  | Renders ` ```mermaid ` fences as flowcharts, graphs, etc. (bundled, offline) |
 | YAML Support      | Front matter shown as a metadata panel; opens `.yml`/`.yaml` |
 | A4 Document       | Print-ready A4 layout with margins           |
-| Advanced Settings | Fonts, language (JA / EN / DE / FR / ZH), and themes |
+| Advanced Settings | Fonts, language (JA / EN / DE / FR / ZH), themes, and accent color |
 | Custom Fonts      | Add TTF/OTF files as body fonts (and remove them) |
+| Accent Color      | Change the highlight color for links, headings, and buttons (presets + custom) |
+| Clipboard         | Save phrases in the right-side panel. Click to copy, delete with confirmation (plain text only) |
 | Plugin Themes     | Add themes via JSON in `~/.mdviewer/themes/` |
 
 ---
@@ -302,6 +330,8 @@ If macOS still blocks it, allow the app in System Settings → Privacy & Securit
 * Five UI languages (日本語 / English / Deutsch / Français / 简体中文)
 * Add and remove your own fonts
 * Export to PDF / HTML
+* Accent color (presets + custom, also applied to PDF)
+* Clipboard (phrase storage, one-click copy, confirmed delete)
 * Plugin theme support
 
 ---
@@ -443,6 +473,28 @@ Settings → Font lets you pick from recommended fonts, added fonts, and system 
   on the system are never touched.
 * IPAmj Mincho and Source Han Serif are listed as recommended fonts. If they are
   not installed they are shown as "(not installed)" — add the TTF/OTF as above.
+
+---
+
+### Accent Color (v1.5.0)
+
+Settings → Accent color changes the highlight color for links, headings, buttons, and related UI.
+
+* In addition to **Default (blue)**, presets (blue, green, orange, red, purple, teal) and a custom color (color picker) are available.
+* On dark backgrounds the chosen color is used as-is; on light backgrounds it is darkened toward black to keep contrast. Heading colors are derived automatically.
+* The choice is stored in the settings file and restored on next launch. Invalid values fall back to the default.
+* PDF export uses the same accent color. It also overrides plugin themes.
+
+---
+
+### Clipboard (v1.5.0)
+
+Save reusable phrases in the right-side slide panel (mirroring the TOC panel). It can be opened in every mode.
+
+* Press the **+ Add button** to open a popup and paste there. Pasting is forced to plain text (formatting and HTML are stripped); OK saves the phrase.
+* Clicking a saved phrase copies it to the system clipboard.
+* Each phrase has a small **Delete** button at its bottom-left. It shows a confirmation popup and deletes on approval.
+* Phrases are stored in `~/.mdviewer/clipboard.json` (up to 200 phrases, 5000 characters each, 1 MB total). A corrupt file loads as empty without crashing.
 
 ---
 

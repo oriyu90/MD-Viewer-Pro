@@ -71,5 +71,16 @@ Settings → Font lets you choose from recommended fonts, fonts you added, and s
 fonts. "Add Font..." imports a TTF / OTF file into `~/.mdviewer/fonts/` so it stays
 available on later launches. "Remove selected font" removes fonts you added.
 
+## Accent Color (v1.5.0)
+
+Settings → Accent color changes the highlight for links, headings, and buttons.
+Presets plus custom colors are available, and PDF export follows the same color.
+
+## Clipboard (v1.5.0)
+
+Save reusable phrases in the right-side clipboard panel.
+Paste into the + popup as plain text to save, click a phrase to copy,
+and delete via the small bottom-left button with confirmation.
+
 ## From the Developer
 Here's my [LinkedIn](https://www.linkedin.com/in/%E6%82%A0%E5%B8%8C-%E6%8A%98%E7%94%B0-746b84383/). I'll post updates there, so feel free to follow!

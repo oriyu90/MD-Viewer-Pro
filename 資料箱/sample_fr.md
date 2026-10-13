@@ -10,7 +10,9 @@ Mode Affichage | Rendu Markdown propre et lisible
 Édition MD | Modifier le texte directement dans le format rendu
 Édition TXT | Éditeur à gauche + aperçu en temps réel à droite
 Document A4 | Mise en page A4 avec marges prêtes à l'impression
-Paramètres avancés | Options de police, langue, thème et style gras
+Paramètres avancés | Police, langue, thème, couleur d'accent et style gras
+Couleur d'accent | Changer la surbrillance (préréglages + personnalisée)
+Presse-papiers | Enregistrer des phrases à droite (clic pour copier, suppression en bas à gauche)
 Thèmes de plugins | Ajoutez des palettes de couleurs personnalisées en plaçant des fichiers JSON dans ~/.mdviewer/themes/
 
 ## Liste de vérification
@@ -70,6 +72,14 @@ Les fichiers `.yml` / `.yaml` peuvent aussi être ouverts (coloration syntaxique
 Paramètres → Police permet de choisir parmi les polices recommandées, ajoutées et
 système. « Ajouter une police... » importe un fichier TTF/OTF dans
 `~/.mdviewer/fonts/`. Les polices que vous avez ajoutées peuvent être supprimées.
+
+## Couleur d'accent (v1.5.0)
+
+Paramètres → Couleur d'accent change la surbrillance des liens, titres et boutons. Préréglages et couleurs personnalisées disponibles, l'export PDF suit la même couleur.
+
+## Presse-papiers (v1.5.0)
+
+Enregistrez des phrases dans le panneau de droite. Collez via + en texte brut pour enregistrer, cliquez pour copier, et supprimez en bas à gauche avec confirmation.
 
 ## Du développeur
 Voici mon [LinkedIn](https://www.linkedin.com/in/%E6%82%A0%E5%B8%8C-%E6%8A%98%E7%94%B0-746b84383/). J'y posterai des mises à jour, n'hésitez pas à me suivre !

@@ -10,7 +10,9 @@ Ansichtsmodus | Rendert Markdown übersichtlich
 MD-Bearbeitung | Text direkt im gerenderten Format bearbeiten
 TXT-Bearbeitung | Linker Editor + rechte Echtzeit-Vorschau
 A4-Dokument | A4-Layout mit druckfertigen Rändern
-Erweiterte Einstellungen | Schriftart, Sprache, Design und Fettdruck-Optionen
+Erweiterte Einstellungen | Schriftart, Sprache, Design, Akzentfarbe und Fettdruck-Optionen
+Akzentfarbe | Hervorhebungsfarbe ändern (Presets + benutzerdefiniert)
+Zwischenablage | Phrasen rechts speichern (Klick kopiert, Löschen unten links)
 Plugin-Designs | Benutzerdefinierte Farbschemata durch Ablegen von JSON-Dateien in ~/.mdviewer/themes/ hinzufügen
 
 ## Checkliste
@@ -70,6 +72,14 @@ einem eigenen Infobereich angezeigt.
 Unter Einstellungen → Schriftart wählen Sie zwischen empfohlenen, hinzugefügten und
 Systemschriftarten. „Schriftart hinzufügen..." übernimmt eine TTF/OTF-Datei nach
 `~/.mdviewer/fonts/`. Selbst hinzugefügte Schriftarten lassen sich wieder entfernen.
+
+## Akzentfarbe (v1.5.0)
+
+Unter Einstellungen → Akzentfarbe lässt sich die Hervorhebung für Links, Überschriften und Schaltflächen ändern. Presets und benutzerdefinierte Farben stehen bereit, der PDF-Export folgt derselben Farbe.
+
+## Zwischenablage (v1.5.0)
+
+Speichern Sie Phrasen rechts in der Zwischenablage. Fügen Sie über + als reinen Text ein, klicken Sie zum Kopieren, und löschen Sie unten links mit Bestätigung.
 
 ## Vom Entwickler
 Hier ist mein [LinkedIn](https://www.linkedin.com/in/%E6%82%A0%E5%B8%8C-%E6%8A%98%E7%94%B0-746b84383/). Ich werde dort Updates posten – folgt mir gerne!

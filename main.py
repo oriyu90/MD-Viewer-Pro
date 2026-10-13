@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
     QStackedWidget, QPushButton, QSizePolicy, QSlider,
     QComboBox, QGroupBox, QCheckBox,
     QListWidget, QListWidgetItem, QInputDialog,
+    QColorDialog, QScrollArea, QFrame, QToolButton,
 )
 from PySide6.QtGui import (
     QAction, QKeySequence, QTextCursor,
@@ -66,7 +67,27 @@ PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
-APP_VERSION   = "1.4.7"
+APP_VERSION   = "1.5.0"
+
+# テーマ色 (アクセント) のプリセット。空文字は既定色 (ダーク=#4a9eff /
+# ライト=#1a6abf) を意味する。カスタム色は #rrggbb のみ受け付ける。
+ACCENT_PRESETS = [
+    ("default", ""),
+    ("blue",    "#4a9eff"),
+    ("green",   "#3ecf8e"),
+    ("orange",  "#ff9f43"),
+    ("red",     "#ff6b6b"),
+    ("purple",  "#a78bfa"),
+    ("teal",    "#2dd4bf"),
+]
+_ACCENT_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+# クリップボード (フレーズ集) の保存先と上限。巨大化・破損時の
+# クラッシュとメモリ肥大を防ぐため件数・長さ・ファイルサイズを制限する。
+CLIPBOARD_FILE = os.path.join(os.path.expanduser("~/.mdviewer"), "clipboard.json")
+MAX_CLIPS = 200
+MAX_CLIP_LEN = 5000
+MAX_CLIP_FILE_BYTES = 1024 * 1024
 
 # 開けるファイルの拡張子 (YAML を含む)
 OPEN_FILTER = ("Markdown / Text / YAML "
@@ -273,6 +294,33 @@ I18N = {
                      "TTF/OTF ファイルを登録すると使えるようになります。",
         "front_matter": "フロントマター",
         "yaml_doc": "YAML ドキュメント",
+        "accent_label": "テーマ色",
+        "accent_hint": "リンク・見出し・ボタンの強調色を変更します。",
+        "accent_default": "既定（青）",
+        "accent_blue": "青",
+        "accent_green": "緑",
+        "accent_orange": "オレンジ",
+        "accent_red": "赤",
+        "accent_purple": "紫",
+        "accent_teal": "ティール",
+        "accent_custom": "カスタム...",
+        "accent_choose_title": "テーマ色を選択",
+        "clipboard": "クリップボード",
+        "clipboard_short": "クリップ",
+        "clip_title": "≡ クリップボード",
+        "clip_empty": "フレーズがありません",
+        "clip_empty_hint": "+ ボタンから追加できます",
+        "clip_add": "追加",
+        "clip_add_title": "フレーズの追加",
+        "clip_add_hint": "貼り付けはプレーンテキストとして保存されます。",
+        "clip_delete": "削除",
+        "clip_delete_title": "フレーズの削除",
+        "clip_delete_msg": "このフレーズを削除しますか？\n{phrase}",
+        "clip_copied": "コピーしました",
+        "clip_limit_title": "上限に達しました",
+        "clip_limit_msg": "保存できるフレーズは最大 {n} 件です。",
+        "clip_empty_warning": "空のフレーズは保存できません。",
+        "clip_too_long": "長すぎるため先頭 {n} 文字に切り詰めました。",
     },
     "en": {
         "back": "Back", "view": "View", "md_edit": "MD Edit", "txt_edit": "TXT Edit",
@@ -373,6 +421,33 @@ I18N = {
                      "once you register a TTF/OTF file via 'Add Font...'.",
         "front_matter": "Front matter",
         "yaml_doc": "YAML document",
+        "accent_label": "Accent color",
+        "accent_hint": "Change the highlight color for links, headings, and buttons.",
+        "accent_default": "Default (blue)",
+        "accent_blue": "Blue",
+        "accent_green": "Green",
+        "accent_orange": "Orange",
+        "accent_red": "Red",
+        "accent_purple": "Purple",
+        "accent_teal": "Teal",
+        "accent_custom": "Custom...",
+        "accent_choose_title": "Choose accent color",
+        "clipboard": "Clipboard",
+        "clipboard_short": "Clip",
+        "clip_title": "≡ Clipboard",
+        "clip_empty": "No phrases yet",
+        "clip_empty_hint": "Add one with the + button",
+        "clip_add": "Add",
+        "clip_add_title": "Add phrase",
+        "clip_add_hint": "Pasted text is saved as plain text.",
+        "clip_delete": "Delete",
+        "clip_delete_title": "Delete phrase",
+        "clip_delete_msg": "Delete this phrase?\n{phrase}",
+        "clip_copied": "Copied",
+        "clip_limit_title": "Limit reached",
+        "clip_limit_msg": "You can save up to {n} phrases.",
+        "clip_empty_warning": "An empty phrase cannot be saved.",
+        "clip_too_long": "Too long; truncated to the first {n} characters.",
     },
     "de": {
         "back": "Zurück", "view": "Ansicht", "md_edit": "MD Bearbeiten", "txt_edit": "TXT Bearbeiten",
@@ -473,6 +548,33 @@ I18N = {
                      "sobald Sie über „Schriftart hinzufügen...“ eine TTF/OTF-Datei registrieren.",
         "front_matter": "Front Matter",
         "yaml_doc": "YAML-Dokument",
+        "accent_label": "Akzentfarbe",
+        "accent_hint": "Hebt Links, \u00dcberschriften und Schaltfl\u00e4chen farblich hervor.",
+        "accent_default": "Standard (blau)",
+        "accent_blue": "Blau",
+        "accent_green": "Gr\u00fcn",
+        "accent_orange": "Orange",
+        "accent_red": "Rot",
+        "accent_purple": "Violett",
+        "accent_teal": "T\u00fcrkis",
+        "accent_custom": "Benutzerdefiniert...",
+        "accent_choose_title": "Akzentfarbe w\u00e4hlen",
+        "clipboard": "Zwischenablage",
+        "clipboard_short": "Ablage",
+        "clip_title": "\u2261 Zwischenablage",
+        "clip_empty": "Noch keine Phrasen",
+        "clip_empty_hint": "Mit + hinzuf\u00fcgen",
+        "clip_add": "Hinzuf\u00fcgen",
+        "clip_add_title": "Phrase hinzuf\u00fcgen",
+        "clip_add_hint": "Eingef\u00fcgter Text wird als reiner Text gespeichert.",
+        "clip_delete": "L\u00f6schen",
+        "clip_delete_title": "Phrase l\u00f6schen",
+        "clip_delete_msg": "Diese Phrase l\u00f6schen?\n{phrase}",
+        "clip_copied": "Kopiert",
+        "clip_limit_title": "Limit erreicht",
+        "clip_limit_msg": "Es k\u00f6nnen h\u00f6chstens {n} Phrasen gespeichert werden.",
+        "clip_empty_warning": "Eine leere Phrase kann nicht gespeichert werden.",
+        "clip_too_long": "Zu lang; auf die ersten {n} Zeichen gek\u00fcrzt.",
     },
     "fr": {
         "back": "Retour", "view": "Vue", "md_edit": "Édition MD", "txt_edit": "Édition TXT",
@@ -573,6 +675,33 @@ I18N = {
                      "après avoir enregistré un fichier TTF/OTF via « Ajouter une police... ».",
         "front_matter": "En-tête YAML",
         "yaml_doc": "Document YAML",
+        "accent_label": "Couleur d'accent",
+        "accent_hint": "Change la couleur des liens, titres et boutons.",
+        "accent_default": "Par défaut (bleu)",
+        "accent_blue": "Bleu",
+        "accent_green": "Vert",
+        "accent_orange": "Orange",
+        "accent_red": "Rouge",
+        "accent_purple": "Violet",
+        "accent_teal": "Sarcelle",
+        "accent_custom": "Personnalisée...",
+        "accent_choose_title": "Choisir la couleur d'accent",
+        "clipboard": "Presse-papiers",
+        "clipboard_short": "Clip",
+        "clip_title": "≡ Presse-papiers",
+        "clip_empty": "Aucune phrase",
+        "clip_empty_hint": "Ajoutez-en une avec +",
+        "clip_add": "Ajouter",
+        "clip_add_title": "Ajouter une phrase",
+        "clip_add_hint": "Le texte collé est enregistré en texte brut.",
+        "clip_delete": "Supprimer",
+        "clip_delete_title": "Supprimer la phrase",
+        "clip_delete_msg": "Supprimer cette phrase ?\n{phrase}",
+        "clip_copied": "Copié",
+        "clip_limit_title": "Limite atteinte",
+        "clip_limit_msg": "Vous pouvez enregistrer jusqu'à {n} phrases.",
+        "clip_empty_warning": "Une phrase vide ne peut pas être enregistrée.",
+        "clip_too_long": "Trop long ; tronqué aux {n} premiers caractères.",
     },
     "zh": {
         "back": "返回", "view": "阅读", "md_edit": "MD编辑", "txt_edit": "TXT编辑",
@@ -654,6 +783,33 @@ I18N = {
         "font_hint": "未安装的推荐字体，可通过「添加字体...」注册\n"
                      "TTF/OTF 文件后使用。",
         "front_matter": "前置元数据", "yaml_doc": "YAML 文档",
+        "accent_label": "主题色",
+        "accent_hint": "更改链接、标题和按钮的强调颜色。",
+        "accent_default": "默认（蓝色）",
+        "accent_blue": "蓝色",
+        "accent_green": "绿色",
+        "accent_orange": "橙色",
+        "accent_red": "红色",
+        "accent_purple": "紫色",
+        "accent_teal": "青色",
+        "accent_custom": "自定义...",
+        "accent_choose_title": "选择主题色",
+        "clipboard": "剪贴板",
+        "clipboard_short": "剪贴板",
+        "clip_title": "≡ 剪贴板",
+        "clip_empty": "暂无短语",
+        "clip_empty_hint": "点击 + 按钮添加",
+        "clip_add": "添加",
+        "clip_add_title": "添加短语",
+        "clip_add_hint": "粘贴的文本将保存为纯文本。",
+        "clip_delete": "删除",
+        "clip_delete_title": "删除短语",
+        "clip_delete_msg": "要删除此短语吗？\n{phrase}",
+        "clip_copied": "已复制",
+        "clip_limit_title": "已达上限",
+        "clip_limit_msg": "最多可保存 {n} 条短语。",
+        "clip_empty_warning": "空短语无法保存。",
+        "clip_too_long": "内容过长，已截断为前 {n} 个字符。",
     },
 }
 
@@ -675,6 +831,10 @@ _SETTINGS_DEFAULTS: dict = {
     # 改行の扱い。既定はオン (Enter で入れた改行をそのまま改行として表示する)。
     # オフにすると素の Markdown 仕様どおり、単一の改行は前の行に連結される。
     "hard_breaks":      True,
+    # テーマ色 (アクセント)。"" は既定色、"#rrggbb" はカスタム/プリセット色。
+    "accent_color":     "",
+    # クリップボードパネルは既定で閉じる (初回から開くと文書幅を奪うため)。
+    "show_clip":        False,
 }
 
 def load_settings() -> dict:
@@ -688,6 +848,14 @@ def load_settings() -> dict:
         result["scale_idx"] = max(0, min(len(SCALE_STEPS) - 1, int(result["scale_idx"])))
         result["show_toc"] = bool(result["show_toc"])
         result["hard_breaks"] = bool(result["hard_breaks"])
+        result["show_clip"] = bool(result.get("show_clip", False))
+        # テーマ色は #rrggbb のみ有効。旧設定・不正値は既定 ("") に落とす。
+        # クラッシュや不正なCSS注入を防ぐため必ず検証する。
+        _ac = result.get("accent_color", "")
+        if not isinstance(_ac, str) or not _ACCENT_RE.match(_ac.strip()):
+            result["accent_color"] = ""
+        else:
+            result["accent_color"] = _ac.strip().lower()
         if result["lang"] not in ("ja", "en", "de", "fr", "zh"):
             result["lang"] = "ja"
         if not result["last_pdf_dir"] or not os.path.isdir(result["last_pdf_dir"]):
@@ -703,6 +871,129 @@ def save_settings(settings: dict):
             json.dump(settings, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
+
+
+def _is_valid_accent(s) -> bool:
+    """テーマ色として使える #rrggbb かを返す (不正値はCSS注入防止のため拒否)。"""
+    return isinstance(s, str) and bool(_ACCENT_RE.match(s.strip()))
+
+
+def _normalize_accent(s: str) -> str:
+    """テーマ色を正規化する。無効なら "" (既定色) を返す。"""
+    if not isinstance(s, str):
+        return ""
+    s = s.strip().lower()
+    return s if _ACCENT_RE.match(s) else ""
+
+
+def _effective_accent(base_hex: str, is_dark_bg: bool) -> str:
+    """選択色から実際のアクセント色を求める。
+
+    ダーク背景では選択色をそのまま使い、ライト背景では黒へ寄せて
+    コントラストを保つ (既定の dark #4a9eff / light #1a6abf の関係に相当)。
+    base_hex は _is_valid_accent 済みであること。"""
+    if not _is_valid_accent(base_hex):
+        return ""
+    base_hex = base_hex.strip().lower()
+    if is_dark_bg:
+        return base_hex
+    return _mix_hex(base_hex, "#000000", 0.25)
+
+
+def _effective_heading(accent_hex: str, is_dark_bg: bool, text_hex: str) -> str:
+    """アクセントから見出し色を導く。白/黒へ少し寄せて可読性を保つ。"""
+    if not _is_valid_accent(accent_hex):
+        return ""
+    accent_hex = accent_hex.strip().lower()
+    if is_dark_bg:
+        return _mix_hex(accent_hex, "#ffffff", 0.25)
+    return _mix_hex(accent_hex, "#000000", 0.15)
+
+
+def _clipboard_path() -> str:
+    """クリップ保存先。SETTINGS_DIR から組み立てるためテストの差し替えに追従する。"""
+    try:
+        d = SETTINGS_DIR
+    except Exception:
+        d = os.path.expanduser("~/.mdviewer")
+    return os.path.join(d, "clipboard.json")
+
+
+def _normalize_clip_text(s) -> str:
+    """フレーズをプレーンテキストとして正規化する。
+
+    - str 以外は "" にする (クラッシュ防止)
+    - 改行は \\n に統一し、NUL を除去する
+    - 前後の空白を除去する (貼り付け時の余白を落とす)
+    - 上限を超えたら切り詰める (メモリ肥大防止)
+    """
+    if not isinstance(s, str):
+        return ""
+    s = s.replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")
+    s = s.strip()
+    if len(s) > MAX_CLIP_LEN:
+        s = s[:MAX_CLIP_LEN]
+    return s
+
+
+def load_clips() -> List[str]:
+    """保存済みフレーズを読み込む。破損・巨大ファイル時は空にして続行する。"""
+    path = _clipboard_path()
+    try:
+        if not os.path.exists(path):
+            return []
+        try:
+            if os.path.getsize(path) > MAX_CLIP_FILE_BYTES:
+                return []
+        except Exception:
+            pass
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, list):
+            return []
+        out: List[str] = []
+        for item in data:
+            t = _normalize_clip_text(item)
+            if t:
+                out.append(t)
+                if len(out) >= MAX_CLIPS:
+                    break
+        return out
+    except Exception:
+        return []
+
+
+def save_clips(clips: List[str]) -> bool:
+    """フレーズを原子的に保存する。失敗時は既存ファイルを維持し False を返す。"""
+    try:
+        clean: List[str] = []
+        for item in (clips or []):
+            t = _normalize_clip_text(item)
+            if t:
+                clean.append(t)
+                if len(clean) >= MAX_CLIPS:
+                    break
+        d = os.path.dirname(_clipboard_path())
+        os.makedirs(d, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=d, prefix=".clipboard_", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(clean, f, ensure_ascii=False, indent=2)
+                f.flush()
+                try:
+                    os.fsync(f.fileno())
+                except Exception:
+                    pass
+            os.replace(tmp, _clipboard_path())
+        finally:
+            try:
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+            except Exception:
+                pass
+        return True
+    except Exception:
+        return False
 
 
 # ════════════════════════════════════════════════
@@ -2820,11 +3111,78 @@ class MarginDialog(QDialog):
 
 
 # ════════════════════════════════════════════════
+#  プレーンペースト用エディタとクリップ追加ダイアログ
+# ════════════════════════════════════════════════
+class PlainPasteEdit(QPlainTextEdit):
+    """リッチテキストの貼り付けを強制的にプレーン化するエディタ。
+
+    QPlainTextEdit 自体は通常プレーンだが、HTML断片を持つMIMEが
+    書式付きで入る経路を塞ぐため insertFromMimeData で text のみ使う。
+    """
+    def insertFromMimeData(self, source):
+        try:
+            if source is not None and source.hasText():
+                self.insertPlainText(source.text())
+                return
+        except Exception:
+            pass
+        try:
+            super().insertFromMimeData(source)
+        except Exception:
+            pass
+
+
+class ClipAddDialog(QDialog):
+    """フレーズ追加のポップアップ。貼り付けは強制プレーンテキスト。"""
+    def __init__(self, parent, t):
+        super().__init__(parent)
+        self._t = t
+        self.setWindowTitle(t.get("clip_add_title", "Add phrase"))
+        self.setMinimumWidth(420)
+        root = QVBoxLayout(self)
+        root.setSpacing(10)
+        hint = QLabel(t.get("clip_add_hint", ""))
+        hint.setWordWrap(True)
+        hint.setObjectName("fontHint")
+        root.addWidget(hint)
+        self._edit = PlainPasteEdit()
+        self._edit.setPlaceholderText(t.get("clip_add_title", "Add phrase"))
+        self._edit.setMinimumHeight(140)
+        # リッチテキストを受け付けない (プレーン固定)
+        try:
+            self._edit.setAcceptRichText(False)
+        except Exception:
+            pass
+        root.addWidget(self._edit)
+        bb = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok |
+            QDialogButtonBox.StandardButton.Cancel
+        )
+        bb.accepted.connect(self._on_ok)
+        bb.rejected.connect(self.reject)
+        root.addWidget(bb)
+
+    def _on_ok(self):
+        t = self._t
+        text = _normalize_clip_text(self._edit.toPlainText())
+        if not text:
+            QMessageBox.warning(self, t.get("clip_add_title", "Add phrase"),
+                                t.get("clip_empty_warning", "Empty"))
+            return
+        self._text = text
+        self.accept()
+
+    def get_text(self) -> str:
+        return _normalize_clip_text(getattr(self, "_text", self._edit.toPlainText()))
+
+
+# ════════════════════════════════════════════════
 #  詳細設定ダイアログ
 # ════════════════════════════════════════════════
 class SettingsDialog(QDialog):
     def __init__(self, parent, font_family, lang, current_theme, bold_mode, t,
-                 plugin_themes: Dict[str, dict], hard_breaks: bool = True):
+                 plugin_themes: Dict[str, dict], hard_breaks: bool = True,
+                 accent_color: str = ""):
         super().__init__(parent)
         self.setWindowTitle(t["settings_title"])
         self.setMinimumWidth(380)
@@ -2884,6 +3242,51 @@ class SettingsDialog(QDialog):
             self._theme_cb.setCurrentIndex(idx)
         tl.addWidget(self._theme_cb)
         root.addWidget(tg)
+
+        # テーマ色 (アクセント)。既定 + プリセット + カスタム。
+        ag = QGroupBox(t.get("accent_label", "Accent color"))
+        al = QVBoxLayout(ag)
+        self._accent_cb = QComboBox()
+        # (表示名, hex)。"" は既定、"custom" はカスタム色を使う印。
+        self._accent_values = ["", "#4a9eff", "#3ecf8e", "#ff9f43",
+                               "#ff6b6b", "#a78bfa", "#2dd4bf", "custom"]
+        self._accent_items = [
+            t.get("accent_default", "Default"),
+            t.get("accent_blue", "Blue"),
+            t.get("accent_green", "Green"),
+            t.get("accent_orange", "Orange"),
+            t.get("accent_red", "Red"),
+            t.get("accent_purple", "Purple"),
+            t.get("accent_teal", "Teal"),
+            t.get("accent_custom", "Custom..."),
+        ]
+        self._accent_cb.addItems(self._accent_items)
+        self._accent_custom = ""
+        _ac_norm = _normalize_accent(accent_color)
+        if _ac_norm == "":
+            self._accent_cb.setCurrentIndex(0)
+        elif _ac_norm in self._accent_values:
+            self._accent_cb.setCurrentIndex(self._accent_values.index(_ac_norm))
+        else:
+            self._accent_custom = _ac_norm
+            self._accent_cb.setCurrentIndex(7)
+        al.addWidget(self._accent_cb)
+        _arow = QHBoxLayout()
+        self._accent_btn = QPushButton(t.get("accent_custom", "Custom..."))
+        self._accent_btn.clicked.connect(self._on_choose_accent)
+        _arow.addWidget(self._accent_btn)
+        self._accent_preview = QLabel("●●●")
+        self._accent_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._accent_preview.setFixedWidth(64)
+        _arow.addWidget(self._accent_preview)
+        al.addLayout(_arow)
+        _ahint = QLabel(t.get("accent_hint", ""))
+        _ahint.setWordWrap(True)
+        _ahint.setObjectName("fontHint")
+        al.addWidget(_ahint)
+        root.addWidget(ag)
+        self._accent_cb.currentIndexChanged.connect(self._update_accent_preview)
+        self._update_accent_preview()
 
         # プラグインフォルダを開く
         pg = QGroupBox(t["plugin_label"])
@@ -3012,6 +3415,44 @@ class SettingsDialog(QDialog):
         remove_user_font(fam)
         self._populate_fonts("Helvetica Neue")
 
+    def _current_accent_value(self) -> str:
+        idx = self._accent_cb.currentIndex()
+        if idx < 0 or idx >= len(self._accent_values):
+            return ""
+        v = self._accent_values[idx]
+        if v == "custom":
+            return _normalize_accent(self._accent_custom)
+        return _normalize_accent(v)
+
+    def _update_accent_preview(self, _idx=None):
+        v = self._current_accent_value()
+        col = v if v else "#4a9eff"
+        try:
+            self._accent_preview.setStyleSheet(f"color: {col}; font-size: 18px;")
+        except Exception:
+            pass
+
+    def _on_choose_accent(self):
+        t = self._t
+        cur = self._current_accent_value() or "#4a9eff"
+        try:
+            initial = QColor(cur)
+        except Exception:
+            initial = QColor("#4a9eff")
+        col = QColorDialog.getColor(initial, self, t.get("accent_choose_title", "Choose"))
+        if not col.isValid():
+            return
+        hexcol = col.name().lower()
+        if not _is_valid_accent(hexcol):
+            return
+        self._accent_custom = hexcol
+        # プリセットに一致すればそちらを選び、なければカスタムを選ぶ。
+        if hexcol in self._accent_values:
+            self._accent_cb.setCurrentIndex(self._accent_values.index(hexcol))
+        else:
+            self._accent_cb.setCurrentIndex(7)
+        self._update_accent_preview()
+
     def get_result(self):
         font = self._current_font_family() or "Helvetica Neue"
         lang = LANGS[self._lang_cb.currentText()]
@@ -3023,7 +3464,7 @@ class SettingsDialog(QDialog):
             theme = "light"
         else:
             theme = self._theme_items[idx]
-        return font, lang, theme, bold, self._hard_breaks_cb.isChecked()
+        return font, lang, theme, bold, self._hard_breaks_cb.isChecked(), self._current_accent_value()
 
 
 # ════════════════════════════════════════════════
@@ -3393,6 +3834,13 @@ class MDViewerPro(QMainWindow):
         self._pending_anchor: Optional[tuple] = None
         self._initial_file: Optional[str] = None
         self._show_toc         = bool(_s.get("show_toc", True))
+        self.accent_color      = _normalize_accent(_s.get("accent_color", ""))
+        self._show_clip        = bool(_s.get("show_clip", False))
+        try:
+            self._clips = load_clips()
+        except Exception:
+            self._clips = []
+        self._clip_cache_key = None
         self._pdf_embed_images = _s.get("pdf_embed_images", True)
         # PDF書き出し用オフスクリーンViewの参照 (書き出し中のみ保持し、
         # 終了時に破棄する。表示側 _preview_web には一切触らない)。
@@ -3546,7 +3994,16 @@ class MDViewerPro(QMainWindow):
         self._preview_placeholder = QWidget()
         self._splitter.addWidget(self._preview_placeholder)
 
-        self._splitter.setSizes([0, 0, 1])
+        # クリップボードパネル: 右側のスライドパネル (目次と対称)。
+        # 全モードで引き出せる。保存された表示状態を復元する。
+        self._clip_panel = self._make_clip_panel()
+        try:
+            self._clip_panel.setVisible(bool(getattr(self, "_show_clip", False)))
+        except Exception:
+            self._clip_panel.setVisible(False)
+        self._splitter.addWidget(self._clip_panel)
+
+        self._splitter.setSizes([0, 0, 1, 0])
         self._build_menu()
 
     def _make_toc_panel(self):
@@ -3562,6 +4019,52 @@ class MDViewerPro(QMainWindow):
         self._toc_list.setObjectName("tocList")
         self._toc_list.itemClicked.connect(self._on_toc_item_clicked)
         lay.addWidget(self._toc_list)
+        return panel
+
+    def _make_clip_panel(self):
+        """右側のクリップボードパネル (目次と対称のスライドパネル)。
+
+        構成: タイトル / +追加ボタン / スクロール内のフレーズカード群。
+        各カードは「押すとコピー」の本文ボタンと、左下の小さな削除ボタンを持つ。
+        """
+        panel = QWidget()
+        panel.setObjectName("clipPanel")
+        lay = QVBoxLayout(panel)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        self._clip_title_lbl = QLabel(self._t("clip_title"))
+        self._clip_title_lbl.setObjectName("clipTitle")
+        lay.addWidget(self._clip_title_lbl)
+        self._clip_add_btn = QPushButton("+ " + self._t("clip_add"))
+        self._clip_add_btn.setObjectName("clipAddBtn")
+        try:
+            self._clip_add_btn.setToolTip(self._t("clip_add_title"))
+        except Exception:
+            pass
+        self._clip_add_btn.clicked.connect(self._on_clip_add)
+        _addwrap = QWidget()
+        _addlay = QHBoxLayout(_addwrap)
+        _addlay.setContentsMargins(10, 8, 10, 8)
+        _addlay.setSpacing(0)
+        _addlay.addWidget(self._clip_add_btn)
+        lay.addWidget(_addwrap)
+        self._clip_scroll = QScrollArea()
+        self._clip_scroll.setWidgetResizable(True)
+        self._clip_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._clip_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        _inner = QWidget()
+        self._clip_list_layout = QVBoxLayout(_inner)
+        self._clip_list_layout.setContentsMargins(10, 4, 10, 10)
+        self._clip_list_layout.setSpacing(8)
+        self._clip_list_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self._clip_scroll.setWidget(_inner)
+        lay.addWidget(self._clip_scroll, 1)
+        self._clip_empty_lbl = QLabel("")
+        self._clip_empty_lbl.setObjectName("clipEmpty")
+        self._clip_empty_lbl.setWordWrap(True)
+        self._clip_empty_lbl.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self._clip_list_layout.addWidget(self._clip_empty_lbl)
+        self._rebuild_clip_list()
         return panel
 
     # ─── メインツールバー ─────────────────────────
@@ -3644,6 +4147,12 @@ class MDViewerPro(QMainWindow):
         self._toc_btn.setObjectName("mainBtn")
         self._toc_btn.clicked.connect(self._toggle_toc)
         lay.addWidget(self._toc_btn)
+        sep()
+
+        self._clip_btn = PianoBtn(self._t("clipboard"))
+        self._clip_btn.setObjectName("mainBtn")
+        self._clip_btn.clicked.connect(self._toggle_clip)
+        lay.addWidget(self._clip_btn)
         sep()
 
         self._pdf_btn = PianoBtn(self._t("pdf_export"))
@@ -3836,10 +4345,15 @@ class MDViewerPro(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._resize_timer.start()
-        if (getattr(self, "_show_toc", False)
-                and getattr(self, "edit_mode", None) in ("md", "txt")
-                and hasattr(self, "_splitter")):
-            self._sync_toc_width_on_resize()
+        try:
+            if hasattr(self, "_splitter"):
+                if (getattr(self, "_show_toc", False)
+                        and getattr(self, "edit_mode", None) in ("md", "txt")):
+                    self._sync_toc_width_on_resize()
+                if getattr(self, "_show_clip", False):
+                    self._sync_clip_width_on_resize()
+        except Exception:
+            pass
 
     def _get_ui_scale_cat(self):
         w = self.width()
@@ -3857,11 +4371,11 @@ class MDViewerPro(QMainWindow):
         "large":  {"tb_fs": 17, "btn_pad": 16, "fmt_fs": 15, "fmt_pad": 13,
                    "lbl_fs": 15, "min_w": 44, "slider_w": 120, "val_w": 48},
         "medium": {"tb_fs": 14, "btn_pad": 11, "fmt_fs": 13, "fmt_pad": 9,
-                   "lbl_fs": 13, "min_w": 28, "slider_w": 100, "val_w": 44},
+                   "lbl_fs": 13, "min_w": 28, "slider_w": 92,  "val_w": 40},
         "small":  {"tb_fs": 12, "btn_pad": 6,  "fmt_fs": 11, "fmt_pad": 5,
-                   "lbl_fs": 11, "min_w": 26, "slider_w": 80,  "val_w": 40},
-        "xsmall": {"tb_fs": 11, "btn_pad": 4,  "fmt_fs": 10, "fmt_pad": 3,
-                   "lbl_fs": 10, "min_w": 22, "slider_w": 58,  "val_w": 34},
+                   "lbl_fs": 11, "min_w": 26, "slider_w": 64,  "val_w": 36},
+        "xsmall": {"tb_fs": 10, "btn_pad": 3,  "fmt_fs": 10, "fmt_pad": 3,
+                   "lbl_fs": 10, "min_w": 20, "slider_w": 44,  "val_w": 30},
     }
 
     def _apply_responsive_style(self):
@@ -5155,14 +5669,38 @@ class MDViewerPro(QMainWindow):
     #  テーマ適用
     # ════════════════════════════════════════════
     def _resolve_palette(self) -> dict:
-        """current_theme に対応するパレットを返す"""
+        """current_theme に対応するパレットを返す。
+
+        グローバル辞書を直接返さず複写を返す (呼び出し側の上書きで
+        既定パレットを汚さないため)。accent_color が有効なら
+        accent/heading を上書きする。"""
         if self.current_theme == "dark":
-            return DARK_PALETTE
+            base = DARK_PALETTE
         elif self.current_theme == "light":
-            return LIGHT_PALETTE
+            base = LIGHT_PALETTE
         elif self.current_theme in self._plugin_themes:
-            return self._plugin_themes[self.current_theme]
-        return DARK_PALETTE
+            base = self._plugin_themes[self.current_theme]
+        else:
+            base = DARK_PALETTE
+        try:
+            p = dict(base)
+        except Exception:
+            p = dict(DARK_PALETTE)
+        for _k, _v in DARK_PALETTE.items():
+            p.setdefault(_k, _v)
+        _ac = _normalize_accent(getattr(self, "accent_color", ""))
+        if _ac:
+            try:
+                _is_dark = _hex_is_dark(p.get("bg", "#000000"))
+            except Exception:
+                _is_dark = True
+            _eff = _effective_accent(_ac, _is_dark)
+            if _eff:
+                p["accent"] = _eff
+                _hd = _effective_heading(_ac, _is_dark, p.get("text", "#ffffff" if _is_dark else "#000000"))
+                if _hd:
+                    p["heading"] = _hd
+        return p
 
     def _apply_theme(self, refresh=True):
         p = self._resolve_palette()
@@ -5250,6 +5788,28 @@ class MDViewerPro(QMainWindow):
             f"color:{p['accent']};}}"
             f"QListWidget#tocList::item:selected{{background-color:{p['select']};"
             f"color:{p['text']};}}"
+            f"QWidget#clipPanel{{background-color:{p['bg2']};"
+            f"border-left:1px solid {p['sep']};}}"
+            f"QLabel#clipTitle{{color:{p['heading']};"
+            f"font-size:{self._toc_base_font_px()}px;"
+            f"font-weight:bold;padding:10px 12px 8px 12px;"
+            f"border-bottom:1px solid {p['sep']};background:transparent;}}"
+            f"QLabel#clipEmpty{{color:{p['text_dim']};font-weight:normal;"
+            f"font-size:{max(10, lbl_fs - 1)}px;padding:12px;}}"
+            f"QPushButton#clipAddBtn{{background-color:{p['btn']};color:{p['text']};"
+            f"border:1px solid {p['sep']};border-radius:4px;padding:4px 10px;"
+            f"font-weight:bold;font-size:{lbl_fs}px;}}"
+            f"QPushButton#clipAddBtn:hover{{background-color:{p['accent']};color:#ffffff;"
+            f"border-color:{p['accent']};}}"
+            f"QFrame#clipCard{{background-color:{p['bg']};border:1px solid {p['sep']};"
+            f"border-radius:6px;}}"
+            f"QPushButton#clipPhraseBtn{{background:transparent;color:{p['text']};"
+            f"border:none;text-align:left;font-weight:normal;"
+            f"font-size:{max(11, lbl_fs)}px;padding:8px 10px 4px 10px;}}"
+            f"QPushButton#clipPhraseBtn:hover{{color:{p['accent']};}}"
+            f"QToolButton#clipDelBtn{{background:transparent;color:{p['text_dim']};"
+            f"border:none;font-size:11px;padding:2px 8px;}}"
+            f"QToolButton#clipDelBtn:hover{{color:{p['accent']};}}"
             f"QDialog{{background-color:{p['bg2']};color:{p['text']};}}"
             f"QGroupBox{{border:1px solid {p['sep']};border-radius:4px;"
             f"margin-top:8px;padding-top:8px;font-weight:bold;font-size:{lbl_fs}px;}}"
@@ -5304,10 +5864,35 @@ class MDViewerPro(QMainWindow):
         self._scale_val_lbl.setText(SCALE_LABELS[self.scale_idx])
         self._settings_btn.setText(self._t("settings"))
         self._toc_btn.setText(self._t("toc"))
+        if hasattr(self, "_clip_btn"):
+            try:
+                self._clip_btn.setText(self._t("clipboard_short"))
+            except Exception:
+                try:
+                    self._clip_btn.setText(self._t("clipboard"))
+                except Exception:
+                    pass
+            try:
+                self._clip_btn.setToolTip(self._t("clipboard"))
+            except Exception:
+                pass
         self._pdf_btn.setText(self._t("pdf_export"))
         self._toc_title_lbl.setText(self._t("toc_title"))
+        if hasattr(self, "_clip_title_lbl"):
+            self._clip_title_lbl.setText(self._t("clip_title"))
+        if hasattr(self, "_clip_add_btn"):
+            self._clip_add_btn.setText("+ " + self._t("clip_add"))
+            try:
+                self._clip_add_btn.setToolTip(self._t("clip_add_title"))
+            except Exception:
+                pass
         if self._toc_panel.isVisible():
             self._rebuild_toc_list()
+        try:
+            if hasattr(self, "_clip_panel") and self._clip_panel.isVisible():
+                self._rebuild_clip_list()
+        except Exception:
+            pass
 
     def _mode_available(self, mode):
         """そのモードに切り替えられるか。
@@ -5330,6 +5915,11 @@ class MDViewerPro(QMainWindow):
         self._margin_btn.setEnabled(self.page_mode in ("a4", "b5"))
         self._scale_val_lbl.setText(SCALE_LABELS[self.scale_idx])
         self._toc_btn.set_active(self._show_toc)
+        try:
+            if hasattr(self, "_clip_btn"):
+                self._clip_btn.set_active(self._show_clip)
+        except Exception:
+            pass
 
     # ════════════════════════════════════════════
     #  表示更新
@@ -5751,36 +6341,337 @@ class MDViewerPro(QMainWindow):
         win_w = max(1, self.width())
         return w if w >= win_w * 0.5 else win_w
 
+    def _clip_panel_width(self):
+        """クリップボードパネルの幅 (目次と同じ 220〜420px の範囲)。"""
+        base, grow_from, ratio, cap = 220, 900, 0.18, 420
+        try:
+            extra = max(0, self.width() - grow_from) * ratio
+        except Exception:
+            extra = 0
+        return int(min(cap, base + extra))
+
+    def _clip_visible_width(self) -> int:
+        """クリップパネルが実際に幅を取るべき場合の幅 (不可視なら0)。"""
+        try:
+            if getattr(self, "_show_clip", False):
+                return self._clip_panel_width()
+        except Exception:
+            pass
+        return 0
+
+    def _toc_visible_width(self) -> int:
+        try:
+            if getattr(self, "_show_toc", False) and getattr(self, "edit_mode", "view") in ("md", "txt"):
+                return self._toc_panel_width()
+        except Exception:
+            pass
+        return 0
+
     def _update_splitter_sizes(self):
-        """モード切替・目次トグル時にスプリッターを初期配分に戻す。"""
-        toc_w = (self._toc_panel_width()
-                 if (self._show_toc and self.edit_mode in ("md", "txt")) else 0)
-        rest = max(1, self._splitter_total_width() - toc_w)
+        """モード切替・目次/クリップトグル時にスプリッターを初期配分に戻す。
+
+        構成は [目次, エディタ, プレビュー, クリップ] の4ペイン。
+        非表示ペインは幅0に畳まれる (QSplitter が自動で畳むが、
+        ここで明示して初期配分を確定させる)。"""
+        toc_w = self._toc_visible_width()
+        clip_w = self._clip_visible_width()
+        rest = max(1, self._splitter_total_width() - toc_w - clip_w)
         if self.edit_mode == "txt":
-            # エディタ:プレビュー = 4:6。実ピクセルで渡すことで、目次の幅が
-            # 比率に巻き込まれて _toc_panel_width() どおりにならないのを防ぐ。
+            # エディタ:プレビュー = 4:6。実ピクセルで渡すことで、左右パネルの幅が
+            # 比率に巻き込まれて指定どおりにならないのを防ぐ。
             edit_w = int(rest * 0.4)
-            self._splitter.setSizes([toc_w, edit_w, rest - edit_w])
+            self._splitter.setSizes([toc_w, edit_w, rest - edit_w, clip_w])
         else:
-            self._splitter.setSizes([toc_w, 0, rest])
+            self._splitter.setSizes([toc_w, 0, rest, clip_w])
 
     def _sync_toc_width_on_resize(self):
         """ウィンドウ幅の変化に合わせて目次の幅だけを追従させる。
         エディタ/プレビューはユーザーがドラッグした比率を保つ
-        (_update_splitter_sizes をそのまま呼ぶと手動調整が毎回失われる)。"""
+        (_update_splitter_sizes をそのまま呼ぶと手動調整が毎回失われる)。
+        クリップパネルの幅は維持する (4ペイン・旧3ペインの両対応)。"""
         if not (self._show_toc and self.edit_mode in ("md", "txt")):
             return
         sizes = self._splitter.sizes()
-        if len(sizes) != 3:
+        if len(sizes) == 3:
+            # 旧テスト経路 (3ペインで呼ばれた場合) の互換処理。
+            toc_w = self._toc_panel_width()
+            rest = max(1, self._splitter_total_width() - toc_w)
+            old_rest = sizes[1] + sizes[2]
+            if old_rest <= 0:
+                self._update_splitter_sizes()
+                return
+            mid = int(rest * sizes[1] / old_rest)
+            try:
+                self._splitter.setSizes([toc_w, mid, rest - mid])
+            except Exception:
+                pass
+            return
+        if len(sizes) != 4:
             return
         toc_w = self._toc_panel_width()
-        rest = max(1, self._splitter_total_width() - toc_w)
+        clip_w = sizes[3] if self._show_clip else 0
+        # クリップが表示中なら目標幅へ追従させる (ドラッグ分は上書きされる)。
+        if getattr(self, "_show_clip", False):
+            try:
+                clip_w = self._clip_panel_width()
+            except Exception:
+                pass
+        rest = max(1, self._splitter_total_width() - toc_w - clip_w)
         old_rest = sizes[1] + sizes[2]
         if old_rest <= 0:
             self._update_splitter_sizes()
             return
         mid = int(rest * sizes[1] / old_rest)
-        self._splitter.setSizes([toc_w, mid, rest - mid])
+        self._splitter.setSizes([toc_w, mid, rest - mid, clip_w])
+
+    def _sync_clip_width_on_resize(self):
+        """ウィンドウ幅の変化に合わせてクリップ幅だけを追従させる。
+        中央のエディタ/プレビュー比率は維持する。"""
+        if not getattr(self, "_show_clip", False):
+            return
+        sizes = self._splitter.sizes()
+        if len(sizes) != 4:
+            return
+        toc_w = sizes[0] if (getattr(self, "_show_toc", False) and getattr(self, "edit_mode", "view") in ("md", "txt")) else 0
+        try:
+            clip_w = self._clip_panel_width()
+        except Exception:
+            return
+        rest = max(1, self._splitter_total_width() - toc_w - clip_w)
+        old_rest = sizes[1] + sizes[2]
+        if old_rest <= 0:
+            self._update_splitter_sizes()
+            return
+        mid = int(rest * sizes[1] / old_rest)
+        self._splitter.setSizes([toc_w, mid, rest - mid, clip_w])
+
+    def _update_clip_panel_visibility(self):
+        show = bool(getattr(self, "_show_clip", False))
+        try:
+            self._clip_panel.setVisible(show)
+        except Exception:
+            return
+        if show:
+            try:
+                self._rebuild_clip_list()
+            except Exception:
+                pass
+
+    def _toggle_clip(self):
+        self._show_clip = not getattr(self, "_show_clip", False)
+        try:
+            self._clip_btn.set_active(self._show_clip)
+        except Exception:
+            pass
+        self._update_clip_panel_visibility()
+        self._update_splitter_sizes()
+        try:
+            self._save_app_settings()
+        except Exception:
+            pass
+
+    @staticmethod
+    def _clip_preview_text(text: str, limit: int = 80) -> str:
+        try:
+            one = " ".join((text or "").split())
+        except Exception:
+            one = ""
+        if len(one) > limit:
+            return one[:limit] + "…"
+        return one or "…"
+
+    def _rebuild_clip_list(self, force: bool = False):
+        """クリップ一覧を作り直す。内容不変なら作り直さない (ちらつき防止)。"""
+        try:
+            clips = list(getattr(self, "_clips", []) or [])
+        except Exception:
+            clips = []
+        try:
+            lang = getattr(self, "lang", "ja")
+        except Exception:
+            lang = "ja"
+        cache_key = (tuple(clips), lang)
+        if not force and cache_key == getattr(self, "_clip_cache_key", None):
+            return
+        self._clip_cache_key = cache_key
+        layout = getattr(self, "_clip_list_layout", None)
+        if layout is None:
+            return
+        # 空ラベル以外のカードを全て除去する。
+        try:
+            for i in reversed(range(layout.count())):
+                item = layout.itemAt(i)
+                w = item.widget() if item is not None else None
+                if w is None or w is getattr(self, "_clip_empty_lbl", None):
+                    continue
+                layout.removeWidget(w)
+                try:
+                    w.deleteLater()
+                except Exception:
+                    pass
+        except Exception:
+            return
+        # 空表示の更新。
+        try:
+            if not clips:
+                self._clip_empty_lbl.setText(
+                    self._t("clip_empty") + "\n" + self._t("clip_empty_hint"))
+                self._clip_empty_lbl.setVisible(True)
+            else:
+                self._clip_empty_lbl.setVisible(False)
+        except Exception:
+            pass
+        # カードを上から (新しいものを上に) 並べる。保存順は古い→新しいとし、
+        # 表示は新しい→古い (直近追加が目に入る)。
+        try:
+            for idx in range(len(clips) - 1, -1, -1):
+                text = clips[idx]
+                card = QFrame()
+                card.setObjectName("clipCard")
+                vl = QVBoxLayout(card)
+                vl.setContentsMargins(0, 0, 0, 6)
+                vl.setSpacing(0)
+                btn = QPushButton(self._clip_preview_text(text))
+                btn.setObjectName("clipPhraseBtn")
+                try:
+                    btn.setToolTip(text if len(text) <= 500 else text[:500] + "…")
+                except Exception:
+                    pass
+                # テキストが長い場合もボタン内で折り返さず1行に収める。
+                try:
+                    btn.setStyleSheet(btn.styleSheet())
+                except Exception:
+                    pass
+                btn.clicked.connect(lambda _=False, _t=text: self._on_clip_copy(_t))
+                # 長文でもボタンが縦に膨らまないよう1行に抑える。
+                try:
+                    fm = btn.fontMetrics()
+                    btn.setMaximumHeight(fm.height() + 16)
+                except Exception:
+                    pass
+                vl.addWidget(btn)
+                brow = QHBoxLayout()
+                brow.setContentsMargins(10, 0, 10, 0)
+                brow.setSpacing(0)
+                del_btn = QToolButton()
+                del_btn.setObjectName("clipDelBtn")
+                try:
+                    del_btn.setText("× " + self._t("clip_delete"))
+                    del_btn.setToolTip(self._t("clip_delete_title"))
+                except Exception:
+                    del_btn.setText("×")
+                del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                del_btn.clicked.connect(lambda _=False, _i=idx: self._on_clip_delete(_i))
+                brow.addWidget(del_btn, alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+                brow.addStretch(1)
+                _bw = QWidget()
+                _bw.setLayout(brow)
+                vl.addWidget(_bw)
+                # 削除対象の特定用に index を保持する。
+                card.setProperty("clip_index", idx)
+                btn.setProperty("clip_index", idx)
+                del_btn.setProperty("clip_index", idx)
+                layout.addWidget(card)
+        except Exception:
+            pass
+
+    def _on_clip_copy(self, text: str):
+        """フレーズを押したらシステムクリップボードへコピーする。"""
+        try:
+            t = _normalize_clip_text(text)
+        except Exception:
+            t = ""
+        if not t:
+            return
+        try:
+            QApplication.clipboard().setText(t)
+        except Exception:
+            return
+
+    def _on_clip_add(self):
+        t = I18N.get(getattr(self, "lang", "ja"), I18N["ja"])
+        try:
+            if len(getattr(self, "_clips", []) or []) >= MAX_CLIPS:
+                QMessageBox.warning(self, t.get("clip_limit_title", "Limit"),
+                                    t.get("clip_limit_msg", "").format(n=MAX_CLIPS))
+                return
+        except Exception:
+            pass
+        dlg = ClipAddDialog(self, t)
+        if not dlg.exec():
+            return
+        raw = dlg.get_text()
+        text = _normalize_clip_text(raw)
+        if not text:
+            try:
+                QMessageBox.warning(self, t.get("clip_add_title", "Add"),
+                                    t.get("clip_empty_warning", "Empty"))
+            except Exception:
+                pass
+            return
+        truncated = len(_normalize_clip_text(raw)) >= MAX_CLIP_LEN and len(raw.strip()) > MAX_CLIP_LEN
+        # _normalize_clip_text が既に切り詰めている。切り詰め発生時は案内する。
+        if len(raw.strip().replace("\r\n", "\n").replace("\r", "\n")) > MAX_CLIP_LEN:
+            try:
+                QMessageBox.information(self, t.get("clip_add_title", "Add"),
+                                        t.get("clip_too_long", "").format(n=MAX_CLIP_LEN))
+            except Exception:
+                pass
+        try:
+            self._clips.append(text)
+        except Exception:
+            self._clips = [text]
+        # 上限を超えたら古いものから落とす (メモリ安全)。
+        try:
+            if len(self._clips) > MAX_CLIPS:
+                self._clips = self._clips[-MAX_CLIPS:]
+        except Exception:
+            pass
+        try:
+            save_clips(self._clips)
+        except Exception:
+            pass
+        try:
+            self._clip_cache_key = None
+            self._rebuild_clip_list(force=True)
+        except Exception:
+            pass
+
+    def _on_clip_delete(self, index: int):
+        """左下の小さな削除ボタン→確認ポップアップ→削除。"""
+        try:
+            clips = list(getattr(self, "_clips", []) or [])
+        except Exception:
+            return
+        if not isinstance(index, int) or not (0 <= index < len(clips)):
+            return
+        t = I18N.get(getattr(self, "lang", "ja"), I18N["ja"])
+        target = clips[index]
+        short = target if len(target) <= 120 else target[:120] + "…"
+        try:
+            ans = QMessageBox.question(
+                self, t.get("clip_delete_title", "Delete"),
+                t.get("clip_delete_msg", "{phrase}").format(phrase=short),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+        except Exception:
+            return
+        if ans != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            del clips[index]
+            self._clips = clips
+        except Exception:
+            return
+        try:
+            save_clips(self._clips)
+        except Exception:
+            pass
+        try:
+            self._clip_cache_key = None
+            self._rebuild_clip_list(force=True)
+        except Exception:
+            pass
 
     @staticmethod
     def _extract_headings(text):
@@ -6001,11 +6892,13 @@ class MDViewerPro(QMainWindow):
             "font_family":      self.ui_font_family,
             "bold_mode":        self.bold_mode,
             "hard_breaks":      self.hard_breaks,
+            "accent_color":     _normalize_accent(getattr(self, "accent_color", "")),
             "scale_idx":        self.scale_idx,
             "last_pdf_dir":     self._last_pdf_dir,
             "pdf_embed_images": self._pdf_embed_images,
             "window_geometry":  geom_b64,
             "show_toc":         self._show_toc,
+            "show_clip":        bool(getattr(self, "_show_clip", False)),
         })
 
     def _open_settings(self):
@@ -6016,15 +6909,23 @@ class MDViewerPro(QMainWindow):
             self.current_theme, self.bold_mode,
             I18N[self.lang], self._plugin_themes,
             hard_breaks=self.hard_breaks,
+            accent_color=getattr(self, "accent_color", ""),
         )
         if dlg.exec():
-            fam, lang, theme, bold, hard_breaks = dlg.get_result()
+            _res = dlg.get_result()
+            # 旧5要素の戻り値にも互換対応する (テスト・外部呼び出し用)。
+            if len(_res) == 5:
+                fam, lang, theme, bold, hard_breaks = _res
+                accent = getattr(self, "accent_color", "")
+            else:
+                fam, lang, theme, bold, hard_breaks, accent = _res
             changed_font = (fam != self.ui_font_family)
             self.ui_font_family = fam
             changed_lang = (lang != self.lang)
             self.lang      = lang
             self.bold_mode = bold
             self.hard_breaks = hard_breaks
+            self.accent_color = _normalize_accent(accent)
             self.current_theme = theme
             if changed_font:
                 # 再起動しなくても UI 全体に反映されるようにする
@@ -6282,12 +7183,33 @@ class MDViewerPro(QMainWindow):
         # (カーソル/contenteditable除去 + テーマ適用)
         orig_palette = self._palette
         if pdf_theme == "dark":
-            self._palette = DARK_PALETTE
+            _base = DARK_PALETTE
         elif pdf_theme == "light":
-            self._palette = LIGHT_PALETTE
+            _base = LIGHT_PALETTE
         elif pdf_theme in self._plugin_themes:
-            self._palette = self._plugin_themes[pdf_theme]
-        pdf_palette = self._palette
+            _base = self._plugin_themes[pdf_theme]
+        else:
+            _base = DARK_PALETTE
+        try:
+            pdf_palette = dict(_base)
+        except Exception:
+            pdf_palette = dict(DARK_PALETTE)
+        for _k, _v in DARK_PALETTE.items():
+            pdf_palette.setdefault(_k, _v)
+        # 詳細設定のテーマ色をPDFにも反映する (表示と同一の強調色にする)。
+        _ac_pdf = _normalize_accent(getattr(self, "accent_color", ""))
+        if _ac_pdf:
+            try:
+                _dark_pdf = _hex_is_dark(pdf_palette.get("bg", "#000000"))
+            except Exception:
+                _dark_pdf = True
+            _eff_pdf = _effective_accent(_ac_pdf, _dark_pdf)
+            if _eff_pdf:
+                pdf_palette["accent"] = _eff_pdf
+                _hd_pdf = _effective_heading(_ac_pdf, _dark_pdf, pdf_palette.get("text", "#ffffff" if _dark_pdf else "#000000"))
+                if _hd_pdf:
+                    pdf_palette["heading"] = _hd_pdf
+        self._palette = pdf_palette
 
         strip_img = not embed_images
         try:
