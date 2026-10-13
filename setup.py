@@ -19,8 +19,8 @@ OPTIONS = {
         'CFBundleDisplayName': "MD Viewer Pro",
         'CFBundleGetInfoString': "Markdown Viewer and Editor",
         'CFBundleIdentifier': "com.yuki.mdviewer",
-        'CFBundleVersion': "1.4.7",
-        'CFBundleShortVersionString': "1.4.7",
+        'CFBundleVersion': "1.5.0",
+        'CFBundleShortVersionString': "1.5.0",
         'NSHighResolutionCapable': True,
     }
 }
