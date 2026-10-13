@@ -1,5 +1,21 @@
 # Release Notes / 更新履歴
 
+## v1.5.2
+
+### 日本語
+
+- クリップボードのフレーズカード全面をコピー範囲にしました。カード内の空き領域（削除ボタン以外）を押してもコピーされます。
+- フリー表示の入力欄・表示欄に画面幅に応じた余白を追加しました。縦長では幅いっぱい、横長になるほど両端に空白が広がり、横:縦3:1で両端2割になります。A4文書はページ表示のままです。
+- B5文書モードを廃止し、フリーとA4の2択にしました（ツールバー・PDF設定・余白設定から除去）。
+- 回帰テストは計998件ですべて成功しました。
+
+### English
+
+- The whole clipboard phrase card now copies (any empty area except Delete copies).
+- Free mode editor and preview gain aspect-based side margins: full width when portrait, up to 20% blanks on each side at 3:1. A4 mode keeps its page look.
+- Removed B5 mode, leaving Free and A4 (toolbar, PDF settings, and margins dialogs updated).
+- All 998 regression tests pass.
+
 ## v1.5.1
 
 ### 日本語

@@ -305,7 +305,7 @@ check("[書き出し] PDF 用 HTML にも改行が残る", pdf_html.count("<br")
 # ══════════════════════════════════════════════════════════════
 # v1.4.2 回帰: LaTeX の体裁コマンド (\newpage) が実際に効くか
 # ══════════════════════════════════════════════════════════════
-from PySide6.QtCore import QMarginsF, QSizeF
+from PySide6.QtCore import QMarginsF
 from PySide6.QtGui import QPageLayout, QPageSize
 
 win._set_mode("view")
@@ -318,10 +318,7 @@ def export_pdf(doc, page_mode, name):
     win.page_mode = page_mode
     html = win._build_md_html(doc, editable=False, strip_images=True)
     out = os.path.join(TMP, name + ".pdf")
-    if page_mode == "b5":
-        ps = QPageSize(QSizeF(182, 257), QPageSize.Unit.Millimeter, "JIS B5")
-    else:
-        ps = QPageSize(QPageSize.PageSizeId.A4)
+    ps = QPageSize(QPageSize.PageSizeId.A4)
     layout = QPageLayout(ps, QPageLayout.Orientation.Portrait,
                          QMarginsF(20, 20, 20, 20), QPageLayout.Unit.Millimeter)
     loop = QEventLoop()
@@ -362,7 +359,7 @@ PDF_CASES = [
     ("newpage 1個", SHORT + "\n\n\\newpage\n\n2枚目", "a4", 2),
     ("newpage 2個", SHORT + "\n\n\\newpage\n\n2枚目\n\n\\newpage\n\n3枚目", "a4", 3),
     ("pagebreak", SHORT + "\n\n\\pagebreak\n\n2枚目", "a4", 2),
-    ("clearpage B5", SHORT + "\n\n\\clearpage\n\n2枚目", "b5", 2),
+    ("clearpage A4", SHORT + "\n\n\\clearpage\n\n2枚目", "a4", 2),
     ("フリー表示でも効く", SHORT + "\n\n\\newpage\n\n2枚目", "free", 2),
 ]
 for _name, _doc, _mode, _want in PDF_CASES:

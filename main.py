@@ -46,7 +46,7 @@ from PySide6.QtGui import (
     QFileOpenEvent, QFontMetrics, QFontDatabase,
 )
 from PySide6.QtCore import (
-    Qt, QMarginsF, QTimer, QUrl, QSizeF, QObject, Slot, QEvent, Signal, QEventLoop,
+    Qt, QMarginsF, QTimer, QUrl, QObject, Slot, QEvent, Signal, QEventLoop,
     QByteArray, QThread, QSize,
 )
 from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -67,7 +67,7 @@ PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
-APP_VERSION   = "1.5.1"
+APP_VERSION   = "1.5.2"
 
 # テーマ色 (アクセント) のプリセット。空文字は既定色 (ダーク=#4a9eff /
 # ライト=#1a6abf) を意味する。カスタム色は #rrggbb のみ受け付ける。
@@ -197,7 +197,7 @@ _BLOCK_MARKER_RE = re.compile(
 I18N = {
     "ja": {
         "back": "戻る", "view": "閲覧", "md_edit": "MD編集", "txt_edit": "TXT編集",
-        "free": "フリー", "a4": "A4文書", "b5": "B5文書", "margin": "余白設定",
+        "free": "フリー", "a4": "A4文書", "margin": "余白設定",
         "scale": "スケール", "settings": "詳細設定",
         "pdf_export": "PDF書き出し",
         "file": "ファイル", "open": "開く...", "save": "保存", "new": "新規作成",
@@ -223,7 +223,6 @@ I18N = {
         "plugin_dir_btn": "テーマフォルダを開く",
         "untitled": "無題",
         "margin_title": "A4余白設定 (mm)",
-        "margin_title_b5": "B5余白設定 (mm)",
         "margin_top": "上", "margin_right": "右",
         "margin_bottom": "下", "margin_left": "左",
         "fmt_bold": "B", "fmt_italic": "I", "fmt_strike": "~~", "fmt_code": "コード",
@@ -324,7 +323,7 @@ I18N = {
     },
     "en": {
         "back": "Back", "view": "View", "md_edit": "MD Edit", "txt_edit": "TXT Edit",
-        "free": "Free", "a4": "A4 Doc", "b5": "B5 Doc", "margin": "Margins",
+        "free": "Free", "a4": "A4 Doc", "margin": "Margins",
         "scale": "Scale", "settings": "Settings",
         "pdf_export": "Export PDF",
         "file": "File", "open": "Open...", "save": "Save", "new": "New",
@@ -350,7 +349,6 @@ I18N = {
         "plugin_dir_btn": "Open Theme Folder",
         "untitled": "Untitled",
         "margin_title": "A4 Margins (mm)",
-        "margin_title_b5": "B5 Margins (mm)",
         "margin_top": "Top", "margin_right": "Right",
         "margin_bottom": "Bottom", "margin_left": "Left",
         "fmt_bold": "B", "fmt_italic": "I", "fmt_strike": "~~", "fmt_code": "Code",
@@ -451,7 +449,7 @@ I18N = {
     },
     "de": {
         "back": "Zurück", "view": "Ansicht", "md_edit": "MD Bearbeiten", "txt_edit": "TXT Bearbeiten",
-        "free": "Frei", "a4": "A4 Dok.", "b5": "B5 Dok.", "margin": "Ränder",
+        "free": "Frei", "a4": "A4 Dok.", "margin": "Ränder",
         "scale": "Skalierung", "settings": "Einstellungen",
         "pdf_export": "PDF exportieren",
         "file": "Datei", "open": "Öffnen...", "save": "Speichern", "new": "Neu",
@@ -477,7 +475,6 @@ I18N = {
         "plugin_dir_btn": "Themenordner öffnen",
         "untitled": "Unbenannt",
         "margin_title": "A4-Ränder (mm)",
-        "margin_title_b5": "B5-Ränder (mm)",
         "margin_top": "Oben", "margin_right": "Rechts",
         "margin_bottom": "Unten", "margin_left": "Links",
         "fmt_bold": "B", "fmt_italic": "I", "fmt_strike": "~~", "fmt_code": "Code",
@@ -578,7 +575,7 @@ I18N = {
     },
     "fr": {
         "back": "Retour", "view": "Vue", "md_edit": "Édition MD", "txt_edit": "Édition TXT",
-        "free": "Libre", "a4": "Doc A4", "b5": "Doc B5", "margin": "Marges",
+        "free": "Libre", "a4": "Doc A4", "margin": "Marges",
         "scale": "Échelle", "settings": "Paramètres",
         "pdf_export": "Exporter PDF",
         "file": "Fichier", "open": "Ouvrir...", "save": "Enregistrer", "new": "Nouveau",
@@ -604,7 +601,6 @@ I18N = {
         "plugin_dir_btn": "Ouvrir le dossier des thèmes",
         "untitled": "Sans titre",
         "margin_title": "Marges A4 (mm)",
-        "margin_title_b5": "Marges B5 (mm)",
         "margin_top": "Haut", "margin_right": "Droite",
         "margin_bottom": "Bas", "margin_left": "Gauche",
         "fmt_bold": "G", "fmt_italic": "I", "fmt_strike": "~~", "fmt_code": "Code",
@@ -705,7 +701,7 @@ I18N = {
     },
     "zh": {
         "back": "返回", "view": "阅读", "md_edit": "MD编辑", "txt_edit": "TXT编辑",
-        "free": "自由", "a4": "A4文档", "b5": "B5文档", "margin": "页边距",
+        "free": "自由", "a4": "A4文档", "margin": "页边距",
         "scale": "缩放", "settings": "设置", "pdf_export": "导出PDF",
         "file": "文件", "open": "打开...", "save": "保存", "new": "新建",
         "save_as": "另存为...",
@@ -728,7 +724,7 @@ I18N = {
                             "插入一个空行。",
         "plugin_label": "插件主题", "plugin_dir_btn": "打开主题文件夹",
         "untitled": "未命名",
-        "margin_title": "A4 页边距 (mm)", "margin_title_b5": "B5 页边距 (mm)",
+        "margin_title": "A4 页边距 (mm)",
         "margin_top": "上", "margin_right": "右",
         "margin_bottom": "下", "margin_left": "左",
         "fmt_bold": "B", "fmt_italic": "I", "fmt_strike": "~~",
@@ -2642,7 +2638,7 @@ def _restore_math(html: str, store: List[tuple]) -> str:
 #  \newpage のような「文書の体裁を指示する」コマンドは、数式と違って
 #  組版する中身を持たない。文字列のまま表示されてしまうと本文の邪魔に
 #  なるため、指示として解釈して表示に反映し、コマンド自体は見せない。
-#    ・改ページ … PDF書き出しでは実際にページを分け、A4/B5表示では
+#    ・改ページ … PDF書き出しでは実際にページを分け、A4表示では
 #                 次のページの先頭まで送る (通常表示では何も見せない)
 #    ・改行/空き … 指示どおりの改行・縦の空きを入れる
 #    ・体裁のみ … 表示には反映できないので隠すだけ
@@ -3132,6 +3128,35 @@ class PlainPasteEdit(QPlainTextEdit):
             pass
 
 
+class _ClipCard(QFrame):
+    """フレーズカード。空き領域を含めた全面クリックでコピーする。
+
+    子のボタン (本文・削除) は自身のクリックを消費するため、
+    ここに届くのは空き領域へのクリックだけ。削除ボタンが
+    コピーを誤発することはない。"""
+    def __init__(self, text: str, copy_fn, parent=None):
+        super().__init__(parent)
+        self._clip_text = text
+        self._copy_fn = copy_fn
+        try:
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+        except Exception:
+            pass
+
+    def mousePressEvent(self, ev):
+        try:
+            if ev is not None and ev.button() == Qt.MouseButton.LeftButton:
+                fn = self._copy_fn
+                if fn is not None:
+                    fn(self._clip_text)
+        except Exception:
+            pass
+        try:
+            super().mousePressEvent(ev)
+        except Exception:
+            pass
+
+
 class ClipAddDialog(QDialog):
     """フレーズ追加のポップアップ。貼り付けは強制プレーンテキスト。"""
     def __init__(self, parent, t):
@@ -3604,26 +3629,17 @@ class StartupDialog(QDialog):
 #  PDF書き出し設定ダイアログ
 # ════════════════════════════════════════════════
 class PdfExportDialog(QDialog):
-    def __init__(self, parent, page_mode, a4_margins, b5_margins, t,
-                 embed_images=True, current_theme="dark", plugin_themes=None):
+    def __init__(self, parent, page_mode, a4_margins, t,
+                 embed_images=True, current_theme="dark", plugin_themes=None,
+                 b5_margins=None):
         super().__init__(parent)
         self.setWindowTitle(t.get("pdf_settings_title", "PDF書き出し設定"))
         self.setMinimumWidth(320)
         self._a4_margins = a4_margins
-        self._b5_margins = b5_margins
         if plugin_themes is None:
             plugin_themes = {}
         root = QVBoxLayout(self)
         root.setSpacing(12)
-
-        pg = QGroupBox(t.get("pdf_page_size", "用紙サイズ"))
-        pl = QVBoxLayout(pg)
-        self._page_cb = QComboBox()
-        self._page_cb.addItems(["A4", "B5"])
-        if page_mode == "b5":
-            self._page_cb.setCurrentText("B5")
-        pl.addWidget(self._page_cb)
-        root.addWidget(pg)
 
         og = QGroupBox(t.get("pdf_orientation", "方向"))
         ol = QVBoxLayout(og)
@@ -3637,7 +3653,7 @@ class PdfExportDialog(QDialog):
 
         mg = QGroupBox(t.get("margin_title", "余白設定 (mm)"))
         ml = QFormLayout()
-        curr = b5_margins if page_mode == "b5" else a4_margins
+        curr = a4_margins
         self._margin_spins: Dict[str, QSpinBox] = {}
         for i, (k, lbl) in enumerate(zip(
             ["top", "right", "bottom", "left"],
@@ -3675,8 +3691,6 @@ class PdfExportDialog(QDialog):
         sl.addWidget(self._style_cb)
         root.addWidget(sg)
 
-        self._page_cb.currentTextChanged.connect(self._on_page_changed)
-
         bb = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok |
             QDialogButtonBox.StandardButton.Cancel
@@ -3685,13 +3699,8 @@ class PdfExportDialog(QDialog):
         bb.rejected.connect(self.reject)
         root.addWidget(bb)
 
-    def _on_page_changed(self, text):
-        m = self._b5_margins if text == "B5" else self._a4_margins
-        for i, k in enumerate(["top", "right", "bottom", "left"]):
-            self._margin_spins[k].setValue(m[i])
-
     def get_settings(self):
-        page = self._page_cb.currentText()
+        page = "A4"
         landscape = self._orient_cb.currentIndex() == 1
         margins = tuple(self._margin_spins[k].value() for k in ["top", "right", "bottom", "left"])
         embed_images = self._embed_images_cb.isChecked()
@@ -3819,7 +3828,6 @@ class MDViewerPro(QMainWindow):
         self.page_mode         = "free"
         self.edit_mode         = "view"
         self.a4_margins        = (20, 20, 20, 20)
-        self.b5_margins        = (15, 15, 15, 15)
         self.lang              = _s["lang"]
         self.ui_font_family    = _s["font_family"]
         self.bold_mode         = _s["bold_mode"]
@@ -3858,6 +3866,8 @@ class MDViewerPro(QMainWindow):
 
         # UI スケール管理 (空文字で初回強制適用)
         self._last_ui_scale_cat = ""
+        # アスペクト連動の側方空白の最終適用値 (負で初回強制適用)
+        self._last_blank_frac = -1.0
 
         # プラグインテーマ読み込み
         self._plugin_themes = load_plugin_themes()
@@ -4111,7 +4121,7 @@ class MDViewerPro(QMainWindow):
         sep()
 
         self._layout_btns = {}
-        for key, tk in [("free","free"), ("a4","a4"), ("b5","b5")]:
+        for key, tk in [("free","free"), ("a4","a4")]:
             b = PianoBtn(self._t(tk))
             b.setObjectName("mainBtn")
             b.clicked.connect(lambda _, k=key: self._set_layout(k))
@@ -4391,6 +4401,11 @@ class MDViewerPro(QMainWindow):
     }
 
     def _apply_responsive_style(self):
+        # アスペクト空白はカテゴリ境界と無関係にジワジワ追従させる。
+        try:
+            self._update_aspect_blanks()
+        except Exception:
+            pass
         cat = self._get_ui_scale_cat()
         if cat == self._last_ui_scale_cat:
             return
@@ -4412,6 +4427,69 @@ class MDViewerPro(QMainWindow):
 
     def _ui_sizes(self):
         return self._UI_SIZE_TABLE[self._get_ui_scale_cat()]
+
+    def _side_blank_fraction(self) -> float:
+        """ウィンドウ縦横比から側方空白の片側割合を求める。
+
+        縦長 (横<=縦) は 0.0 (空白なし)。横長は縦横比 1→3 で
+        0.0→0.20 (両端2割) へ線形に広がる。3:1 以上は 0.20 固定。
+        クラッシュ防止のため常に 0.0〜0.20 の範囲に収める。"""
+        try:
+            w, h = self.width(), self.height()
+        except Exception:
+            return 0.0
+        if h <= 0 or w <= h:
+            return 0.0
+        ratio = w / h
+        if ratio >= 3.0:
+            return 0.20
+        return max(0.0, min(0.20, 0.20 * (ratio - 1.0) / 2.0))
+
+    def _update_aspect_blanks(self, force: bool = False):
+        """アスペクト連動の側方空白を入力欄・表示欄へ反映する。
+
+        入力欄 (TXT編集のエディタ) はビューポート余白で直接調整する。
+        表示欄 (プレビューHTML) は軽量な JS で .wrap 幅だけを書き換える
+        (全文再描画はしないため MD編集中の取り込み競合が起きない)。
+        A4文書モードのプレビューはページ表示のまま対象外。
+        失敗時は黙って維持しクラッシュしない。"""
+        try:
+            frac = self._side_blank_fraction()
+        except Exception:
+            return
+        try:
+            last = float(getattr(self, "_last_blank_frac", -1.0))
+        except Exception:
+            last = -1.0
+        if not force and abs(frac - last) < 0.005:
+            return
+        self._last_blank_frac = frac
+        # 入力欄: TXT編集時のみエディタの左右に余白を取る。
+        try:
+            if getattr(self, "edit_mode", "view") == "txt":
+                ed_w = self._editor_stack.width()
+                m = int(max(0, ed_w) * frac) if ed_w > 0 else 0
+                self._md_editor.setViewportMargins(m, 0, m, 0)
+            else:
+                self._md_editor.setViewportMargins(0, 0, 0, 0)
+        except Exception:
+            pass
+        # 表示欄: フリーモードのプレビューのみ幅を追従させる。
+        try:
+            if getattr(self, "page_mode", "free") != "free":
+                return
+            web = getattr(self, "_preview_web", None)
+            if web is None:
+                return
+            pct = (1.0 - 2.0 * frac) * 100.0
+            js = (
+                "(function(){var w=document.querySelector('.wrap');if(!w)return;"
+                "w.style.boxSizing='border-box';"
+                f"w.style.width='{pct:.1f}%';w.style.margin='0 auto';}})();"
+            )
+            web.page().runJavaScript(js)
+        except Exception:
+            pass
 
     def _apply_btn_fit_metrics(self, sz):
         """各ボタンに基準フォントサイズと余白を伝え、幅に合わせて詰めさせる。"""
@@ -5180,7 +5258,7 @@ class MDViewerPro(QMainWindow):
     def _tex_layout_css(self):
         """体裁コマンド (\\newpage 等) の見た目。
 
-        通常はコマンドの存在を見せない。改ページは A4/B5 表示では
+        通常はコマンドの存在を見せない。改ページは A4 表示では
         _page_break_js が高さを入れて次ページ送りにし、PDF では
         print 側の break-after で実際にページを分ける。"""
         p = self._palette
@@ -5430,7 +5508,8 @@ class MDViewerPro(QMainWindow):
             '</script>'
         )
 
-    def _build_md_html(self, text, editable=False, strip_images=False, sync_lines=False):
+    def _build_md_html(self, text, editable=False, strip_images=False, sync_lines=False,
+                         blank_frac=None):
         p   = self._palette
         fs  = int(16 * SCALE_STEPS[self.scale_idx])
         # 編集モードでは codehilite を使わず fenced_code のみ使用する。
@@ -5557,37 +5636,32 @@ class MDViewerPro(QMainWindow):
                 f"}}"
             )
             pg_js = self._page_break_js(page_h)
-        elif self.page_mode == "b5":
-            t, r, b, l = self.b5_margins
-            page_h, page_w = 257, 182
-            wrap = (
-                f"max-width:{page_w}mm;margin:24px auto;background:{p['bg2']};"
-                f"padding:{t}mm {r}mm {b}mm {l}mm;"
-                f"box-shadow:0 2px 20px rgba(0,0,0,.4);min-height:{page_h}mm;"
-            )
-            print_css = (
-                f"@media print{{"
-                # 余白は QPageLayout が管理 (CSS 側は 0 にして二重適用を防ぐ)
-                f"@page{{size:{page_w}mm {page_h}mm portrait;margin:0;}}"
-                f"body{{margin:0!important;background:{p['bg']}!important;}}"
-                f".wrap{{max-width:100%!important;margin:0!important;"
-                f"padding:0!important;box-shadow:none!important;"
-                f"min-height:auto!important;background:{p['bg']}!important;}}"
-                f".pg-brk{{display:none!important;}}"
-                + _pg_print +
-                f"}}"
-            )
-            pg_js = self._page_break_js(page_h)
         else:
-            # width:100% でビューポート幅に追従させ、max-width:920px で
-            # 上限を抑える。中央寄せの両側は地色になるが、行内容が幅を
-            # 押し広げて右側へ広い空白と水平スクロールが出ることはない。
-            wrap = "padding:32px 48px;max-width:920px;width:100%;margin:0 auto;"
+            # フリー表示はウィンドウ縦横比に応じた側方空白を取る。
+            # 縦長では幅いっぱい、横長になるほど両端に空白が広がり、
+            # 3:1 で両端2割になる (box-sizing で padding を幅に含めるため
+            # 行内容が幅を押し広げて横スクロールが出ることはない)。
+            # blank_frac を指定された場合 (HTML書き出し等) はそれを使う。
+            if blank_frac is None:
+                try:
+                    _bf = self._side_blank_fraction()
+                except Exception:
+                    _bf = 0.0
+            else:
+                try:
+                    _bf = max(0.0, min(0.20, float(blank_frac)))
+                except Exception:
+                    _bf = 0.0
+            _pct = (1.0 - 2.0 * _bf) * 100.0
+            wrap = (f"padding:32px 48px;box-sizing:border-box;"
+                    f"width:{_pct:.1f}%;margin:0 auto;")
             print_css = (
-                # 余白は QPageLayout が管理 (CSS 側は 0 にして二重適用を防ぐ)
+                # 余白は QPageLayout が管理 (CSS 側は 0 にして二重適用を防ぐ)。
+                # 画面用の幅指定は印刷・PDFでは打ち消して全幅に戻す。
                 f"@media print{{@page{{margin:0;}}"
                 f"body{{background:{p['bg']}!important;}}"
-                f".wrap{{background:{p['bg']}!important;}}"
+                f".wrap{{background:{p['bg']}!important;"
+                f"width:100%!important;margin:0 auto!important;}}"
                 + _pg_print +
                 f"}}"
             )
@@ -5869,7 +5943,7 @@ class MDViewerPro(QMainWindow):
         self._back_btn.setText(self._t("back"))
         for k, tk in [("view","view"), ("md","md_edit"), ("txt","txt_edit")]:
             self._mode_btns[k].setText(self._t(tk))
-        for k, tk in [("free","free"), ("a4","a4"), ("b5","b5")]:
+        for k, tk in [("free","free"), ("a4","a4")]:
             self._layout_btns[k].setText(self._t(tk))
         self._margin_btn.setText(self._t("margin"))
         self._scale_lbl.setText(self._t("scale"))
@@ -5924,7 +5998,7 @@ class MDViewerPro(QMainWindow):
         for k, b in self._layout_btns.items():
             b.set_active(k == self.page_mode)
         self._back_btn.setEnabled(self.edit_mode != "view")
-        self._margin_btn.setEnabled(self.page_mode in ("a4", "b5"))
+        self._margin_btn.setEnabled(self.page_mode == "a4")
         self._scale_val_lbl.setText(SCALE_LABELS[self.scale_idx])
         self._toc_btn.set_active(self._show_toc)
         try:
@@ -6315,6 +6389,10 @@ class MDViewerPro(QMainWindow):
         self._update_toc_panel_visibility()
         self._update_splitter_sizes()
         self._refresh_btn_states()
+        try:
+            self._update_aspect_blanks(force=True)
+        except Exception:
+            pass
         self._refresh_view()
 
         if mode == "txt" and anchor is not None:
@@ -6542,7 +6620,7 @@ class MDViewerPro(QMainWindow):
         try:
             for idx in range(len(clips) - 1, -1, -1):
                 text = clips[idx]
-                card = QFrame()
+                card = _ClipCard(text, self._on_clip_copy)
                 card.setObjectName("clipCard")
                 vl = QVBoxLayout(card)
                 vl.setContentsMargins(0, 0, 0, 6)
@@ -6879,23 +6957,21 @@ class MDViewerPro(QMainWindow):
         return True
 
     def _set_layout(self, layout):
+        if layout == "b5":
+            layout = "a4"
         self.page_mode = layout
         self._refresh_btn_states()
+        try:
+            self._update_aspect_blanks(force=True)
+        except Exception:
+            pass
         self._refresh_view_keeping_edits()
 
     def _open_margin_dialog(self):
-        if self.page_mode == "b5":
-            margins = self.b5_margins
-            title = self._t("margin_title_b5")
-        else:
-            margins = self.a4_margins
-            title = self._t("margin_title")
-        dlg = MarginDialog(self, margins, I18N[self.lang], title=title)
+        dlg = MarginDialog(self, self.a4_margins, I18N[self.lang],
+                           title=self._t("margin_title"))
         if dlg.exec():
-            if self.page_mode == "b5":
-                self.b5_margins = dlg.get_margins()
-            else:
-                self.a4_margins = dlg.get_margins()
+            self.a4_margins = dlg.get_margins()
             self._refresh_view_keeping_edits()
 
     def _on_scale_slider(self, v):
@@ -7159,7 +7235,7 @@ class MDViewerPro(QMainWindow):
             return
         dlg = PdfExportDialog(
             self, self.page_mode,
-            self.a4_margins, self.b5_margins,
+            self.a4_margins,
             I18N[self.lang],
             embed_images=self._pdf_embed_images,
             current_theme=self.current_theme,
@@ -7184,10 +7260,7 @@ class MDViewerPro(QMainWindow):
         self._last_pdf_dir = os.path.dirname(path)
         self._save_app_settings()
 
-        if page_size_name == "B5":
-            page_size = QPageSize(QSizeF(182, 257), QPageSize.Unit.Millimeter, "JIS B5")
-        else:
-            page_size = QPageSize(QPageSize.PageSizeId.A4)
+        page_size = QPageSize(QPageSize.PageSizeId.A4)
 
         orient = (QPageLayout.Orientation.Landscape
                   if landscape else QPageLayout.Orientation.Portrait)
@@ -7358,7 +7431,8 @@ class MDViewerPro(QMainWindow):
         if not (path.lower().endswith(".html") or path.lower().endswith(".htm")):
             path += ".html"
         try:
-            html = self._build_md_html(self._content_text, editable=False)
+            html = self._build_md_html(self._content_text, editable=False,
+                                       blank_frac=0.0)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(html)
             QMessageBox.information(self, "HTML", self._t("html_export_success"))
