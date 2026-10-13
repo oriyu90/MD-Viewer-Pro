@@ -1,5 +1,21 @@
 # Release Notes / 更新履歴
 
+## v1.5.1
+
+### 日本語
+
+- クリップボードの長文貼り付け時に切り詰め案内が出ない問題を修正しました（原文長で判定するよう変更）。
+- スケール変更時にクリップ一覧の行高が更新されない問題を修正しました（フォント基準値をキャッシュキーに追加）。
+- 復元されたクリップ表示が起動直後に幅0のままになる場合がある問題を修正しました（初期配分の確定を追加）。
+- 初期サンプル文の機能表にテーマ色・クリップボードを追加しました（5言語）。
+
+### English
+
+- Fixed missing truncation notice on long clipboard pastes (now judged on raw length).
+- Fixed clip list row heights not refreshing on scale changes (font key added to cache).
+- Fixed restored clipboard panel staying at zero width right after launch (initial sizes now set).
+- Added accent color and clipboard rows to the built-in sample text (5 languages).
+
 ## v1.5.0
 
 ### 日本語

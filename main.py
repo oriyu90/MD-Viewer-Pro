@@ -67,7 +67,7 @@ PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
-APP_VERSION   = "1.5.0"
+APP_VERSION   = "1.5.1"
 
 # テーマ色 (アクセント) のプリセット。空文字は既定色 (ダーク=#4a9eff /
 # ライト=#1a6abf) を意味する。カスタム色は #rrggbb のみ受け付ける。
@@ -3172,8 +3172,15 @@ class ClipAddDialog(QDialog):
         self._text = text
         self.accept()
 
+    def get_raw_text(self) -> str:
+        """正規化前の原文 (切り詰め判定用)。"""
+        try:
+            return self._edit.toPlainText()
+        except Exception:
+            return ""
+
     def get_text(self) -> str:
-        return _normalize_clip_text(getattr(self, "_text", self._edit.toPlainText()))
+        return _normalize_clip_text(getattr(self, "_text", self.get_raw_text()))
 
 
 # ════════════════════════════════════════════════
@@ -3916,6 +3923,11 @@ class MDViewerPro(QMainWindow):
         self._md_page.setWebChannel(self._channel)
 
         self._apply_theme(refresh=False)
+        try:
+            # 初期配分を確定させる (復元されたクリップ表示が幅0のままにならないよう)。
+            self._update_splitter_sizes()
+        except Exception:
+            pass
 
         # スタートアップダイアログを即座に表示しつつ WebEngine をバックグラウンドで初期化
         # (旧実装: loadFinished 待ち → 最大 4 秒の遅延があった)
@@ -6490,7 +6502,11 @@ class MDViewerPro(QMainWindow):
             lang = getattr(self, "lang", "ja")
         except Exception:
             lang = "ja"
-        cache_key = (tuple(clips), lang)
+        try:
+            _fskey = self._toc_base_font_px()
+        except Exception:
+            _fskey = 16
+        cache_key = (tuple(clips), lang, _fskey)
         if not force and cache_key == getattr(self, "_clip_cache_key", None):
             return
         self._clip_cache_key = cache_key
@@ -6600,8 +6616,8 @@ class MDViewerPro(QMainWindow):
         dlg = ClipAddDialog(self, t)
         if not dlg.exec():
             return
-        raw = dlg.get_text()
-        text = _normalize_clip_text(raw)
+        raw_input = dlg.get_raw_text()
+        text = _normalize_clip_text(dlg.get_text())
         if not text:
             try:
                 QMessageBox.warning(self, t.get("clip_add_title", "Add"),
@@ -6609,9 +6625,13 @@ class MDViewerPro(QMainWindow):
             except Exception:
                 pass
             return
-        truncated = len(_normalize_clip_text(raw)) >= MAX_CLIP_LEN and len(raw.strip()) > MAX_CLIP_LEN
         # _normalize_clip_text が既に切り詰めている。切り詰め発生時は案内する。
-        if len(raw.strip().replace("\r\n", "\n").replace("\r", "\n")) > MAX_CLIP_LEN:
+        # (get_text は正規化済みのため、判定には原文を使う)
+        try:
+            _raw_nl = raw_input.replace("\r\n", "\n").replace("\r", "\n").strip()
+        except Exception:
+            _raw_nl = ""
+        if len(_raw_nl) > MAX_CLIP_LEN:
             try:
                 QMessageBox.information(self, t.get("clip_add_title", "Add"),
                                         t.get("clip_too_long", "").format(n=MAX_CLIP_LEN))
@@ -7562,7 +7582,9 @@ class MDViewerPro(QMainWindow):
                 "| MD編集 | レンダリングフォーマットのままテキストを直接編集 |\n"
                 "| TXT編集 | 左エディタ + 右リアルタイムプレビュー |\n"
                 "| A4文書 | 印刷向けA4レイアウト・余白設定 |\n"
-                "| 詳細設定 | フォント・言語・テーマ・太字変更 |\n"
+                "| 詳細設定 | フォント・言語・テーマ・テーマ色・太字変更 |\n"
+                "| テーマ色 | 詳細設定で強調色を変更（プリセット＋カスタム） |\n"
+                "| クリップボード | 右側パネルに定型文を保存（押すとコピー・左下の削除で整理） |\n"
                 "| プラグインテーマ | ~/.mdviewer/themes/ にJSONを置いて配色追加 |\n\n"
                 "## チェックリスト\n\n"
                 "- [x] Markdown 表示\n"
@@ -7588,7 +7610,9 @@ class MDViewerPro(QMainWindow):
                 "| MD Edit | Edit text directly in rendered format |\n"
                 "| TXT Edit | Left editor + right live preview |\n"
                 "| A4 Doc | Print-ready A4 layout with margin settings |\n"
-                "| Settings | Font, language, theme, bold toggle |\n"
+                "| Settings | Font, language, theme, accent color, bold toggle |\n"
+                "| Accent color | Change the highlight (presets + custom) |\n"
+                "| Clipboard | Save phrases in the right panel (click to copy, bottom-left delete) |\n"
                 "| Plugin Themes | Add palettes via JSON in ~/.mdviewer/themes/ |\n\n"
                 "## Checklist\n\n"
                 "- [x] Markdown rendering\n"
@@ -7614,7 +7638,9 @@ class MDViewerPro(QMainWindow):
                 "| MD Bearbeiten | Text direkt im gerenderten Format bearbeiten |\n"
                 "| TXT Bearbeiten | Linker Editor + rechte Live-Vorschau |\n"
                 "| A4 Dok. | Druckfertiges A4-Layout mit Randeinstellungen |\n"
-                "| Einstellungen | Schrift, Sprache, Thema, Fettdruck |\n"
+                "| Einstellungen | Schrift, Sprache, Thema, Akzentfarbe, Fettdruck |\n"
+                "| Akzentfarbe | Hervorhebung ändern (Presets + benutzerdefiniert) |\n"
+                "| Zwischenablage | Phrasen rechts speichern (Klick kopiert, Löschen unten links) |\n"
                 "| Plugin-Themen | Paletten als JSON in ~/.mdviewer/themes/ hinzufügen |\n\n"
                 "## Checkliste\n\n"
                 "- [x] Markdown-Rendering\n"
@@ -7640,7 +7666,9 @@ class MDViewerPro(QMainWindow):
                 "| Édition MD | Modifier le texte directement au format rendu |\n"
                 "| Édition TXT | Éditeur gauche + aperçu en direct à droite |\n"
                 "| Doc A4 | Mise en page A4 pour impression avec réglage des marges |\n"
-                "| Paramètres | Police, langue, thème, gras |\n"
+                "| Paramètres | Police, langue, thème, couleur d’accent, gras |\n"
+                "| Couleur d’accent | Changer la surbrillance (préréglages + personnalisée) |\n"
+                "| Presse-papiers | Phrases à droite (clic pour copier, suppression en bas à gauche) |\n"
                 "| Thèmes plugin | Ajouter des palettes JSON dans ~/.mdviewer/themes/ |\n\n"
                 "## Liste de contrôle\n\n"
                 "- [x] Rendu Markdown\n"
@@ -7666,7 +7694,9 @@ class MDViewerPro(QMainWindow):
                 "| MD编辑 | 保持渲染后的样子直接编辑 |\n"
                 "| TXT编辑 | 左侧编辑器 + 右侧实时预览 |\n"
                 "| A4文档 | 适合打印的 A4 版式与页边距设置 |\n"
-                "| 设置 | 字体、语言、主题、加粗的切换 |\n"
+                "| 设置 | 字体、语言、主题、主题色、加粗的切换 |\n"
+                "| 主题色 | 更改强调颜色（预设＋自定义） |\n"
+                "| 剪贴板 | 在右侧面板保存短语（点击复制、左下角删除） |\n"
                 "| 插件主题 | 在 ~/.mdviewer/themes/ 放入 JSON 即可添加 |\n\n"
                 "## 清单\n\n"
                 "- [x] Markdown 渲染\n"
@@ -7690,6 +7720,10 @@ class MDViewerPro(QMainWindow):
         self._md_editor.blockSignals(False)
         self.is_modified = False
         self._update_title()
+        try:
+            self._update_splitter_sizes()
+        except Exception:
+            pass
 
     def _open_guide(self):
         """選択中の言語のsampleファイルを読み取り専用で開く"""
