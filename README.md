@@ -2,8 +2,8 @@
 
 A simple and fast Markdown viewer built with Python and PySide6 (Qt for Python).
 
-**Current version / 現在のバージョン: v1.5.2**
-See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.5.2).
+**Current version / 現在のバージョン: v1.5.3**
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.5.3).
 更新履歴は [RELEASE_NOTES.md](RELEASE_NOTES.md) をご覧ください。
 
 Apple Silicon macOSでのソース起動・ビルド: `python3 -m venv venv_new` → `venv_new/bin/python -m pip install -r requirements.txt` → `venv_new/bin/python main.py`。DMGは `./build_dmg.sh` で作成します。/ On Apple Silicon macOS, use the same commands to run from source or build the DMG. The published DMG is ad-hoc signed, not notarized.
@@ -230,7 +230,7 @@ $$
 
 ---
 
-### テーマ色の変更（v1.5.2）
+### テーマ色の変更（v1.5.3）
 
 詳細設定の「テーマ色」で、リンク・見出し・ボタン等の強調色を変更できます。
 
@@ -241,7 +241,7 @@ $$
 
 ---
 
-### クリップボード（v1.5.2）
+### クリップボード（v1.5.3）
 
 右側のスライドパネルに定型文（フレーズ）を保存できます。目次パネルと対称の配置で、全モードから引き出せます。
 
@@ -253,7 +253,7 @@ $$
 
 ---
 
-### 画面幅に応じた余白（v1.5.2）
+### 画面幅に応じた余白（v1.5.3）
 
 フリー表示の入力欄・表示欄は、ウィンドウの縦横比に応じて両端に空白を取ります。
 
@@ -487,7 +487,7 @@ Settings → Font lets you pick from recommended fonts, added fonts, and system 
 
 ---
 
-### Accent Color (v1.5.2)
+### Accent Color (v1.5.3)
 
 Settings → Accent color changes the highlight color for links, headings, buttons, and related UI.
 
@@ -498,7 +498,7 @@ Settings → Accent color changes the highlight color for links, headings, butto
 
 ---
 
-### Clipboard (v1.5.2)
+### Clipboard (v1.5.3)
 
 Save reusable phrases in the right-side slide panel (mirroring the TOC panel). It can be opened in every mode.
 
@@ -510,7 +510,7 @@ Save reusable phrases in the right-side slide panel (mirroring the TOC panel). I
 
 ---
 
-### Aspect-based margins (v1.5.2)
+### Aspect-based margins (v1.5.3)
 
 In Free mode the editor and preview keep side blanks based on the window aspect ratio.
 

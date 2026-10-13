@@ -67,7 +67,7 @@ PLUGIN_DIR    = os.path.expanduser("~/.mdviewer/themes")
 SETTINGS_DIR  = os.path.expanduser("~/.mdviewer")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 FONT_DIR      = os.path.join(SETTINGS_DIR, "fonts")
-APP_VERSION   = "1.5.2"
+APP_VERSION   = "1.5.3"
 
 # テーマ色 (アクセント) のプリセット。空文字は既定色 (ダーク=#4a9eff /
 # ライト=#1a6abf) を意味する。カスタム色は #rrggbb のみ受け付ける。
@@ -293,6 +293,10 @@ I18N = {
                      "TTF/OTF ファイルを登録すると使えるようになります。",
         "front_matter": "フロントマター",
         "yaml_doc": "YAML ドキュメント",
+        "back_short": "戻る",
+        "margin_short": "余白設定",
+        "settings_short": "詳細設定",
+        "pdf_export_short": "PDF書き出し",
         "accent_label": "テーマ色",
         "accent_hint": "リンク・見出し・ボタンの強調色を変更します。",
         "accent_default": "既定（青）",
@@ -419,6 +423,10 @@ I18N = {
                      "once you register a TTF/OTF file via 'Add Font...'.",
         "front_matter": "Front matter",
         "yaml_doc": "YAML document",
+        "back_short": "Back",
+        "margin_short": "Margins",
+        "settings_short": "Settings",
+        "pdf_export_short": "Export PDF",
         "accent_label": "Accent color",
         "accent_hint": "Change the highlight color for links, headings, and buttons.",
         "accent_default": "Default (blue)",
@@ -545,6 +553,10 @@ I18N = {
                      "sobald Sie über „Schriftart hinzufügen...“ eine TTF/OTF-Datei registrieren.",
         "front_matter": "Front Matter",
         "yaml_doc": "YAML-Dokument",
+        "back_short": "\u2039",
+        "margin_short": "Rand",
+        "settings_short": "Optionen",
+        "pdf_export_short": "PDF-Export",
         "accent_label": "Akzentfarbe",
         "accent_hint": "Hebt Links, \u00dcberschriften und Schaltfl\u00e4chen farblich hervor.",
         "accent_default": "Standard (blau)",
@@ -671,6 +683,10 @@ I18N = {
                      "après avoir enregistré un fichier TTF/OTF via « Ajouter une police... ».",
         "front_matter": "En-tête YAML",
         "yaml_doc": "Document YAML",
+        "back_short": "Retour",
+        "margin_short": "Marges",
+        "settings_short": "Paramètres",
+        "pdf_export_short": "Exporter PDF",
         "accent_label": "Couleur d'accent",
         "accent_hint": "Change la couleur des liens, titres et boutons.",
         "accent_default": "Par défaut (bleu)",
@@ -779,6 +795,10 @@ I18N = {
         "font_hint": "未安装的推荐字体，可通过「添加字体...」注册\n"
                      "TTF/OTF 文件后使用。",
         "front_matter": "前置元数据", "yaml_doc": "YAML 文档",
+        "back_short": "返回",
+        "margin_short": "页边距",
+        "settings_short": "设置",
+        "pdf_export_short": "导出PDF",
         "accent_label": "主题色",
         "accent_hint": "更改链接、标题和按钮的强调颜色。",
         "accent_default": "默认（蓝色）",
@@ -5940,15 +5960,26 @@ class MDViewerPro(QMainWindow):
             self._refresh_view_keeping_edits()
 
     def _sync_tb_labels(self):
-        self._back_btn.setText(self._t("back"))
+        try:
+            _cat = self._get_ui_scale_cat()
+        except Exception:
+            _cat = "large"
+        _xsmall = (_cat == "xsmall")
+        _compact = (_cat in ("small", "xsmall"))
+        # 最狭幅では独語の長いラベルが1〜2px溢れるため短称を使う。
+        # (他言語の短称は全称と同一)
+        self._back_btn.setText(self._t("back_short" if _xsmall else "back"))
         for k, tk in [("view","view"), ("md","md_edit"), ("txt","txt_edit")]:
             self._mode_btns[k].setText(self._t(tk))
         for k, tk in [("free","free"), ("a4","a4")]:
             self._layout_btns[k].setText(self._t(tk))
-        self._margin_btn.setText(self._t("margin"))
+        self._margin_btn.setText(self._t("margin_short" if _xsmall else "margin"))
         self._scale_lbl.setText(self._t("scale"))
         self._scale_val_lbl.setText(SCALE_LABELS[self.scale_idx])
-        self._settings_btn.setText(self._t("settings"))
+        if _compact:
+            self._settings_btn.setText(self._t("settings_short"))
+        else:
+            self._settings_btn.setText(self._t("settings"))
         self._toc_btn.setText(self._t("toc"))
         if hasattr(self, "_clip_btn"):
             try:
@@ -5962,7 +5993,10 @@ class MDViewerPro(QMainWindow):
                 self._clip_btn.setToolTip(self._t("clipboard"))
             except Exception:
                 pass
-        self._pdf_btn.setText(self._t("pdf_export"))
+        if _compact:
+            self._pdf_btn.setText(self._t("pdf_export_short"))
+        else:
+            self._pdf_btn.setText(self._t("pdf_export"))
         self._toc_title_lbl.setText(self._t("toc_title"))
         if hasattr(self, "_clip_title_lbl"):
             self._clip_title_lbl.setText(self._t("clip_title"))
