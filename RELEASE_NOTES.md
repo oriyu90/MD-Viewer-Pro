@@ -12,6 +12,46 @@
 - Fixed toolbar overflow on narrow windows. Shortest widths use short labels for Back/Margins, narrow widths for Settings/PDF export (German only; other languages unchanged).
 - All 998 regression tests pass.
 
+### Windows版の追加（v1.5.3）
+
+- Windows 10/11 64-bit用に `MDViewerPro-1.5.3-win64-Setup.exe`（GUIインストーラー・推奨）と
+  `MDViewerPro-1.5.3-win64-portable.zip`（ポータブル）を追加しました。
+  このバージョンから完全GUIの独自インストーラー（NSIS・日本語/English選択・
+  現在のユーザーのみ・管理者権限不要・アンインストーラー付き）で導入できます。
+- アプリ本体はmacOS版 v1.5.3 と同じソースです。Windowsでのみ必要な調整
+  （macOS固有設定の無効化、%APPDATA%/MDViewerPro への設定・クリップボード保存、
+  既定フォント Yu Gothic UI、保存LF統一、シングルインスタンス、二重起動防止）を
+  含みます。v1.4.7時代の最小幅フォント修正は v1.5.3 の短称表示に統合され不要になりました。
+- 標準のアプリに設定できます。インストーラーでは関連付けを任意で選べます
+  （既定では変更しない）。`windows\register_assoc.ps1` でも登録可能
+  （管理者権限不要。解除は `unregister_assoc.ps1`）。
+  関連付けから開いた文書は起動中のアプリで開かれます。
+- 配布物を軽量化しています（デバッグ用リソース・未使用Qtモジュール・
+  未使用言語の翻訳を除外）。
+- 32-bit版Windowsには対応していません（Qt6/PySide6に32-bit用配布物がないため）。
+- 署名なし配布のため、初回起動時にSmartScreenが出ることがあります。
+  詳しくは README の「初回起動について（Windows）」をご覧ください。
+
+### Windows build added (v1.5.3)
+
+- Added `MDViewerPro-1.5.3-win64-Setup.exe` (GUI installer, recommended) and
+  `MDViewerPro-1.5.3-win64-portable.zip` (portable) for Windows 10/11 64-bit.
+  From this version, Windows uses its own full-GUI installer (NSIS,
+  Japanese/English wizard, per-user, no admin rights, with uninstaller).
+- The app is the same v1.5.3 source as the macOS build, plus Windows-only
+  adjustments (macOS-specific settings disabled, settings/clipboard under
+  %APPDATA%/MDViewerPro, Yu Gothic UI default, LF line endings, single-instance).
+  The v1.4.7 minimum-width font fix is superseded by v1.5.3 short labels.
+- It can be set as the default app. The installer offers file association
+  as an option (off by default); `windows\register_assoc.ps1` also works
+  (no admin; `unregister_assoc.ps1` removes it).
+  Documents opened from an association reuse the running app.
+- The package is slimmed down (debug resources, unused Qt modules and unused
+  translations excluded).
+- 32-bit Windows is not supported (Qt6/PySide6 ships no 32-bit binaries).
+- The build is unsigned, so SmartScreen may appear on first launch.
+  See "First Launch (Windows)" in the README for details.
+
 ## v1.5.2
 
 ### 日本語

@@ -25,7 +25,7 @@
       "lead": "MD Viewer Pro は、閲覧・編集・数式・書き出しをひとつにまとめた、Mac のための軽量 Markdown ビューアです。",
       "download": "公開版 v1.5.3 をダウンロード",
       "github": "GitHub で見る",
-      "note": "Apple Silicon macOS · DMG 約176 MB · MIT License",
+      "note": "Apple Silicon macOS · DMG ＋ Windows 10/11 64-bit · インストーラー / ZIP · MIT License",
       "strip": [
         "VIEW",
         "MD EDIT",
@@ -119,9 +119,9 @@
       "languagesLabel": "APP LANGUAGES",
       "languagesTitle": "5つの言語で、同じ使い心地。",
       "languagesBody": "アプリ本体は日本語、English、Deutsch、Français、简体中文に対応。この紹介サイトは日本語、English、中文、Portuguêsをブラウザ設定から自動で選びます。",
-      "downloadKicker": "DOWNLOAD FOR MAC",
+      "downloadKicker": "DOWNLOAD FOR MAC & WINDOWS",
       "downloadTitle": "次の .md は、\nダブルクリックで。",
-      "downloadBody": "公開中のインストーラは v1.5.3。リポジトリのソースと README も同じ v1.5.3 です。",
+      "downloadBody": "公開中のインストーラは v1.5.3。Mac用DMGとWindows用セットアップをボタンから選べます。リポジトリのソースと README も同じ v1.5.3 です。",
       "downloadButton": "DMG をダウンロード",
       "sourceButton": "v1.5.3 のソースを見る",
       "releaseLabel": "PUBLIC INSTALLER",
@@ -140,8 +140,19 @@
       "community": "不具合報告とお知らせ",
       "official": "開発者公式サイト",
       "x": "X / Twitter",
-      "footerLine": "A lightweight Markdown viewer for macOS.",
-      "backTop": "ページ上部へ"
+      "footerLine": "macOSとWindowsで使える軽量Markdownビューア。",
+      "backTop": "ページ上部へ",
+      "downloadButtonWin": "Windows版をダウンロード",
+      "downloadButtonWinPortable": "ポータブル版 (ZIP)",
+      "winBody": "Windows 10/11 64-bit用。インストーラー版（推奨・日本語/English対応・アンインストーラー付き）とポータブル版（ZIP展開のみ）があります。署名なし配布のため初回はSmartScreenが出ます。32-bit版Windowsには対応していません。",
+      "installTitleWin": "Windows版の起動は3ステップ。",
+      "stepsWin": [
+        "Setup.exe をダウンロードして実行（推奨）またはZIPを展開",
+        "画面の案内に従ってインストール（管理者権限不要）",
+        "MDViewerPro.exe を開く"
+      ],
+      "smartscreenTitle": "SmartScreenが出た場合",
+      "smartscreenBody": "Windows版は署名なしのため「WindowsによってPCが保護されました」と出ることがあります。アプリ自体は壊れていません。「詳細情報」→「実行」で起動してください。ZIP版は展開前にunblock-Fileでブロック解除しておくと確実です。"
     },
     "en": {
       "language": "English",
@@ -158,7 +169,7 @@
       "lead": "MD Viewer Pro is a lightweight Markdown viewer for Mac, bringing reading, editing, math and export into one focused workspace.",
       "download": "Download public release v1.5.3",
       "github": "View on GitHub",
-      "note": "Apple Silicon macOS · DMG about 176 MB · MIT License",
+      "note": "Apple Silicon macOS · DMG + Windows 10/11 64-bit · Installer / ZIP · MIT License",
       "strip": [
         "VIEW",
         "MD EDIT",
@@ -252,9 +263,9 @@
       "languagesLabel": "APP LANGUAGES",
       "languagesTitle": "The same flow in five languages.",
       "languagesBody": "The app supports 日本語, English, Deutsch, Français and 简体中文. This site supports 日本語, English, 中文 and Português, chosen automatically from your browser.",
-      "downloadKicker": "DOWNLOAD FOR MAC",
+      "downloadKicker": "DOWNLOAD FOR MAC & WINDOWS",
       "downloadTitle": "Make the next .md\na double-click away.",
-      "downloadBody": "The public installer is v1.5.3, matching the repository source and README.",
+      "downloadBody": "The public installer is v1.5.3. Pick the Mac DMG or the Windows setup above. Repository source and README match v1.5.3.",
       "downloadButton": "Download the DMG",
       "sourceButton": "View v1.5.3 source",
       "releaseLabel": "PUBLIC INSTALLER",
@@ -273,8 +284,19 @@
       "community": "Bugs & announcements",
       "official": "Developer website",
       "x": "X / Twitter",
-      "footerLine": "A lightweight Markdown viewer for macOS.",
-      "backTop": "Back to top"
+      "footerLine": "A lightweight Markdown viewer for macOS and Windows.",
+      "backTop": "Back to top",
+      "downloadButtonWin": "Download for Windows",
+      "downloadButtonWinPortable": "Portable (ZIP)",
+      "winBody": "For Windows 10/11 64-bit. Choose the installer (recommended, Japanese/English wizard with uninstaller) or the portable ZIP (extract only). Unsigned, so SmartScreen may appear on first run. 32-bit Windows is not supported.",
+      "installTitleWin": "Three steps on Windows.",
+      "stepsWin": [
+        "Download Setup.exe (recommended) or the ZIP",
+        "Follow the wizard (per-user, no admin needed)",
+        "Open MDViewerPro.exe"
+      ],
+      "smartscreenTitle": "If SmartScreen appears",
+      "smartscreenBody": "The Windows build is unsigned, so SmartScreen may say \"Windows protected your PC\". The app itself is not damaged. Choose \"More info\" → \"Run anyway\". For the ZIP, unblocking with unblock-File before extracting avoids the warning."
     },
     "zh": {
       "language": "中文",
@@ -291,7 +313,7 @@
       "lead": "MD Viewer Pro 是一款轻量级 Mac Markdown 阅读器，将阅读、编辑、数学公式与导出集中在简洁的工作空间中。",
       "download": "下载公开版 v1.5.3",
       "github": "在 GitHub 查看",
-      "note": "Apple Silicon macOS · DMG 约176 MB · MIT 许可证",
+      "note": "Apple Silicon macOS · DMG ＋ Windows 10/11 64 位 · 安装版 / ZIP · MIT 许可证",
       "strip": [
         "阅读",
         "MD 编辑",
@@ -385,9 +407,9 @@
       "languagesLabel": "应用语言",
       "languagesTitle": "五种语言，相同的流畅体验。",
       "languagesBody": "应用支持日本語、English、Deutsch、Français、简体中文。本网站支持日本語、English、中文、Português，并根据浏览器设置自动选择。",
-      "downloadKicker": "MAC 版下载",
+      "downloadKicker": "MAC 与 WINDOWS 下载",
       "downloadTitle": "让下一份 .md，\n双击即可打开。",
-      "downloadBody": "当前公开安装包为 v1.5.3，与仓库源码和 README 一致。",
+      "downloadBody": "当前公开安装包为 v1.5.3，可在上方选择 Mac DMG 或 Windows 安装版。仓库源码与 README 同为 v1.5.3。",
       "downloadButton": "下载 DMG",
       "sourceButton": "查看 v1.5.3 源码",
       "releaseLabel": "公开安装包",
@@ -406,8 +428,19 @@
       "community": "问题反馈与公告",
       "official": "开发者官网",
       "x": "X / Twitter",
-      "footerLine": "轻量级 macOS Markdown 阅读器。",
-      "backTop": "返回顶部"
+      "footerLine": "适用于 macOS 与 Windows 的轻量级 Markdown 阅读器。",
+      "backTop": "返回顶部",
+      "downloadButtonWin": "下载 Windows 版",
+      "downloadButtonWinPortable": "便携版 (ZIP)",
+      "winBody": "适用于 Windows 10/11 64 位。提供安装版（推荐，支持日语/英语向导，含卸载程序）和便携版（解压即用）。未签名，首次运行可能出现 SmartScreen。不支持 32 位 Windows。",
+      "installTitleWin": "Windows 版三步启动。",
+      "stepsWin": [
+        "下载 Setup.exe（推荐）或 ZIP",
+        "按向导安装（仅当前用户，无需管理员权限）",
+        "打开 MDViewerPro.exe"
+      ],
+      "smartscreenTitle": "出现 SmartScreen 时",
+      "smartscreenBody": "Windows 版未签名，可能提示“Windows 已保护你的电脑”。应用本身并未损坏。请选择“更多信息”→“仍要运行”。ZIP 版请在解压前用 unblock-File 解除阻止。"
     },
     "pt": {
       "language": "Português",
@@ -424,7 +457,7 @@
       "lead": "MD Viewer Pro é um visualizador Markdown leve para Mac que reúne leitura, edição, matemática e exportação em um único espaço.",
       "download": "Baixar versão pública v1.5.3",
       "github": "Ver no GitHub",
-      "note": "Apple Silicon macOS · DMG aprox. 176 MB · Licença MIT",
+      "note": "Apple Silicon macOS · DMG + Windows 10/11 64 bits · Instalador / ZIP · Licença MIT",
       "strip": [
         "LEITURA",
         "EDIÇÃO MD",
@@ -518,9 +551,9 @@
       "languagesLabel": "IDIOMAS DO APP",
       "languagesTitle": "O mesmo fluxo em cinco idiomas.",
       "languagesBody": "O app oferece 日本語, English, Deutsch, Français e 简体中文. Este site oferece 日本語, English, 中文 e Português, escolhidos automaticamente pelo navegador.",
-      "downloadKicker": "BAIXAR PARA MAC",
+      "downloadKicker": "BAIXAR PARA MAC & WINDOWS",
       "downloadTitle": "Abra o próximo .md\ncom dois cliques.",
-      "downloadBody": "O instalador público é v1.5.3, igual ao código e ao README do repositório.",
+      "downloadBody": "O instalador público é v1.5.3. Escolha o DMG do Mac ou o setup do Windows acima. Código e README correspondem a v1.5.3.",
       "downloadButton": "Baixar o DMG",
       "sourceButton": "Ver código v1.5.3",
       "releaseLabel": "INSTALADOR PÚBLICO",
@@ -539,14 +572,25 @@
       "community": "Bugs e anúncios",
       "official": "Site do desenvolvedor",
       "x": "X / Twitter",
-      "footerLine": "Um visualizador Markdown leve para macOS.",
-      "backTop": "Voltar ao topo"
+      "footerLine": "Um visualizador Markdown leve para macOS e Windows.",
+      "backTop": "Voltar ao topo",
+      "downloadButtonWin": "Baixar para Windows",
+      "downloadButtonWinPortable": "Portátil (ZIP)",
+      "winBody": "Para Windows 10/11 de 64 bits. Instalador (recomendado, assistente em japonês/inglês com desinstalador) ou ZIP portátil (só extrair). Sem assinatura, então o SmartScreen pode aparecer. Windows de 32 bits não é suportado.",
+      "installTitleWin": "Três passos no Windows.",
+      "stepsWin": [
+        "Baixe o Setup.exe (recomendado) ou o ZIP",
+        "Siga o assistente (somente usuário atual, sem admin)",
+        "Abra o MDViewerPro.exe"
+      ],
+      "smartscreenTitle": "Se o SmartScreen aparecer",
+      "smartscreenBody": "A versão para Windows não é assinada, então o SmartScreen pode dizer que o Windows protegeu o PC. O app em si não está danificado. Escolha \"Mais informações\" → \"Executar assim mesmo\". No ZIP, desbloquear com unblock-File antes de extrair evita o aviso."
     }
   },
   "seo": {
     "ja": {
       "title": "MD Viewer Pro — Mac用Markdownビューア・エディタ",
-      "description": "MD Viewer Pro（MDビューアー Pro）は、折田悠希が開発するmacOS向けMarkdownビューア。閲覧、編集、LaTeX数式、YAML、PDF・HTML書き出しに対応。",
+      "description": "MD Viewer Pro（MDビューアー Pro）は、折田悠希が開発するmacOS向けMarkdownビューア。閲覧、編集、LaTeX数式、YAML、PDF・HTML書き出しに対応。 Windows 10/11 64-bit setup/installer available.",
       "ogTitle": "MD Viewer Pro — 書くことと、読むことの間をなくす。",
       "ogDescription": "閲覧・編集・LaTeX数式・PDF / HTML書き出しをひとつにした、Macのための軽量Markdownビューア。",
       "twTitle": "MD Viewer Pro — Mac用Markdownビューア",
@@ -555,7 +599,7 @@
     },
     "en": {
       "title": "MD Viewer Pro — Markdown viewer and editor for macOS",
-      "description": "MD Viewer Pro is a lightweight Markdown viewer for macOS by Yuki Orita (折田悠希). Reading, editing, LaTeX math, YAML and PDF / HTML export.",
+      "description": "MD Viewer Pro is a lightweight Markdown viewer for macOS by Yuki Orita (折田悠希). Reading, editing, LaTeX math, YAML and PDF / HTML export. Windows 10/11 64-bit setup/installer available.",
       "ogTitle": "MD Viewer Pro — Close the gap between writing and reading.",
       "ogDescription": "Reading, editing, LaTeX math and PDF / HTML export in one lightweight Markdown viewer for Mac.",
       "twTitle": "MD Viewer Pro — Markdown viewer for Mac",
@@ -564,7 +608,7 @@
     },
     "zh": {
       "title": "MD Viewer Pro — 面向 macOS 的 Markdown 阅读器与编辑器",
-      "description": "MD Viewer Pro 是折田悠希（Yuki_Orita）开发的 macOS Markdown 阅读器，支持阅读、编辑、LaTeX 公式、YAML 以及 PDF / HTML 导出。",
+      "description": "MD Viewer Pro 是折田悠希（Yuki_Orita）开发的 macOS Markdown 阅读器，支持阅读、编辑、LaTeX 公式、YAML 以及 PDF / HTML 导出。 Windows 10/11 64-bit setup/installer available.",
       "ogTitle": "MD Viewer Pro — 让书写与阅读之间不再有距离。",
       "ogDescription": "将阅读、编辑、LaTeX 公式与 PDF / HTML 导出集于一身的轻量级 Mac Markdown 阅读器。",
       "twTitle": "MD Viewer Pro — Mac 版 Markdown 阅读器",
@@ -573,7 +617,7 @@
     },
     "pt": {
       "title": "MD Viewer Pro — visualizador e editor de Markdown para macOS",
-      "description": "MD Viewer Pro é um visualizador de Markdown para macOS criado por Yuki Orita (折田悠希). Leitura, edição, fórmulas LaTeX, YAML e exportação para PDF / HTML.",
+      "description": "MD Viewer Pro é um visualizador de Markdown para macOS criado por Yuki Orita (折田悠希). Leitura, edição, fórmulas LaTeX, YAML e exportação para PDF / HTML. Windows 10/11 64-bit setup/installer available.",
       "ogTitle": "MD Viewer Pro — sem distância entre escrever e ler.",
       "ogDescription": "Leitura, edição, fórmulas LaTeX e exportação para PDF / HTML em um visualizador de Markdown leve para Mac.",
       "twTitle": "MD Viewer Pro — visualizador de Markdown para Mac",
@@ -581,5 +625,7 @@
       "locale": "pt_BR"
     }
   },
-  "keywords": "MD Viewer Pro,MDビューアー Pro,Markdown viewer macOS,Markdown editor Mac,折田悠希,おりたゆうき,Yuki_Orita,github"
+  "keywords": "MD Viewer Pro,MDビューアー Pro,Markdown viewer macOS,Markdown editor Mac,折田悠希,おりたゆうき,Yuki_Orita,github,Windows installer,Setup.exe,portable",
+  "downloadUrlWin": "https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.5.3/MDViewerPro-1.5.3-win64-Setup.exe",
+  "downloadUrlWinPortable": "https://github.com/oriyu90/MD-Viewer-Pro/releases/download/1.5.3/MDViewerPro-1.5.3-win64-portable.zip"
 }

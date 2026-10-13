@@ -35,6 +35,39 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 3. **MDViewerPro.app** を Applications フォルダへドラッグ
 4. アプリを起動
 
+### ダウンロード（Windows 10/11 64-bit）
+
+Windows版（GUIインストーラー推奨 / ポータブルZIP）は同じリリースページからダウンロードできます。
+ファイル名: `MDViewerPro-1.5.3-win64-Setup.exe`（推奨） / `MDViewerPro-1.5.3-win64-portable.zip`
+
+#### インストール手順（インストーラー版・推奨）
+
+1. `MDViewerPro-1.5.3-win64-Setup.exe` をダウンロードして実行する
+   （日本語 / English 選択・管理者権限不要・現在のユーザーのみ）
+2. 画面の案内に従ってインストールする
+   （.md 関連付けは任意・既定では変更しない）
+3. スタートメニューまたはデスクトップのショートカットから起動する
+4. アンインストールは「設定 → アプリ」またはスタートメニューの Uninstall から行う
+
+#### 起動手順（ポータブル版・インストール不要）
+
+1. ZIPを任意のフォルダに展開する
+2. `MDViewerPro\MDViewerPro.exe` をダブルクリックで起動する
+
+標準のアプリに設定するには、`.md`ファイルを右クリック→「プログラムから開く」で
+MDViewerPro.exeを選び「常時このアプリを使って開く」にチェックします。
+`MDViewerPro\windows\register_assoc.ps1` を実行すると現在のユーザーの関連付けを
+登録できます（管理者権限不要。解除は `unregister_assoc.ps1`）。
+関連付けから開いた文書は、起動中のMD Viewer Proで開かれます（二重起動防止）。
+
+32-bit版Windowsには対応していません（Qt6/PySide6に32-bit用配布物がないため）。
+Windows 11に32-bit版は存在しないため、対象はWindows 10/11 64-bitです。
+ZIP / インストール先の `FIRST_LAUNCH_WINDOWS.txt` に同じ手順（日英）を入れています。
+
+Windows版のアプリ本体はmacOS版 v1.5.3 と同じソースです。Windowsでのみ必要な調整
+（macOS固有設定の無効化、%APPDATA%/MDViewerPro への設定保存、既定フォント Yu Gothic UI、
+保存LF統一、シングルインスタンス）を含みます。
+
 ---
 
 ### 初回起動について
@@ -52,6 +85,10 @@ Gatekeeper に「壊れている」と判定されます）。
 3. アプリをダブルクリックで開く
 
 上記で開けない場合は「システム設定 → プライバシーとセキュリティ」から許可してください。今回の配布物はApple Silicon向けです。DMG 内の `FIRST_LAUNCH.txt` に同じ手順（日英）を入れています。
+
+### 初回起動について（Windows）
+
+Windows版は署名なし配布のため、初回起動時にSmartScreen（「WindowsによってPCが保護されました」）が出ることがあります。アプリ自体は壊れていません。「詳細情報」→「実行」で起動してください。ZIP版は展開前に `unblock-File` でブロック解除しておくと確実です。ZIP / インストール先の `FIRST_LAUNCH_WINDOWS.txt` に同じ手順（日英）を入れています。
 
 MD編集で内容を変更した場合はHTMLからMarkdownへ変換するため、複雑な原文構造は完全に復元できません。原文の表記を厳密に維持する編集にはTXT編集を使ってください。未編集のMD編集往復は原文を維持します。
 
@@ -75,7 +112,7 @@ MD編集で内容を変更した場合はHTMLからMarkdownへ変換するため
 | フォント追加   | TTF/OTF を取り込んで本文フォントに追加（削除も可）         |
 | テーマ色 | 詳細設定でリンク・見出し・ボタンの強調色を変更（プリセット＋カスタム） |
 | クリップボード | 右側パネルに定型文を保存。押すとコピー、左下の小さな削除で整理（プレーンテキスト固定） |
-| プラグインテーマ | `~/.mdviewer/themes/` にJSONを配置してテーマ追加 |
+| プラグインテーマ | `~/.mdviewer/themes/`（Windowsでは `%APPDATA%\MDViewerPro\themes/`）にJSONを配置してテーマ追加 |
 
 ---
 
@@ -221,7 +258,7 @@ $$
 
 詳細設定の「フォント」から、推奨フォント・追加したフォント・システムフォントを選べます。
 
-* **フォントを追加...**: TTF / OTF / TTC ファイルを選ぶと `~/.mdviewer/fonts/` に
+* **フォントを追加...**: TTF / OTF / TTC ファイルを選ぶと `~/.mdviewer/fonts/`（Windowsでは `%APPDATA%\MDViewerPro\fonts/`）に
   取り込まれ、次回以降も使えるようになります。
 * **選択中のフォントを削除**: 自分で追加したフォントのみ削除できます
   （システムに元から入っているフォントは削除されません）。
@@ -249,7 +286,7 @@ $$
 * 保存したフレーズを押すとシステムクリップボードへコピーされます。
 * 各フレーズの左下にある小さな **削除** ボタンを押すと確認ポップアップが出て、承認すると削除されます。
 * フレーズのカードは全面がコピー範囲です（空き領域を押してもコピーされます。削除ボタンはコピーしません）。
-* 保存先は `~/.mdviewer/clipboard.json`（最大200件・1件あたり最大5000文字・合計1MBまで）。破損時は空として起動し、クラッシュしません。
+* 保存先は `~/.mdviewer/clipboard.json`（Windowsでは `%APPDATA%\MDViewerPro\clipboard.json`）（最大200件・1件あたり最大5000文字・合計1MBまで）。破損時は空として起動し、クラッシュしません。
 
 ---
 
@@ -288,6 +325,39 @@ https://github.com/oriyu90/MD-Viewer-Pro/releases
 3. Drag **MDViewerPro.app** into the Applications folder
 4. Launch the application
 
+### Download (Windows 10/11 64-bit)
+
+The Windows build (GUI installer recommended / portable ZIP) is on the same releases page.
+Files: `MDViewerPro-1.5.3-win64-Setup.exe` (recommended) / `MDViewerPro-1.5.3-win64-portable.zip`
+
+#### Installation (installer, recommended)
+
+1. Download and run `MDViewerPro-1.5.3-win64-Setup.exe`
+   (Japanese / English wizard, per-user, no admin rights needed)
+2. Follow the wizard (file association is optional and off by default)
+3. Launch from the Start Menu or Desktop shortcut
+4. Uninstall from Settings → Apps or the Start Menu Uninstall shortcut
+
+#### Launch (portable, no install required)
+
+1. Extract the ZIP to any folder
+2. Double-click `MDViewerPro\MDViewerPro.exe` to launch
+
+To make it the default app, right-click a `.md` file → "Open with",
+choose MDViewerPro.exe and check "Always use this app".
+Running `MDViewerPro\windows\register_assoc.ps1` registers the association
+for the current user (no admin rights needed; `unregister_assoc.ps1` removes it).
+Documents opened from an association reuse the running MD Viewer Pro
+(single-instance).
+
+32-bit Windows is not supported (Qt6/PySide6 ships no 32-bit binaries).
+There is no 32-bit edition of Windows 11, so Windows 10/11 64-bit is required.
+The ZIP / install folder contains `FIRST_LAUNCH_WINDOWS.txt` with the same steps (Japanese and English).
+
+The Windows app is the same v1.5.3 source as the macOS build, plus Windows-only
+adjustments (macOS-specific settings disabled, settings under %APPDATA%/MDViewerPro,
+Yu Gothic UI default, LF line endings, single-instance).
+
 ---
 
 ### First Launch
@@ -304,6 +374,10 @@ To open the app (the order matters):
 3. Double-click the app to open it
 
 If macOS still blocks it, allow the app in System Settings → Privacy & Security. The DMG also contains `FIRST_LAUNCH.txt` with the same steps (Japanese and English). Unedited MD Edit round trips preserve the exact Markdown source. Actual visual edits may change complex Markdown syntax during HTML-to-Markdown conversion; use TXT Edit for exact source editing.
+
+### First Launch (Windows)
+
+The Windows build is an unsigned distribution, so SmartScreen ("Windows protected your PC") may appear on first launch. The app itself is not damaged. Choose "More info" → "Run anyway". For the ZIP, unblocking with `unblock-File` before extracting avoids the warning. The ZIP / install folder contains `FIRST_LAUNCH_WINDOWS.txt` with the same steps (Japanese and English).
 
 ---
 
@@ -325,7 +399,7 @@ If macOS still blocks it, allow the app in System Settings → Privacy & Securit
 | Custom Fonts      | Add TTF/OTF files as body fonts (and remove them) |
 | Accent Color      | Change the highlight color for links, headings, and buttons (presets + custom) |
 | Clipboard         | Save phrases in the right-side panel. Click to copy, delete with confirmation (plain text only) |
-| Plugin Themes     | Add themes via JSON in `~/.mdviewer/themes/` |
+| Plugin Themes     | Add themes via JSON in `~/.mdviewer/themes/` (`%APPDATA%\MDViewerPro\themes/` on Windows) |
 
 ---
 
@@ -479,7 +553,7 @@ works inside the fence.
 Settings → Font lets you pick from recommended fonts, added fonts, and system fonts.
 
 * **Add Font...**: choose a TTF / OTF / TTC file; it is copied into
-  `~/.mdviewer/fonts/` and stays available on future launches.
+  `~/.mdviewer/fonts/` (`%APPDATA%\MDViewerPro\fonts/` on Windows) and stays available on future launches.
 * **Remove selected font**: only fonts you added can be removed; fonts installed
   on the system are never touched.
 * IPAmj Mincho and Source Han Serif are listed as recommended fonts. If they are
@@ -506,7 +580,7 @@ Save reusable phrases in the right-side slide panel (mirroring the TOC panel). I
 * Clicking a saved phrase copies it to the system clipboard.
 * Each phrase has a small **Delete** button at its bottom-left. It shows a confirmation popup and deletes on approval.
 * The whole phrase card copies (even empty areas; the Delete button never copies).
-* Phrases are stored in `~/.mdviewer/clipboard.json` (up to 200 phrases, 5000 characters each, 1 MB total). A corrupt file loads as empty without crashing.
+* Phrases are stored in `~/.mdviewer/clipboard.json` (`%APPDATA%\MDViewerPro\clipboard.json` on Windows) (up to 200 phrases, 5000 characters each, 1 MB total). A corrupt file loads as empty without crashing.
 
 ---
 

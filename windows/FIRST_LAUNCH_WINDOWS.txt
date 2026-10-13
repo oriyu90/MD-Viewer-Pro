@@ -1,0 +1,83 @@
+MD Viewer Pro — 初回起動の手順 (Windows) / First-Launch Steps (Windows)
+============================================================
+対象: MDViewerPro-1.5.3-win64-Setup.exe (推奨) / MDViewerPro-1.5.3-win64-portable.zip
+対応: Windows 10/11 64-bit (32-bit版Windowsには対応していません)
+
+【日本語: インストーラー版 (推奨)】
+
+1. MDViewerPro-1.5.3-win64-Setup.exe をダウンロードして実行します。
+   日本語 / English の選択、インストール先の確認、スタートメニュー等の
+   選択は画面の案内に従ってください (管理者権限不要・現在のユーザーのみ)。
+2. 初回起動時にSmartScreen（「WindowsによってPCが保護されました」）
+   が表示されることがあります。アプリ自体は壊れていません
+   (署名なし配布のため)。その場合は「詳細情報」→「実行」を選んでください。
+3. .md / .markdown の関連付けは、インストール時に任意で選べます
+   (既定では変更しません)。後から windows\register_assoc.ps1 でも登録可能
+   です (管理者権限不要。解除は unregister_assoc.ps1)。
+   関連付けから開いた文書は、起動中の MD Viewer Pro で開かれます
+   (二重起動防止・シングルインスタンス)。
+4. アンインストールは「設定 → アプリ」またはスタートメニューの
+   Uninstall から行えます。設定 (%APPDATA%\MDViewerPro) は残ります。
+
+【日本語: ポータブル版】
+
+1. ZIPを任意のフォルダに展開してください
+   （例: C:\Apps\MDViewerPro）。インストール作業は不要です。
+2. MDViewerPro\MDViewerPro.exe をダブルクリックで起動します。
+3. SmartScreenが出た場合は上記と同様に「詳細情報」→「実行」。
+   展開前に unblock-File MDViewerPro-1.5.3-win64-portable.zip を
+   実行しておくと確実です。
+4. .mdファイルを右クリック →「プログラムから開く」→ MDViewerPro.exe を
+   選択、または windows\register_assoc.ps1 で登録できます。
+
+注意:
+- 32-bit版Windowsには対応していません。64-bit版の
+  Windows 10 / Windows 11 でご利用ください。
+  (Qt6/PySide6に32-bit用配布物がないため)
+- Windowsでは設定・クリップボード・テーマ・追加フォントを
+  %APPDATA%\MDViewerPro に保存します (旧 ~/.mdviewer があれば初回に引継ぎ)。
+  既定フォントは Yu Gothic UI、保存時の改行はLFに統一しています。
+- v1.5.3 の新機能: 詳細設定の「テーマ色」(青・緑・オレンジ・赤・紫・
+  ティール・カスタム)、右側のクリップボードパネル (最大200件)。
+  B5文書モードは廃止され、フリーとA4の2択です。
+- MD編集で内容を変更した場合はHTMLからMarkdownへ変換するため、
+  複雑な原文構造は完全に復元できません。原文の表記を厳密に
+  維持する編集にはTXT編集を使ってください。
+
+[English: Installer (recommended)]
+
+1. Download and run MDViewerPro-1.5.3-win64-Setup.exe.
+   Follow the wizard (Japanese / English, per-user, no admin rights needed).
+2. On first launch, SmartScreen ("Windows protected your PC")
+   may appear. The app itself is not damaged (unsigned distribution).
+   Choose "More info" → "Run anyway".
+3. File association (.md / .markdown) is an OPTIONAL installer step
+   (off by default). You can also register later with
+   windows\register_assoc.ps1 (no admin; unregister_assoc.ps1 removes it).
+   Documents opened from an association reuse the running app
+   (single-instance).
+4. Uninstall from Settings → Apps or the Start Menu Uninstall shortcut.
+   Settings (%APPDATA%\MDViewerPro) are kept.
+
+[English: Portable]
+
+1. Extract the ZIP to any folder (e.g. C:\Apps\MDViewerPro).
+   No installation is required (portable).
+2. Double-click MDViewerPro\MDViewerPro.exe to launch.
+3. Same SmartScreen step as above. Running
+   unblock-File MDViewerPro-1.5.3-win64-portable.zip before extracting helps.
+4. Right-click a .md file → "Open with" → MDViewerPro.exe,
+   or run windows\register_assoc.ps1.
+
+Notes:
+- 32-bit Windows is not supported. Use 64-bit Windows 10 / 11.
+  (Qt6/PySide6 ships no 32-bit binaries.)
+- On Windows, settings, clipboard, themes and extra fonts live under
+  %APPDATA%\MDViewerPro (migrated from ~/.mdviewer on first run).
+  Default font is Yu Gothic UI; saved files use LF line endings.
+- v1.5.3 highlights: Settings → Accent color (blue/green/orange/red/
+  purple/teal/custom), right-side Clipboard panel (up to 200 phrases).
+  B5 mode was removed; Free and A4 remain.
+- Visual edits in MD Edit convert HTML back to Markdown, so complex
+  source structures may not round-trip exactly. Use TXT Edit when
+  the exact source notation must be preserved.
