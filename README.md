@@ -2,8 +2,8 @@
 
 A simple and fast Markdown viewer built with Python and PySide6 (Qt for Python).
 
-**Current version / 現在のバージョン: v1.5.1**
-See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.5.1).
+**Current version / 現在のバージョン: v1.5.2**
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what's new (v1.3.0–v1.5.2).
 更新履歴は [RELEASE_NOTES.md](RELEASE_NOTES.md) をご覧ください。
 
 Apple Silicon macOSでのソース起動・ビルド: `python3 -m venv venv_new` → `venv_new/bin/python -m pip install -r requirements.txt` → `venv_new/bin/python main.py`。DMGは `./build_dmg.sh` で作成します。/ On Apple Silicon macOS, use the same commands to run from source or build the DMG. The published DMG is ad-hoc signed, not notarized.
@@ -179,8 +179,8 @@ $$
 
 改ページの見え方はモードによって変わります。
 
-* **PDF 書き出し**: 実際にそこでページが分かれます（A4文書 / B5文書 / フリーのいずれでも）。
-* **A4文書 / B5文書 表示**: 次のページの先頭まで送られ、ページ区切り線が入ります。
+* **PDF 書き出し**: 実際にそこでページが分かれます（A4文書 / フリーのいずれでも）。
+* **A4文書表示**: 次のページの先頭まで送られ、ページ区切り線が入ります。
 * **フリー表示**: ページという概念がないため、何も表示しません（段落の区切りとしてだけ働きます）。
 * **MD編集モード**: 場所が分かるよう破線とコマンド名を薄く表示します（削除・移動できます）。
 
@@ -230,7 +230,7 @@ $$
 
 ---
 
-### テーマ色の変更（v1.5.1）
+### テーマ色の変更（v1.5.2）
 
 詳細設定の「テーマ色」で、リンク・見出し・ボタン等の強調色を変更できます。
 
@@ -241,14 +241,25 @@ $$
 
 ---
 
-### クリップボード（v1.5.1）
+### クリップボード（v1.5.2）
 
 右側のスライドパネルに定型文（フレーズ）を保存できます。目次パネルと対称の配置で、全モードから引き出せます。
 
 * **+ 追加ボタン** を押すとポップアップが開き、そこへ貼り付けできます。貼り付けは強制プレーンテキスト（書式・HTMLは除去）で、OKで保存されます。
 * 保存したフレーズを押すとシステムクリップボードへコピーされます。
 * 各フレーズの左下にある小さな **削除** ボタンを押すと確認ポップアップが出て、承認すると削除されます。
+* フレーズのカードは全面がコピー範囲です（空き領域を押してもコピーされます。削除ボタンはコピーしません）。
 * 保存先は `~/.mdviewer/clipboard.json`（最大200件・1件あたり最大5000文字・合計1MBまで）。破損時は空として起動し、クラッシュしません。
+
+---
+
+### 画面幅に応じた余白（v1.5.2）
+
+フリー表示の入力欄・表示欄は、ウィンドウの縦横比に応じて両端に空白を取ります。
+
+* 縦長（横が縦以下）の場合は空白なしで幅いっぱいに表示します。
+* 横長になるほど空白がジワジワ広がり、横:縦が3:1で両端2割ずつになります（3:1以上は2割固定）。
+* A4文書モードは従来どおりページの端がわかる表示のままです。B5文書モードは廃止し、フリーとA4の2択になりました。
 
 ---
 
@@ -420,8 +431,8 @@ text — they are interpreted and applied to the rendering** (since v1.4.2).
 
 How a page break looks depends on the mode:
 
-* **PDF export**: a real page break (in A4 Document, B5 Document and Free alike).
-* **A4 / B5 Document view**: content is pushed to the top of the next page and a
+* **PDF export**: a real page break (in A4 Document and Free alike).
+* **A4 Document view**: content is pushed to the top of the next page and a
   page separator line is drawn.
 * **Free view**: nothing is shown — there are no pages — it just acts as a
   paragraph separator.
@@ -476,7 +487,7 @@ Settings → Font lets you pick from recommended fonts, added fonts, and system 
 
 ---
 
-### Accent Color (v1.5.1)
+### Accent Color (v1.5.2)
 
 Settings → Accent color changes the highlight color for links, headings, buttons, and related UI.
 
@@ -487,14 +498,25 @@ Settings → Accent color changes the highlight color for links, headings, butto
 
 ---
 
-### Clipboard (v1.5.1)
+### Clipboard (v1.5.2)
 
 Save reusable phrases in the right-side slide panel (mirroring the TOC panel). It can be opened in every mode.
 
 * Press the **+ Add button** to open a popup and paste there. Pasting is forced to plain text (formatting and HTML are stripped); OK saves the phrase.
 * Clicking a saved phrase copies it to the system clipboard.
 * Each phrase has a small **Delete** button at its bottom-left. It shows a confirmation popup and deletes on approval.
+* The whole phrase card copies (even empty areas; the Delete button never copies).
 * Phrases are stored in `~/.mdviewer/clipboard.json` (up to 200 phrases, 5000 characters each, 1 MB total). A corrupt file loads as empty without crashing.
+
+---
+
+### Aspect-based margins (v1.5.2)
+
+In Free mode the editor and preview keep side blanks based on the window aspect ratio.
+
+* Portrait windows (width at or below height) use the full width with no blanks.
+* Wider windows gradually gain blanks, reaching 20% on each side at a 3:1 ratio (capped there).
+* A4 Document mode keeps its page look. B5 mode was removed, leaving Free and A4.
 
 ---
 
