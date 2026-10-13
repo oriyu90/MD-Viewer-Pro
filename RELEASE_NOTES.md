@@ -1,5 +1,17 @@
 # Release Notes / 更新履歴
 
+## v1.5.3
+
+### 日本語
+
+- 狭幅ウィンドウでのツールバー溢れを修正しました。最狭幅では戻る・余白設定、狭幅では詳細設定・PDF書き出しに短称表示を使います（ドイツ語のみ短縮、他言語は従来通り）。
+- 回帰テストは計998件ですべて成功しました。
+
+### English
+
+- Fixed toolbar overflow on narrow windows. Shortest widths use short labels for Back/Margins, narrow widths for Settings/PDF export (German only; other languages unchanged).
+- All 998 regression tests pass.
+
 ## v1.5.2
 
 ### 日本語
