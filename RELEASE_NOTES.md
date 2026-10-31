@@ -1,4 +1,17 @@
-# Release Notes / 更新履歴
+# Release Notes
+
+## v26.0.1 — Rust / Tauri 2 版（pre-release）
+
+Python/PySide6 実装を Rust + Tauri 2 で全面的に書き直した最初のリリース。
+文書の解析・整形・保存・設定は Rust、表示は macOS の WKWebView。
+
+- 配布物: `MDViewerPro-26.0.1-macOS.dmg`（約 5.3MB、ad-hoc 署名・未公証）
+- 実測: DMG 175MB → 5.3MB / 常駐 300MB → 112MB / 起動 8.5秒 → 約1.0秒
+- 機能: GFM、目次、Cmd+F 検索、KaTeX、Mermaid、ソース編集+プレビュー、テーマ、5言語、A4、HTML/PDF 書き出し、クリップ
+- 制限: PDF は macOS 印刷ダイアログ経由 / WYSIWYG 非対応 / Windows・Linux 未配布
+- ソース: `v26-rust` ブランチ（設計・QA・ADR は `docs/`）
+
+/ 更新履歴
 
 ## v1.5.3
 
