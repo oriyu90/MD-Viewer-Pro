@@ -18,7 +18,7 @@ v26.0.1 で Python/PySide6 から **Rust + Tauri 2** へ作り直し、次の点
 - 配布物: 約 175MB（DMG）→ **約 8MB**（アプリ本体）
 - 常駐メモリ: 約 300MB → **約 150MB**（WebView プロセス込み）
 - コールド起動: 8.5 秒 → **1 秒前後**（実機計測は下記）
-- 文書の解析・整形・保存・設定・検索をすべて Rust 側で処理
+- 文書の解析・整形・保存・設定をすべて Rust 側で処理
 
 ### 主な機能
 
@@ -26,7 +26,7 @@ v26.0.1 で Python/PySide6 から **Rust + Tauri 2** へ作り直し、次の点
 | --- | --- |
 | 閲覧 | GFM（表・タスクリスト・打ち消し・脚注・自動リンク）、シンタックスハイライト、コードのコピーボタン |
 | 編集 | ソース編集 + リアルタイムプレビュー（120ms デバウンス）、行番号、書式ツールバー |
-| 目次 | 見出し一覧、クリックでジャンプ、現在位置のハイライト |
+| 目次 / 検索 | 見出し一覧、クリックでジャンプ、現在位置のハイライト。Cmd+F のページ内検索（ハイライト・前後移動） |
 | 数式 | `$…$` / `$$…$$` / `\(…\)` をオフラインで組版（KaTeX 同梱） |
 | 図 | ` ```mermaid ` をフローチャート等として描画（オフライン同梱） |
 | フロントマター | YAML のメタ情報を表として表示。`.yml` / `.yaml` も閲覧可 |
@@ -63,9 +63,9 @@ cargo test --workspace
 
 - PDF 書き出しは macOS の印刷ダイアログから「PDF として保存」を選ぶ方式です
 - MD 編集の WYSIWYG（見た目どおりの直接編集）は非対応です。ソース + プレビューに統一しました
-- ページ内検索（Cmd+F）は未実装です
 - Windows / Linux 版は未配布です（設計は共通、Linux は WebKitGTK が必要）
 - Google Drive / OneDrive へのアップロードは非対応です
+- 外部画像（`https://…`）は表示のために取得されます（ローカルファイルは取得しません）
 
 ### ライセンス
 
@@ -109,8 +109,7 @@ cargo test --workspace
 ### Known limitations
 
 PDF export goes through the macOS print dialog ("Save as PDF"). WYSIWYG Markdown editing
-is not included; editing is source + preview. In-page search, Windows/Linux builds and
-cloud upload are not available in v26.0.1.
+is not included; editing is source + preview. Windows/Linux builds and cloud upload are not available in v26.0.1.
 
 ### License
 

@@ -195,7 +195,7 @@ scripts/package_macos.sh
 
 1. PDF 書き出しは macOS の印刷ダイアログ経由（「PDF として保存」を選ぶ）。直接保存は将来対応
 2. MD 編集の WYSIWYG は非対応（ソース + プレビュー）
-3. ページ内検索（Cmd+F）は未実装（メニューに項目のみ）
+3. ページ内検索は本文の DOM を走査する簡易実装（数式・図の内部は対象外）
 4. Windows / Linux の配布ビルドは未検証（設計は共通、Linux は WebKitGTK 依存）
 5. クラウドアップロード（Google Drive / OneDrive）は非対応
 6. 数式・Mermaid は WebView 側 JS に依存（オフライン同梱）

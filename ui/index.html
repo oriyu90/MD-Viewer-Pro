@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MD Viewer Pro</title>
   <link rel="stylesheet" href="css/app.css">
-  <link rel="stylesheet" href="assets/katex/katex.min.css" onerror="this.remove()">
+  <link rel="stylesheet" href="assets/katex/katex.min.css">
 </head>
 <body data-mode="view" data-page="free">
 <div id="app">
@@ -83,6 +83,12 @@
     </section>
 
     <section id="preview-pane" class="pane">
+      <div id="find-bar" class="find-bar" hidden>
+        <input id="find-input" type="search" placeholder="検索" autocomplete="off">
+        <span id="find-count" class="find-count"></span>
+        <button id="find-next" class="mini-btn" title="次へ">↓</button>
+        <button id="find-close" class="mini-btn" title="閉じる">×</button>
+      </div>
       <div id="doc-scroll" class="doc-scroll">
         <article id="doc" class="markdown-body"></article>
       </div>

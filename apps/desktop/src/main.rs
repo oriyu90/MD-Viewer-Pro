@@ -23,6 +23,7 @@ fn initial_path() -> Option<PathBuf> {
 }
 
 fn main() {
+    commands::mark_start();
     let initial = initial_path();
 
     let app = tauri::Builder::default()
@@ -99,6 +100,7 @@ fn main() {
             commands::system_theme_dark,
             commands::app_paths,
             commands::selftest_report,
+            commands::ui_ready,
         ])
         .build(tauri::generate_context!())
         .expect("error while building MD Viewer Pro");

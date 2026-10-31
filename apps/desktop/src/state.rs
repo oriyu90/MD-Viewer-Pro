@@ -5,15 +5,9 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use mdv_core::settings::{self, Settings};
-use serde::{Deserialize, Serialize};
 
 pub const MAX_CLIPS: usize = 200;
 pub const MAX_CLIP_LEN: usize = 5000;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Clip {
-    pub text: String,
-}
 
 pub struct OpenDocument {
     pub path: Option<PathBuf>,
@@ -22,6 +16,7 @@ pub struct OpenDocument {
 }
 
 pub struct AppState {
+    pub approved: Mutex<std::collections::HashSet<PathBuf>>,
     pub settings: Mutex<Settings>,
     pub doc: Mutex<Option<OpenDocument>>,
     pub clips: Mutex<Vec<String>>,
@@ -45,11 +40,21 @@ pub fn themes_dir() -> PathBuf {
 }
 
 impl AppState {
+    /// ダイアログや起動引数でユーザーが明示的に選んだパスだけを許可する。
+    pub fn approve(&self, path: &std::path::Path) {
+        self.approved.lock().unwrap().insert(path.to_path_buf());
+    }
+
+    pub fn is_approved(&self, path: &std::path::Path) -> bool {
+        self.approved.lock().unwrap().contains(path)
+    }
+
     pub fn new() -> Self {
         let s = settings::load();
         let clips = load_clips();
         let fonts = load_fonts();
         AppState {
+            approved: Mutex::new(std::collections::HashSet::new()),
             settings: Mutex::new(s),
             doc: Mutex::new(None),
             clips: Mutex::new(clips),

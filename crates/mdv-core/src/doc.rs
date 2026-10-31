@@ -58,7 +58,7 @@ pub const MAX_FILE_BYTES: u64 = 32 * 1024 * 1024;
 /// 先頭 8KiB に NUL があればバイナリとみなす。
 fn looks_binary(bytes: &[u8]) -> bool {
     let head = &bytes[..bytes.len().min(8192)];
-    head.iter().any(|&b| b == 0)
+    head.contains(&0)
 }
 
 /// バイト列をテキストへ。BOM → UTF-8 → 文字コード推定 → 置換、の順。
@@ -110,9 +110,10 @@ pub fn write_file(path: &Path, text: &str) -> Result<(), DocError> {
         fs::create_dir_all(dir)?;
     }
     let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
-    let tmp = path.with_extension(format!(
-        "{}.tmp",
-        path.extension().and_then(|e| e.to_str()).unwrap_or("md")
+    let tmp = path.with_file_name(format!(
+        ".{}.{}.tmp",
+        path.file_name().and_then(|s| s.to_str()).unwrap_or("file"),
+        std::process::id()
     ));
     {
         let mut f = fs::File::create(&tmp)?;

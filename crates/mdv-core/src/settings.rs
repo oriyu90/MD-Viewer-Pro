@@ -124,7 +124,11 @@ pub fn load_from(path: &Path) -> Settings {
         Ok(text) => match serde_json::from_str::<Settings>(&text) {
             Ok(s) => s.validate(),
             Err(_) => {
-                let _ = fs::rename(path, path.with_extension("json.bak"));
+                let stamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                let _ = fs::rename(path, path.with_extension(format!("json.bak-{stamp}")));
                 Settings::default()
             }
         },
@@ -203,16 +207,19 @@ mod tests {
         fs::write(&p, "{not json").unwrap();
         let s = load_from(&p);
         assert_eq!(s.lang, "ja");
-        assert!(p.with_extension("json.bak").exists());
+        let backups: Vec<_> = std::fs::read_dir(tmp.path())
+            .unwrap()
+            .flatten()
+            .filter(|e| e.file_name().to_string_lossy().starts_with("settings.json.bak-"))
+            .collect();
+        assert_eq!(backups.len(), 1);
     }
 
     #[test]
     fn atomic_save_roundtrip() {
         let tmp = tempfile::tempdir().unwrap();
         let p = tmp.path().join("settings.json");
-        let mut s = Settings::default();
-        s.lang = "fr".into();
-        s.recent = vec!["/a.md".into()];
+        let s = Settings { lang: "fr".into(), recent: vec!["/a.md".into()], ..Default::default() };
         save_to(&p, &s).unwrap();
         let mut got = String::new();
         fs::File::open(&p).unwrap().read_to_string(&mut got).unwrap();

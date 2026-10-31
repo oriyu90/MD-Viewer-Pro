@@ -12,9 +12,12 @@ previous stable line.
 - Native macOS window, menu bar, file associations, Finder "Open With", single
   instance and window-state restoration.
 - Offline KaTeX math and Mermaid diagrams, bundled with the app.
+- In-page search (Cmd+F) with highlight and next/previous navigation.
 - Source-of-truth editing: the Markdown source is never reconstructed from HTML, so
   saving can no longer rewrite or damage the document.
 - Ad-hoc signed, not notarized (same policy as v1.5.x).
+- Security hardening: HTML is sanitized in Rust (ammonia) and file writes are restricted to
+  paths the user explicitly chose in a save/open dialog.
 
 ### Measured (Apple Silicon, macOS 26.4)
 
@@ -29,7 +32,6 @@ previous stable line.
 
 - PDF export uses the macOS print dialog ("Save as PDF").
 - WYSIWYG Markdown editing is replaced by source + preview.
-- In-page search (Cmd+F) is not implemented yet.
 - Windows/Linux builds are not shipped in this release.
 - Google Drive / OneDrive upload is not implemented.
 

@@ -148,7 +148,15 @@
     "clip_limit_msg": "保存できるフレーズは最大 {n} 件です。",
     "clip_empty_warning": "空のフレーズは保存できません。",
     "clip_too_long": "長すぎるため先頭 {n} 文字に切り詰めました。",
-    "edit": "編集"
+    "edit": "編集",
+    "cancel": "キャンセル",
+    "ok": "OK",
+    "copy": "コピー",
+    "copied": "コピーしました",
+    "saved": "保存しました",
+    "clip_copy_hint": "クリックでコピー",
+    "fmt_text_placeholder": "テキスト",
+    "theme_color_label": "テーマ色"
   },
   "en": {
     "back": "Back",
@@ -299,7 +307,15 @@
     "clip_limit_msg": "You can save up to {n} phrases.",
     "clip_empty_warning": "An empty phrase cannot be saved.",
     "clip_too_long": "Too long; truncated to the first {n} characters.",
-    "edit": "Edit"
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "copy": "Copy",
+    "copied": "Copied",
+    "saved": "Saved",
+    "clip_copy_hint": "Click to copy",
+    "fmt_text_placeholder": "text",
+    "theme_color_label": "Accent color"
   },
   "de": {
     "back": "Zurück",
@@ -450,7 +466,15 @@
     "clip_limit_msg": "Es können höchstens {n} Phrasen gespeichert werden.",
     "clip_empty_warning": "Eine leere Phrase kann nicht gespeichert werden.",
     "clip_too_long": "Zu lang; auf die ersten {n} Zeichen gekürzt.",
-    "edit": "Bearbeiten"
+    "edit": "Bearbeiten",
+    "cancel": "Abbrechen",
+    "ok": "OK",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "saved": "Gespeichert",
+    "clip_copy_hint": "Klicken zum Kopieren",
+    "fmt_text_placeholder": "Text",
+    "theme_color_label": "Akzentfarbe"
   },
   "fr": {
     "back": "Retour",
@@ -601,7 +625,15 @@
     "clip_limit_msg": "Vous pouvez enregistrer jusqu'à {n} phrases.",
     "clip_empty_warning": "Une phrase vide ne peut pas être enregistrée.",
     "clip_too_long": "Trop long ; tronqué aux {n} premiers caractères.",
-    "edit": "Édition"
+    "edit": "Édition",
+    "cancel": "Annuler",
+    "ok": "OK",
+    "copy": "Copier",
+    "copied": "Copié",
+    "saved": "Enregistré",
+    "clip_copy_hint": "Cliquer pour copier",
+    "fmt_text_placeholder": "texte",
+    "theme_color_label": "Couleur d'accent"
   },
   "zh": {
     "back": "返回",
@@ -752,6 +784,14 @@
     "clip_limit_msg": "最多可保存 {n} 条短语。",
     "clip_empty_warning": "空短语无法保存。",
     "clip_too_long": "内容过长，已截断为前 {n} 个字符。",
-    "edit": "编辑"
+    "edit": "编辑",
+    "cancel": "取消",
+    "ok": "确定",
+    "copy": "复制",
+    "copied": "已复制",
+    "saved": "已保存",
+    "clip_copy_hint": "点击复制",
+    "fmt_text_placeholder": "文本",
+    "theme_color_label": "主题色"
   }
 }

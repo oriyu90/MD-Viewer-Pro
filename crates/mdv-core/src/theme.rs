@@ -6,18 +6,13 @@
 use serde::{Deserialize, Serialize};
 
 /// 画面テーマ。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeMode {
+    #[default]
     Dark,
     Light,
     System,
-}
-
-impl Default for ThemeMode {
-    fn default() -> Self {
-        ThemeMode::Dark
-    }
 }
 
 /// 1 テーマ分の配色。CSS 変数へそのまま流し込む。

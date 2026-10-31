@@ -251,33 +251,9 @@ pub fn render_markdown(source: &str, opts: RenderOptions) -> Rendered {
 
     let mut html = comrak::markdown_to_html(body, &options);
 
-    // 見出しへ id を注入（出現順に一致する）。
-    let mut idx = 0usize;
-    let mut replaced = String::with_capacity(html.len() + headings.len() * 20);
-    let mut rest = html.as_str();
-    while let Some(pos) = rest.find("<h") {
-        let (before, after) = rest.split_at(pos);
-        replaced.push_str(before);
-        let bytes = after.as_bytes();
-        let level = bytes.get(2).copied().filter(|b| (b'1'..=b'6').contains(b));
-        let closing = bytes.get(3) == Some(&b'>');
-        if let (Some(_lv), true) = (level, closing) {
-            let tag = &after[..2];
-            let lv = after.as_bytes()[2] as char;
-            if idx < headings.len() {
-                replaced.push_str(&format!("<{tag}{lv} id=\"{}\">", headings[idx].id));
-                idx += 1;
-            } else {
-                replaced.push_str(&after[..4]);
-            }
-            rest = &after[4..];
-        } else {
-            replaced.push_str(&after[..2]);
-            rest = &after[2..];
-        }
-    }
-    replaced.push_str(rest);
-    html = replaced;
+    // 見出しへ id を注入する。生 HTML の <hN> と取り違えないよう、
+    // AST から取った見出しテキストと一致するものだけに付与する。
+    html = inject_heading_ids(&html, &headings);
 
     let mut prefix = String::new();
     if !front_matter.is_empty() {
@@ -305,6 +281,46 @@ pub fn render_markdown(source: &str, opts: RenderOptions) -> Rendered {
     let plain = strip_tags(&html);
 
     Rendered { html, headings, title, front_matter, has_math, has_mermaid, plain }
+}
+
+
+/// AST 由来の見出しとテキストが一致する `<hN>` にだけ id を付与する。
+/// 生 HTML の見出し（例: `<h2>raw</h2>`）はテキストが一致しないため素通りする。
+fn inject_heading_ids(html: &str, headings: &[Heading]) -> String {
+    let mut out = String::with_capacity(html.len() + headings.len() * 24);
+    let mut rest = html;
+    let mut idx = 0usize;
+    while let Some(pos) = rest.find("<h") {
+        let (before, after) = rest.split_at(pos);
+        out.push_str(before);
+        if idx >= headings.len() {
+            out.push_str(after);
+            rest = "";
+            break;
+        }
+        let b = after.as_bytes();
+        let is_heading = b.len() >= 4 && (b'1'..=b'6').contains(&b[2]) && b[3] == b'>';
+        if is_heading {
+            let level = b[2] as char;
+            let close = format!("</h{level}>");
+            if let Some(end) = after.find(&close) {
+                let inner = &after[4..end];
+                let plain = strip_tags(inner);
+                if plain.trim() == headings[idx].text.trim() {
+                    out.push_str(&format!("<h{level} id=\"{}\">", headings[idx].id));
+                    out.push_str(inner);
+                    out.push_str(&close);
+                    rest = &after[end + close.len()..];
+                    idx += 1;
+                    continue;
+                }
+            }
+        }
+        out.push_str("<h");
+        rest = &after[2..];
+    }
+    out.push_str(rest);
+    out
 }
 
 /// `$...$` / `$$...$$` / `\(...\)` の簡易検出。
@@ -344,6 +360,26 @@ mod tests {
         assert_eq!(r.headings[2].id, "使い方-1");
         assert!(r.html.contains("id=\"はじめに\""));
         assert_eq!(r.title.as_deref(), Some("はじめに"));
+    }
+
+    #[test]
+    fn raw_html_heading_does_not_steal_ids() {
+        let r = render("<h2>raw</h2>\n\n# Real\n\n## Second\n");
+        assert_eq!(r.headings.len(), 2);
+        assert!(r.html.contains("id=\"real\""));
+        assert!(r.html.contains("id=\"second\""));
+        // raw heading must not receive an AST id
+        let raw_pos = r.html.find("raw").unwrap();
+        let before = &r.html[..raw_pos];
+        let last_h2 = before.rfind("<h2").unwrap();
+        assert!(!before[last_h2..].contains("id="));
+    }
+
+    #[test]
+    fn duplicate_heading_ids_are_unique() {
+        let r = render("# a\n\n# a-1\n\n# a\n");
+        let ids: Vec<_> = r.headings.iter().map(|h| h.id.as_str()).collect();
+        assert_eq!(ids, vec!["a", "a-1", "a-2"]);
     }
 
     #[test]

@@ -759,14 +759,17 @@ function wire() {
   }
 
   document.addEventListener("keydown", async (e) => {
+    if (e.key === "Escape" && findState.open) { closeFind(); return; }
     const mod = e.metaKey || e.ctrlKey;
     if (!mod) return;
     const k = e.key.toLowerCase();
+    if (TAURI) return; // ネイティブメニューの accelerator に一本化（二重発火防止）
     if (k === "s") { e.preventDefault(); await saveFile(e.shiftKey); }
     else if (k === "o") { e.preventDefault(); await openFile(); }
     else if (k === "n") { e.preventDefault(); newDocument(); }
     else if (k === "b" && state.mode === "edit") { e.preventDefault(); applyFormat("bold"); }
     else if (k === "i" && state.mode === "edit") { e.preventDefault(); applyFormat("italic"); }
+    else if (k === "f") { e.preventDefault(); openFind(); }
   });
 
   window.addEventListener("dragover", (e) => { e.preventDefault(); });
@@ -796,7 +799,9 @@ function wire() {
     try { wv.setFocus(); } catch (err) { /* noop */ }
   });
 
+  wireFind();
   const menuActions = {
+    "find": () => openFind(),
     "new": () => newDocument(),
     "new-window": () => newDocument(),
     "open": () => openFile(),
@@ -814,7 +819,7 @@ function wire() {
     "zoom-in": () => changeScale(1),
     "zoom-out": () => changeScale(-1),
     "zoom-reset": () => changeScale(0, true),
-    "find": () => toast(t("find_unavailable", "検索は次のアップデートで対応します")),
+    
   };
   listen("menu", (e) => {
     const fn = menuActions[e.payload];
@@ -872,6 +877,7 @@ async function boot() {
     }
     await renderNow();
     if (q.get("mode") === "edit") setMode("edit");
+    if (q.get("find")) { openFind(); $("#find-input").value = q.get("find"); runFind(q.get("find")); }
     setTimeout(() => {
       const target = q.get("scroll");
       if (target) document.getElementById(target)?.scrollIntoView();
@@ -879,6 +885,8 @@ async function boot() {
   }
 
   // 起動時は空でも案内を出す（旧アプリの起動体験に合わせる）
+  try { await invoke("ui_ready"); } catch (e) { /* mock */ }
+
   if (!state.source) {
     $("#doc").innerHTML = `<div class="welcome"><h1>MD Viewer Pro</h1><p>${escapeHtml(t("startup_hint", "Markdown ファイルを開くか、ドラッグ＆ドロップしてください。"))}</p></div>`;
   }
@@ -889,6 +897,115 @@ window.addEventListener("DOMContentLoaded", () => {
     document.body.innerHTML = `<pre style="color:#f66;padding:20px">${escapeHtml(String(e))}</pre>`;
   });
 });
+
+// ── ページ内検索 ─────────────────────────────────────────────
+
+const findState = { hits: [], idx: -1, open: false };
+
+function clearFindMarks() {
+  for (const m of $$("#doc mark.find-hit")) {
+    const parent = m.parentNode;
+    if (!parent) continue;
+    parent.replaceChild(document.createTextNode(m.textContent || ""), m);
+    parent.normalize();
+  }
+  findState.hits = [];
+  findState.idx = -1;
+  $("#find-count").textContent = "";
+}
+
+function runFind(query) {
+  clearFindMarks();
+  if (!query) return;
+  const root = $("#doc");
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      const p = node.parentElement;
+      if (!p || p.closest("script,style,mark.find-hit")) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const needle = query.toLowerCase();
+  const targets = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (node.nodeValue.toLowerCase().includes(needle)) targets.push(node);
+  }
+  for (const node of targets) {
+    const text = node.nodeValue;
+    const lower = text.toLowerCase();
+    const frag = document.createDocumentFragment();
+    let from = 0;
+    let at = lower.indexOf(needle, from);
+    while (at !== -1) {
+      if (at > from) frag.appendChild(document.createTextNode(text.slice(from, at)));
+      const mark = document.createElement("mark");
+      mark.className = "find-hit";
+      mark.textContent = text.slice(at, at + needle.length);
+      frag.appendChild(mark);
+      findState.hits.push(mark);
+      from = at + needle.length;
+      at = lower.indexOf(needle, from);
+    }
+    if (from < text.length) frag.appendChild(document.createTextNode(text.slice(from)));
+    node.parentNode?.replaceChild(frag, node);
+  }
+  if (findState.hits.length) {
+    findState.idx = 0;
+    focusHit();
+  } else {
+    $("#find-count").textContent = "0";
+  }
+}
+
+function focusHit() {
+  const hits = findState.hits;
+  if (!hits.length) return;
+  hits.forEach((h) => h.classList.remove("active"));
+  const hit = hits[findState.idx];
+  if (!hit) return;
+  hit.classList.add("active");
+  hit.scrollIntoView({ block: "center" });
+  $("#find-count").textContent = `${findState.idx + 1}/${hits.length}`;
+}
+
+function openFind() {
+  findState.open = true;
+  $("#find-bar").hidden = false;
+  const input = $("#find-input");
+  input.focus();
+  input.select();
+  if (input.value) runFind(input.value);
+}
+
+function closeFind() {
+  findState.open = false;
+  $("#find-bar").hidden = true;
+  $("#find-input").value = "";
+  clearFindMarks();
+}
+
+function wireFind() {
+  $("#find-input").addEventListener("input", (e) => runFind(e.target.value));
+  $("#find-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!findState.hits.length) return;
+      findState.idx = (findState.idx + (e.shiftKey ? -1 : 1) + findState.hits.length) % findState.hits.length;
+      focusHit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closeFind();
+    }
+  });
+  $("#find-next").addEventListener("click", () => {
+    if (!findState.hits.length) return;
+    findState.idx = (findState.idx + 1) % findState.hits.length;
+    focusHit();
+  });
+  $("#find-close").addEventListener("click", closeFind);
+}
 
 // ── セルフテスト（--selftest 起動時のみ） ───────────────────────
 
@@ -930,7 +1047,7 @@ async function runSelfTest() {
       res.openedHeadings = state.rendered.headings.length;
       res.openedToc = $$("#toc-list .toc-item").length;
       res.openedSourceBytes = state.source.length;
-      const out = fx.replace(/\.md$/, "-saved.md");
+      const out = fx; // open_path で許可済みのパスのみ保存できる
       await invoke("save_document", { path: out, source: state.source + "\n\n追記\n" });
       const back = await invoke("read_file_text", { path: out });
       res.savedBytes = back.length;

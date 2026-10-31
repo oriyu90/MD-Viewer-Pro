@@ -477,3 +477,28 @@ body.bold-mode .markdown-body { font-weight: 600; }
 
 body[data-mode="edit"] #editor-pane { flex: 0 0 44%; }
 body[data-mode="edit"] #preview-pane { flex: 1 1 56%; }
+
+/* ── Find bar ─────────────────────────────────────────── */
+#preview-pane { position: relative; }
+.find-bar {
+  position: absolute; top: 8px; right: 16px; z-index: 20;
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 8px; box-shadow: 0 6px 20px rgba(0,0,0,.45);
+}
+.find-bar[hidden] { display: none; }
+.find-bar input {
+  width: 180px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 8px; outline: none;
+}
+.find-bar input:focus { border-color: var(--accent); }
+.find-count { color: var(--text-dim); font-size: 11px; min-width: 44px; text-align: right; }
+mark.find-hit { background: rgba(255, 200, 0, .35); color: inherit; border-radius: 2px; }
+mark.find-hit.active { background: var(--accent); color: #fff; }
+
+.find-bar .mini-btn {
+  height: 24px; min-width: 26px; padding: 0 6px;
+  border: 1px solid var(--border); background: var(--btn);
+  color: var(--text); border-radius: 5px; cursor: pointer; font-size: 12px;
+}
+.find-bar .mini-btn:hover { background: var(--btn-hover); }

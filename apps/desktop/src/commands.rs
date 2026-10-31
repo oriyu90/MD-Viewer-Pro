@@ -137,6 +137,7 @@ fn open_document(state: &AppState, path: &Path) -> Result<OpenedDoc, String> {
         hard_breaks: s.hard_breaks,
         allow_raw_html: true,
     });
+    state.approve(path);
     let out = OpenedDoc {
         path: Some(path.to_string_lossy().to_string()),
         source: d.source.clone(),
@@ -169,23 +170,25 @@ pub fn open_path(state: State<'_, AppState>, path: String) -> Result<OpenedDoc, 
 }
 
 #[tauri::command]
-pub fn pick_file() -> Option<String> {
-    rfd::FileDialog::new()
+pub fn pick_file(state: State<'_, AppState>) -> Option<String> {
+    let p = rfd::FileDialog::new()
         .add_filter("Markdown / Text / YAML", &["md", "markdown", "txt", "yml", "yaml"])
         .add_filter("All Files", &["*"])
-        .pick_file()
-        .map(|p| p.to_string_lossy().to_string())
+        .pick_file()?;
+    state.approve(&p);
+    Some(p.to_string_lossy().to_string())
 }
 
 #[tauri::command]
-pub fn pick_save(suggested: String) -> Option<String> {
-    rfd::FileDialog::new()
+pub fn pick_save(state: State<'_, AppState>, suggested: String) -> Option<String> {
+    let p = rfd::FileDialog::new()
         .set_file_name(&suggested)
         .add_filter("Markdown", &["md"])
         .add_filter("Text", &["txt"])
         .add_filter("HTML", &["html"])
-        .save_file()
-        .map(|p| p.to_string_lossy().to_string())
+        .save_file()?;
+    state.approve(&p);
+    Some(p.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -209,6 +212,9 @@ pub fn save_document(
         Some(p) if !p.is_empty() => PathBuf::from(p),
         _ => return Err("保存先が指定されていません".into()),
     };
+    if !state.is_approved(&target) {
+        return Err("保存先が許可されていません（保存ダイアログから選び直してください）".into());
+    }
     doc::write_file(&target, &source).map_err(|e| e.to_string())?;
     {
         let mut d = state.doc.lock().unwrap();
@@ -232,8 +238,12 @@ pub fn save_document(
 }
 
 #[tauri::command]
-pub fn save_text(path: String, content: String) -> Result<(), String> {
-    doc::write_file(Path::new(&path), &content).map_err(|e| e.to_string())
+pub fn save_text(state: State<'_, AppState>, path: String, content: String) -> Result<(), String> {
+    let p = PathBuf::from(&path);
+    if !state.is_approved(&p) {
+        return Err("保存先が許可されていません（保存ダイアログから選び直してください）".into());
+    }
+    doc::write_file(&p, &content).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -260,14 +270,21 @@ pub fn open_external(url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn reveal_path(path: String) -> Result<(), String> {
+pub fn reveal_path(state: State<'_, AppState>, path: String) -> Result<(), String> {
+    let p = PathBuf::from(&path);
+    if path.starts_with('-') || !p.exists() || !state.is_approved(&p) {
+        return Err("表示できないパスです".into());
+    }
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open")
+        let status = std::process::Command::new("open")
             .args(["-R", &path])
             .status()
             .map_err(|e| e.to_string())?;
-        return Ok(());
+        if !status.success() {
+            return Err("Finder で表示できませんでした".into());
+        }
+        Ok(())
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -400,7 +417,7 @@ pub fn open_themes_dir() -> Result<(), String> {
 pub fn print_page(window: WebviewWindow) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        return window.print().map_err(|e| e.to_string());
+        window.print().map_err(|e| e.to_string())
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -421,6 +438,23 @@ pub fn app_paths() -> Paths {
         fonts: state::fonts_dir().to_string_lossy().to_string(),
         clips: state::clips_path().to_string_lossy().to_string(),
     }
+}
+
+static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
+pub fn mark_start() {
+    let _ = START.set(std::time::Instant::now());
+}
+
+#[tauri::command]
+pub fn ui_ready() -> u128 {
+    let ms = START.get().map(|t| t.elapsed().as_millis()).unwrap_or(0);
+    let path = state::app_dir().join("startup.json");
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let _ = std::fs::write(&path, format!("{{\"version\":\"{}\",\"ready_ms\":{}}}", env!("CARGO_PKG_VERSION"), ms));
+    ms
 }
 
 #[tauri::command]
