@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MD Viewer Pro</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="assets/katex/katex.min.css" onerror="this.remove()">
+</head>
+<body data-mode="view" data-page="free">
+<div id="app">
+  <header id="main-toolbar" class="toolbar">
+    <div class="tb-left">
+      <button id="btn-back" class="icon-btn" title="戻る" data-i18n-title="back">‹</button>
+      <div class="seg" id="mode-seg" role="tablist">
+        <button data-mode="view" data-i18n="view" role="tab">閲覧</button>
+        <button data-mode="edit" data-i18n="edit" role="tab">編集</button>
+      </div>
+      <div class="seg" id="page-seg">
+        <button data-page="free" data-i18n="free">フリー</button>
+        <button data-page="a4" data-i18n="a4">A4文書</button>
+      </div>
+      <button id="btn-margin" class="text-btn" data-i18n="margin">余白設定</button>
+      <label class="scale-wrap" title="スケール">
+        <select id="scale" data-i18n-title="scale">
+          <option value="0">50%</option>
+          <option value="1">75%</option>
+          <option value="2">100%</option>
+          <option value="3">125%</option>
+          <option value="4">150%</option>
+        </select>
+      </label>
+      <button id="btn-toc" class="text-btn toggled" data-i18n="toc_title">目次</button>
+      <button id="btn-clip" class="text-btn" data-i18n="clip_title">クリップ</button>
+    </div>
+    <div class="tb-right">
+      <button id="btn-settings" class="text-btn" data-i18n="settings">詳細設定</button>
+      <button id="btn-pdf" class="primary" data-i18n="pdf_export">PDF書き出し</button>
+    </div>
+  </header>
+
+  <div id="fmt-toolbar" class="fmt-toolbar" hidden>
+    <div class="fmt-group">
+      <button data-fmt="bold" title="太字 (Cmd+B)"><b>B</b></button>
+      <button data-fmt="italic" title="斜体 (Cmd+I)"><i>I</i></button>
+      <button data-fmt="strike" title="打ち消し">~~</button>
+      <button data-fmt="code" title="コード" data-i18n="fmt_code">コード</button>
+    </div>
+    <span class="fmt-sep"></span>
+    <div class="fmt-group">
+      <button data-fmt="h1">H1</button>
+      <button data-fmt="h2">H2</button>
+      <button data-fmt="h3">H3</button>
+      <button data-fmt="body" data-i18n="fmt_body">本文</button>
+    </div>
+    <span class="fmt-sep"></span>
+    <div class="fmt-group">
+      <button data-fmt="list" data-i18n="fmt_list">リスト</button>
+      <button data-fmt="num" data-i18n="fmt_num">番号</button>
+      <button data-fmt="check" data-i18n="fmt_check">チェック</button>
+      <button data-fmt="quote" data-i18n="fmt_quote">引用</button>
+      <button data-fmt="hr" data-i18n="fmt_hr">水平線</button>
+    </div>
+    <span class="fmt-sep"></span>
+    <div class="fmt-group">
+      <button data-fmt="link" data-i18n="fmt_link">リンク</button>
+      <button data-fmt="image" data-i18n="fmt_img">画像</button>
+      <button data-fmt="table" data-i18n="fmt_table">テーブル</button>
+    </div>
+  </div>
+
+  <main id="workspace">
+    <aside id="toc-panel" class="side-panel">
+      <div class="panel-head" data-i18n="toc_title">目次</div>
+      <div id="toc-list" class="toc-list"></div>
+    </aside>
+
+    <section id="editor-pane" class="pane" hidden>
+      <div class="editor-wrap">
+        <div id="gutter" class="gutter" aria-hidden="true"></div>
+        <textarea id="editor" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+      </div>
+    </section>
+
+    <section id="preview-pane" class="pane">
+      <div id="doc-scroll" class="doc-scroll">
+        <article id="doc" class="markdown-body"></article>
+      </div>
+    </section>
+
+    <aside id="clip-panel" class="side-panel clip-panel" hidden>
+      <div class="panel-head">
+        <span data-i18n="clip_title">クリップ</span>
+        <button id="clip-add" class="mini-btn" data-i18n="clip_add">＋追加</button>
+      </div>
+      <div id="clip-list" class="clip-list"></div>
+    </aside>
+  </main>
+
+  <div id="drop-overlay" class="drop-overlay" hidden>
+    <div class="drop-box">ここにファイルをドロップ</div>
+  </div>
+
+  <dialog id="settings-dialog" class="modal">
+    <form method="dialog" class="modal-body">
+      <h2 data-i18n="settings_title">詳細設定</h2>
+      <div class="field">
+        <label for="set-lang" data-i18n="lang_label">言語</label>
+        <select id="set-lang">
+          <option value="ja">日本語</option>
+          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Français</option>
+          <option value="zh">简体中文</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="set-theme" data-i18n="theme_label">テーマ</label>
+        <select id="set-theme">
+          <option value="dark" data-i18n="dark">ダークモード</option>
+          <option value="light" data-i18n="light">ライトモード</option>
+          <option value="system">システム</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-i18n="theme_color_label">テーマ色</label>
+        <div id="accent-swatches" class="swatches"></div>
+      </div>
+      <div class="field">
+        <label for="set-font" data-i18n="font_label">フォント</label>
+        <select id="set-font"></select>
+      </div>
+      <div class="field">
+        <label for="set-fontsize">文字サイズ</label>
+        <input id="set-fontsize" type="range" min="12" max="28" step="1">
+        <span id="set-fontsize-val"></span>
+      </div>
+      <div class="field">
+        <label for="set-bold" data-i18n="bold_label">テキスト太字強調</label>
+        <input id="set-bold" type="checkbox">
+      </div>
+      <div class="field column">
+        <label for="set-hardbreaks" data-i18n="hard_breaks_cb">改行をそのまま改行として表示する</label>
+        <input id="set-hardbreaks" type="checkbox">
+        <p class="hint" data-i18n="hard_breaks_hint"></p>
+      </div>
+      <div class="field">
+        <label data-i18n="plugin_label">プラグインテーマ</label>
+        <button id="btn-theme-dir" type="button" class="text-btn" data-i18n="plugin_dir_btn">テーマフォルダを開く</button>
+      </div>
+      <div class="field">
+        <label data-i18n="font_add">フォント追加</label>
+        <button id="btn-font-add" type="button" class="text-btn">TTF / OTF を追加</button>
+      </div>
+      <div class="modal-actions">
+        <button value="cancel" class="text-btn" data-i18n="cancel">キャンセル</button>
+        <button value="ok" class="primary" data-i18n="ok">OK</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="margin-dialog" class="modal">
+    <form method="dialog" class="modal-body">
+      <h2 data-i18n="margin_title">A4余白設定 (mm)</h2>
+      <div class="margin-grid">
+        <label>上 <input id="m-top" type="number" min="0" max="80" step="1"></label>
+        <label>右 <input id="m-right" type="number" min="0" max="80" step="1"></label>
+        <label>下 <input id="m-bottom" type="number" min="0" max="80" step="1"></label>
+        <label>左 <input id="m-left" type="number" min="0" max="80" step="1"></label>
+      </div>
+      <div class="modal-actions">
+        <button value="cancel" class="text-btn" data-i18n="cancel">キャンセル</button>
+        <button value="ok" class="primary" data-i18n="ok">OK</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+</div>
+<script src="assets/katex/katex.min.js"></script>
+<script src="assets/katex/auto-render.min.js"></script>
+<script src="assets/hljs/highlight.min.js"></script>
+<script src="assets/mermaid/mermaid.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

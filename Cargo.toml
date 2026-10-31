@@ -1,0 +1,19 @@
+[workspace]
+members = ["crates/mdv-core", "apps/desktop"]
+resolver = "2"
+
+[workspace.package]
+version = "26.0.1"
+edition = "2021"
+authors = ["Yuki_Orita"]
+license = "MIT"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+opt-level = 1

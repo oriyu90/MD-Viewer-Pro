@@ -1,0 +1,7 @@
+/target
+/dist
+.DS_Store
+*.tmp
+*.dmg
+selftest.json
+.agent-state
