@@ -47,12 +47,12 @@ wait "$PID" 2>/dev/null || true
 
 BIN_SIZE=$(stat -f%z "$BIN")
 APP_KB=$(du -sk "$ROOT/dist/MD Viewer Pro.app" | awk '{print $1}')
-DMG=$(ls -1 "$ROOT"/dist/*.dmg 2>/dev/null | head -1)
+DMG=$(ls -1t "$ROOT"/dist/*.dmg 2>/dev/null | head -1)
 DMG_SIZE=$([ -n "$DMG" ] && stat -f%z "$DMG" || echo 0)
 DMG_SHA=$([ -n "$DMG" ] && shasum -a 256 "$DMG" | awk '{print $1}' || echo "-")
 
 cat > "$OUT" <<REPORT
-# QA measurements — MD Viewer Pro v26.0.1
+# QA measurements — MD Viewer Pro v$(python3 -c "import json;print(json.load(open('apps/desktop/tauri.conf.json'))['version'])")
 
 - 計測日: $(date '+%Y-%m-%d %H:%M %Z')
 - 計測機: $(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo unknown) / macOS $(sw_vers -productVersion)
@@ -63,7 +63,7 @@ cat > "$OUT" <<REPORT
 |---|---|
 | 起動〜UI ready | ${READY_MS} ms |
 | プロセスツリー RSS（起動 1.5 秒後） | $((RSS_KB / 1024)) MB |
-| 実行ファイル | 7.6 MB (${BIN_SIZE} bytes) |
+| 実行ファイル | $(python3 -c "print(f\"{$BIN_SIZE/1048576:.1f}\")") MB (${BIN_SIZE} bytes) |
 | .app バンドル | $((APP_KB / 1024)) MB |
 | DMG | $((DMG_SIZE / 1024 / 1024)) MB (${DMG_SIZE} bytes) |
 | DMG SHA-256 | ${DMG_SHA} |

@@ -18,7 +18,7 @@ pub struct OpenDocument {
 pub struct AppState {
     pub approved: Mutex<std::collections::HashSet<PathBuf>>,
     pub settings: Mutex<Settings>,
-    pub doc: Mutex<Option<OpenDocument>>,
+    pub doc: Mutex<std::collections::HashMap<String, OpenDocument>>,
     pub clips: Mutex<Vec<String>>,
     pub fonts: Mutex<Vec<String>>,
 }
@@ -56,7 +56,7 @@ impl AppState {
         AppState {
             approved: Mutex::new(std::collections::HashSet::new()),
             settings: Mutex::new(s),
-            doc: Mutex::new(None),
+            doc: Mutex::new(std::collections::HashMap::new()),
             clips: Mutex::new(clips),
             fonts: Mutex::new(fonts),
         }

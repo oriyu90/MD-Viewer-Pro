@@ -1,6 +1,35 @@
 # Release notes
 
-## v26.0.1 — Rust rewrite (pre-release)
+## v26.1.0 — 機能完成版（pre-release）
+
+v26.0.1 で未実装だった機能を補完し、UI を実機スナップショットで検査した版。
+
+### 追加・改善
+
+- **PDF 直接書き出し**: A4 縦/横、余白（mm）、テーマ（アプリ/ダーク/ライト/プラグイン）、画像有無を指定し、A4 ページに分割して 1 つの PDF に保存（WKWebView の矩形キャプチャ + lopdf 結合）
+- **プラグインテーマ**: `~/.mdviewer/themes/*.json` のパレットを全面適用（必須キー検証、背景輝度で dark 判定）
+- **起動ダイアログ**: ファイルを開く / 新規作成 / 説明 / 言語選択。ファイル引数がある場合は非表示
+- **複数ウィンドウ**: 新規ウィンドウ（`Cmd+Shift+N`）。ウィンドウごとに文書状態を保持
+- **Google Drive / OneDrive**: メニューから各サービスのアップロード画面を開く（旧版と同じ挙動）
+- **編集の追従スクロール**: エディタのスクロール位置に合わせてプレビューが追従（設定で ON/OFF）
+- **フォント削除 UI**、**テーマ一覧の動的更新**
+- **Windows / Linux の CI**（GitHub Actions でテスト・リリースビルド・clippy）
+
+### 実測（Apple M3 Ultra / macOS 26.4）
+
+| 指標 | v1.5.3 | v26.1.0 |
+|---|---|---|
+| DMG | 約 175 MB | 約 7 MB |
+| 常駐 RSS | 約 300 MB | 約 115 MB |
+| 起動〜UI ready | 数秒 | 約 1.0 秒 |
+
+### 既知の制限
+
+- WYSIWYG 編集は非対応（ソース + プレビュー）。原文破壊を避けるための設計判断
+- Windows / Linux は CI 検証のみで配布物は未作成
+- サイト（Studio RIZI）の v26.1 掲載は未実施
+
+v26.0.1 — Rust rewrite (pre-release)
 
 First release of the Rust/Tauri 2 line. The v1.5.x Python application remains the
 previous stable line.

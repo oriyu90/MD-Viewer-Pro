@@ -1,7 +1,7 @@
-# QA レポート — MD Viewer Pro v26.0.1
+# QA レポート — MD Viewer Pro v26.1.0
 
 - 実施日: 2026-11-01
-- 対象: `MDViewerPro-26.0.1-macOS.dmg`（SHA-256 `18eec56367da7cc76a1916f89a32627b28debd5edb008d2ae9ce7225a0ce2076`）
+- 対象: `MDViewerPro-26.1.0-macOS.dmg`（SHA-256 `9bccb43d3a67e1146ac4540b84c2c9e7421c787b22d4e572c820ed840835fe84`）
 - 環境: Apple M3 Ultra / macOS 26.4 / arm64
 
 ## 1. テスト構成
@@ -48,7 +48,8 @@ crates/mdv-core
   "openedToc": 2,
   "openedSourceBytes": 84,
   "savedBytes": 89,
-  "savedHasAppend": true
+  "savedHasAppend": true,
+  "pdfBytes": 38522
 }
 ```
 
@@ -59,17 +60,18 @@ crates/mdv-core
 - KaTeX による数式 1 件、Mermaid の SVG 1 件（オフライン）
 - highlight.js によるキーワード着色 2 件
 - ファイルを開く → 保存 → 読み直しの往復（追記が保持される）
-- 5 言語 157 キーの読み込み
+- 5 言語 160 キーの読み込み
+- PDF 直接書き出し（A4 1 ページ、38KB）
 
 ## 3. 性能（実測）
 
 | 指標 | v1.5.3（Python/Qt） | v26.0.1 | 改善 |
 |---|---|---|---|
-| 起動〜UI ready | 数秒（Windows 実機 8.5 秒） | **952 ms** | 約 9 倍 |
-| プロセスツリー RSS | 約 300 MB | **112 MB** | 約 2.7 倍軽量 |
-| 実行ファイル | —（PyInstaller バンドル） | **7.6 MB** | — |
+| 起動〜UI ready | 数秒（Windows 実機 8.5 秒） | **1,009 ms** | 約 8 倍 |
+| プロセスツリー RSS | 約 300 MB | **111 MB** | 約 2.7 倍軽量 |
+| 実行ファイル | —（PyInstaller バンドル） | **8.3 MB** | — |
 | .app | — | **8 MB** | — |
-| DMG | 約 175 MB | **5.3 MB** | 約 33 倍小さい |
+| DMG | 約 175 MB | **5.9 MB** | 約 30 倍小さい |
 
 計測方法: `scripts/measure.sh`（起動経過msは JS の `ui_ready`、RSS は起動 1.5 秒後に
 プロセスツリーを再帰合算。入力は 120 見出し・表・コード・数式を含む約 40KB の Markdown）。
@@ -82,6 +84,15 @@ crates/mdv-core
 | CSP | `default-src 'self'; script-src 'self'`（自前アセットのみ） |
 | 任意パス書き込み | ダイアログ/起動引数で選んだパスの allowlist のみ許可 |
 | 外部 URL | http/https/mailto のみ `open_external` で許可 |
+
+## 4.5 UI 検査（実 WKWebView スナップショット）
+
+`--screenshot` モードで実表示を PNG 化し、以下を確認・修正しました。
+
+- 閲覧（ダーク/ライト）、A4、編集、起動ダイアログ、詳細設定、PDF 設定、検索、プラグインテーマ、クリップ
+- 修正: 行番号の潰れ、目次のコントラスト、設定の文字サイズ行、PDF 設定ダイアログの未表示、
+  ライトテーマの紙面化、PDF のページ境界での見出し切断、ページ下部の黒抜け
+- 詳細: `docs/UI_REVIEW.md` / 画像: `docs/ui/*.png`
 
 ## 5. 未実施・未確認
 

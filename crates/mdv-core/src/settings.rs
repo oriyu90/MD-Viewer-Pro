@@ -9,7 +9,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::theme::{normalize_accent, ThemeMode};
+use crate::theme::normalize_accent;
 
 pub const SETTINGS_VERSION: u32 = 2;
 
@@ -34,7 +34,8 @@ impl Default for WindowState {
 pub struct Settings {
     pub version: u32,
     pub lang: String,
-    pub theme: ThemeMode,
+    /// "dark" / "light" / "system" / プラグインテーマ名
+    pub theme: String,
     pub accent_color: String,
     pub font_family: String,
     pub font_size: u32,
@@ -44,11 +45,17 @@ pub struct Settings {
     pub hard_breaks: bool,
     pub show_toc: bool,
     pub show_clip: bool,
+    pub follow_scroll: bool,
     pub bold_mode: bool,
     pub recent: Vec<String>,
     pub last_dir: String,
     pub last_pdf_dir: String,
     pub pdf_embed_images: bool,
+    /// "portrait" / "landscape"
+    pub pdf_orientation: String,
+    pub pdf_margins: [u32; 4],
+    /// "" = follow app theme, otherwise theme name
+    pub pdf_theme: String,
     pub window: WindowState,
     /// 旧アプリの `window_geometry`（"wxh+x+y"）を保持しておく（移行用）。
     pub window_geometry: String,
@@ -59,7 +66,7 @@ impl Default for Settings {
         Settings {
             version: SETTINGS_VERSION,
             lang: "ja".into(),
-            theme: ThemeMode::Dark,
+            theme: "dark".into(),
             accent_color: String::new(),
             font_family: "Helvetica Neue".into(),
             font_size: 16,
@@ -69,11 +76,15 @@ impl Default for Settings {
             hard_breaks: true,
             show_toc: true,
             show_clip: false,
+            follow_scroll: true,
             bold_mode: false,
             recent: Vec::new(),
             last_dir: String::new(),
             last_pdf_dir: String::new(),
             pdf_embed_images: true,
+            pdf_orientation: "portrait".into(),
+            pdf_margins: [20, 20, 20, 20],
+            pdf_theme: String::new(),
             window: WindowState::default(),
             window_geometry: String::new(),
         }
@@ -82,11 +93,21 @@ impl Default for Settings {
 
 impl Settings {
     pub fn validate(mut self) -> Self {
+        self.theme = self.theme.trim().to_lowercase();
+        if self.theme.is_empty() {
+            self.theme = "dark".into();
+        }
         if !matches!(self.lang.as_str(), "ja" | "en" | "de" | "fr" | "zh") {
             self.lang = "ja".into();
         }
         if self.scale_idx > 4 {
             self.scale_idx = 2;
+        }
+        if !matches!(self.pdf_orientation.as_str(), "portrait" | "landscape") {
+            self.pdf_orientation = "portrait".into();
+        }
+        for m in &mut self.pdf_margins {
+            *m = (*m).min(60);
         }
         if !matches!(self.page_mode.as_str(), "free" | "a4") {
             self.page_mode = "free".into();
@@ -194,7 +215,7 @@ mod tests {
         .unwrap();
         let s = load_from(&p);
         assert_eq!(s.lang, "en");
-        assert_eq!(s.theme, ThemeMode::Light);
+        assert_eq!(s.theme, "light");
         assert_eq!(s.accent_color, "#aabbcc");
         assert!(!s.show_toc);
         assert_eq!(s.window_geometry, "1280x900+10+20");

@@ -151,6 +151,48 @@ pub fn effective_heading(accent: &str, dark_bg: bool, text: &str) -> String {
     }
 }
 
+/// 背景色が暗いか（旧 _hex_is_dark と同じ知覚輝度）。
+pub fn hex_is_dark(hex_color: &str) -> bool {
+    let Some((r, g, b)) = parse_hex(hex_color) else { return true };
+    (0.299 * r as f64 + 0.587 * g as f64 + 0.114 * b as f64) < 128.0
+}
+
+const PALETTE_KEYS: [&str; 19] = [
+    "bg", "bg2", "bg3", "border", "text", "text_dim", "accent", "heading", "toolbar",
+    "btn", "btn_hover", "btn_active_bg", "btn_active_fg", "select", "code_fg",
+    "row_even", "sep", "copy_btn_bg", "copy_btn_fg",
+];
+
+/// プラグインテーマ JSON（全キー必須）からパレットを作る。
+pub fn palette_from_map(map: &std::collections::BTreeMap<String, String>) -> Option<Palette> {
+    for k in PALETTE_KEYS {
+        if !map.contains_key(k) {
+            return None;
+        }
+    }
+    Some(Palette {
+        bg: map["bg"].clone(),
+        bg2: map["bg2"].clone(),
+        bg3: map["bg3"].clone(),
+        border: map["border"].clone(),
+        text: map["text"].clone(),
+        text_dim: map["text_dim"].clone(),
+        accent: map["accent"].clone(),
+        heading: map["heading"].clone(),
+        toolbar: map["toolbar"].clone(),
+        btn: map["btn"].clone(),
+        btn_hover: map["btn_hover"].clone(),
+        btn_active_bg: map["btn_active_bg"].clone(),
+        btn_active_fg: map["btn_active_fg"].clone(),
+        select: map["select"].clone(),
+        code_fg: map["code_fg"].clone(),
+        row_even: map["row_even"].clone(),
+        sep: map["sep"].clone(),
+        copy_btn_bg: map["copy_btn_bg"].clone(),
+        copy_btn_fg: map["copy_btn_fg"].clone(),
+    })
+}
+
 /// 設定値（"#rrggbb" か空）を検証して正規化する。
 pub fn normalize_accent(s: &str) -> String {
     let s = s.trim();

@@ -2,7 +2,7 @@
 
 A fast, native-feeling Markdown viewer and editor for macOS, rebuilt in Rust with Tauri 2.
 
-**Version 26.0.1** — Rust rewrite (previous line: v1.5.3, Python + PySide6).
+**Version 26.1.0** — Rust rewrite (previous line: v1.5.3, Python + PySide6).
 
 [日本語](#日本語) | [English](#english)
 
@@ -33,9 +33,11 @@ v26.0.1 で Python/PySide6 から **Rust + Tauri 2** へ作り直し、次の点
 | 表示 | ダーク / ライト / システム、アクセント色（プリセット + カスタム）、フォント、文字サイズ、5 段階ズーム |
 | レイアウト | フリー / A4 文書（余白設定、印刷 CSS） |
 | クリップ | 定型文を右パネルに保存し、ワンクリックでコピー（上限 200 件 / 5000 字） |
-| 書き出し | HTML、PDF（macOS の印刷ダイアログ経由） |
+| 書き出し | HTML、PDF 直接書き出し（A4・縦/横・余白・テーマ・画像有無を指定して保存） |
+| テーマ | ダーク / ライト / システム + `~/.mdviewer/themes/*.json` のプラグインテーマ（パレット全面適用） |
 | 多言語 | 日本語 / English / Deutsch / Français / 简体中文 |
-| macOS 連携 | ネイティブメニュー、ファイル関連付け、Finder から開く、単一インスタンス、ウィンドウ状態の復元 |
+| macOS 連携 | ネイティブメニュー、ファイル関連付け、Finder から開く、単一インスタンス、複数ウィンドウ、ウィンドウ状態の復元 |
+| 起動 | 起動ダイアログ（ファイルを開く / 新規作成 / 説明）、言語選択 |
 
 ### インストール（macOS）
 
@@ -61,10 +63,9 @@ cargo test --workspace
 
 ### 既知の制限（v26.0.1）
 
-- PDF 書き出しは macOS の印刷ダイアログから「PDF として保存」を選ぶ方式です
-- MD 編集の WYSIWYG（見た目どおりの直接編集）は非対応です。ソース + プレビューに統一しました
-- Windows / Linux 版は未配布です（設計は共通、Linux は WebKitGTK が必要）
-- Google Drive / OneDrive へのアップロードは非対応です
+- MD 編集の WYSIWYG（見た目どおりの直接編集）は非対応です。ソース + プレビューに統一しました（原文を壊さないための設計判断）
+- Windows / Linux 版は未配布です（CI でビルド検証、Linux は WebKitGTK 4.1 が必要）
+- Google Drive / OneDrive は各サービスのアップロード画面を開くのみ（自動アップロードはしません）
 - 外部画像（`https://…`）は表示のために取得されます（ローカルファイルは取得しません）
 
 ### ライセンス

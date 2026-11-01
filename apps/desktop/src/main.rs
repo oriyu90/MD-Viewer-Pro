@@ -40,6 +40,24 @@ fn main() {
                 state::start_instance_listener(app.handle().clone());
             }
 
+            if let Some(shot) = commands::screenshot_args() {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(2600));
+                    let _ = commands::take_screenshot(handle.clone(), shot.output.clone());
+                    std::thread::sleep(std::time::Duration::from_millis(400));
+                    handle.exit(0);
+                });
+            }
+
+            if std::env::args().any(|a| a == "--open-windows") {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(1500));
+                    let _ = commands::new_window(handle);
+                });
+            }
+
             if selftest_mode() {
                 let handle = app.handle().clone();
                 std::thread::spawn(move || {
@@ -97,10 +115,14 @@ fn main() {
             commands::themes_list,
             commands::open_themes_dir,
             commands::print_page,
+            commands::export_pdf,
+            commands::new_window,
             commands::system_theme_dark,
             commands::app_paths,
             commands::selftest_report,
             commands::ui_ready,
+            commands::palette_for_theme,
+            commands::take_screenshot,
         ])
         .build(tauri::generate_context!())
         .expect("error while building MD Viewer Pro");

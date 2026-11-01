@@ -291,13 +291,39 @@ function scheduleRender() {
 
 // ── エディタ ────────────────────────────────────────────────────
 
+let lastSync = 0;
+function syncPreviewToEditor() {
+  if (state.mode !== "edit" || !state.settings?.follow_scroll) return;
+  const now = performance.now();
+  if (now - lastSync < 60) return;
+  lastSync = now;
+  const ed = $("#editor");
+  const sc = $("#doc-scroll");
+  const edMax = Math.max(1, ed.scrollHeight - ed.clientHeight);
+  const ratio = Math.min(1, Math.max(0, ed.scrollTop / edMax));
+  sc.scrollTop = ratio * Math.max(0, sc.scrollHeight - sc.clientHeight);
+}
+
+function updateActiveLine() {
+  const ed = $("#editor");
+  const line = ed.value.slice(0, ed.selectionStart).split("\n").length;
+  for (const el of $$("#gutter .ln")) {
+    el.classList.toggle("cur", Number(el.dataset.line) === line);
+  }
+  syncPreviewToEditor();
+}
+
 function updateGutter() {
   const ed = $("#editor");
   const lines = ed.value.split("\n").length;
   const gutter = $("#gutter");
   if (gutter.dataset.lines !== String(lines)) {
     gutter.dataset.lines = String(lines);
-    gutter.textContent = Array.from({ length: lines }, (_, i) => i + 1).join("\n");
+    if (lines <= 4000) {
+      gutter.innerHTML = Array.from({ length: lines }, (_, i) => `<span class="ln" data-line="${i + 1}">${i + 1}</span>`).join("");
+    } else {
+      gutter.textContent = Array.from({ length: lines }, (_, i) => i + 1).join("\n");
+    }
   }
   gutter.scrollTop = ed.scrollTop;
 }
@@ -356,7 +382,7 @@ async function loadPath(path) {
     enhance();
     $("#doc-scroll").scrollTop = 0;
     updateTitle();
-    setMode("view");
+    setMode(state.boot?.screenshot?.mode === "edit" ? "edit" : "view");
     if (d.warning) toast(d.warning);
   } catch (e) {
     toast(String(e));
@@ -423,6 +449,126 @@ body{margin:0;padding:40px 16px;}
 #doc{max-width:820px;margin:0 auto;}
 </style></head>
 <body class="export"><article id="doc" class="markdown-body">${body}</article></body></html>`;
+}
+
+function paginateForPdf(pageH) {
+  const doc = $("#doc");
+  for (const el of $$(".pdf-spacer", doc)) el.remove();
+  let page = 0;
+  for (const el of Array.from(doc.children)) {
+    if (el.classList.contains("pdf-spacer")) continue;
+    const h = el.offsetHeight;
+    let guard = 0;
+    while (guard++ < 6) {
+      const top = el.offsetTop;
+      const bottom = top + h;
+      const limit = (page + 1) * pageH;
+      if (bottom <= limit || top >= limit) break;
+      if (h > pageH - 30) break;
+      const spacer = document.createElement("div");
+      spacer.className = "pdf-spacer";
+      spacer.style.height = `${limit - top}px`;
+      el.before(spacer);
+      page++;
+    }
+  }
+  const total = doc.scrollHeight;
+  const pages = Math.max(1, Math.ceil(total / pageH));
+  const pad = pages * pageH - total;
+  if (pad > 0) {
+    const spacer = document.createElement("div");
+    spacer.className = "pdf-spacer";
+    spacer.style.height = `${pad}px`;
+    doc.appendChild(spacer);
+  }
+}
+
+function fillPdfDialog() {
+  const s = state.settings;
+  $("#pdf-orientation").value = s.pdf_orientation || "portrait";
+  const [t0, r0, b0, l0] = s.pdf_margins || [20, 20, 20, 20];
+  $("#pdf-m-top").value = t0;
+  $("#pdf-m-right").value = r0;
+  $("#pdf-m-bottom").value = b0;
+  $("#pdf-m-left").value = l0;
+  $("#pdf-images").checked = s.pdf_embed_images !== false;
+  const sel = $("#pdf-style");
+  sel.innerHTML = "";
+  const mk = (v, label) => {
+    const o = document.createElement("option");
+    o.value = v;
+    o.textContent = label;
+    sel.appendChild(o);
+  };
+  mk("", t("pdf_theme_follow", "アプリと同じ"));
+  mk("dark", t("dark", "ダークモード"));
+  mk("light", t("light", "ライトモード"));
+  for (const th of state.boot?.themes ?? []) mk(th.name, th.name);
+  sel.value = s.pdf_theme || "";
+}
+
+const raf2 = () => new Promise((r) => setTimeout(r, 80));
+
+async function runPdfExport(path) {
+  const s = state.settings;
+  const styleName = s.pdf_theme || s.theme;
+  const pal = await invoke("palette_for_theme", { theme: styleName, accent: s.accent_color || "" });
+  applyPalette({ palette: pal.palette, dark: pal.dark });
+  if (!s.pdf_embed_images) document.body.classList.add("no-images");
+  document.body.classList.add("pdf-export");
+
+  const portrait = (s.pdf_orientation || "portrait") !== "landscape";
+  const pageW = portrait ? 794 : 1123;
+  const pageH = portrait ? 1123 : 794;
+  const mm = s.pdf_margins || [20, 20, 20, 20];
+  const pad = mm.map((v) => Math.round(v * 96 / 25.4));
+  const doc = $("#doc");
+  try {
+    await raf2();
+    doc.style.padding = `${pad[0]}px ${pad[1]}px ${pad[2]}px ${pad[3]}px`;
+    doc.style.width = `${pageW}px`;
+    paginateForPdf(pageH);
+    await raf2();
+    const pages = Math.max(1, Math.round(doc.scrollHeight / pageH));
+    const bytes = await invoke("export_pdf", { path, pageW, pageH, pages });
+    toast(`${t("saved", "保存しました")} (${Math.round(bytes / 1024)} KB / ${pages}p)`);
+    return bytes;
+  } finally {
+    doc.style.padding = "";
+    doc.style.width = "";
+    document.body.classList.remove("pdf-export", "no-images");
+    for (const el of $$(".pdf-spacer")) el.remove();
+    if (!TAURI) { /* mock */ }
+    renderNow();
+  }
+}
+
+async function exportPdf() {
+  fillPdfDialog();
+  const dlg = $("#pdf-dialog");
+  const ok = await new Promise((resolve) => {
+    dlg.onclose = () => resolve(dlg.returnValue === "ok");
+    dlg.showModal();
+  });
+  if (!ok) return;
+  const next = {
+    ...state.settings,
+    pdf_orientation: $("#pdf-orientation").value,
+    pdf_margins: [
+      Number($("#pdf-m-top").value) || 0,
+      Number($("#pdf-m-right").value) || 0,
+      Number($("#pdf-m-bottom").value) || 0,
+      Number($("#pdf-m-left").value) || 0,
+    ],
+    pdf_embed_images: $("#pdf-images").checked,
+    pdf_theme: $("#pdf-style").value,
+  };
+  const boot = await refreshBootstrap(next);
+  applyPalette(boot);
+  const base = state.docPath ? state.docPath.replace(/\.[^.]+$/, "") : "untitled";
+  const path = await invoke("pick_save", { suggested: `${base}.pdf` });
+  if (!path) return;
+  await runPdfExport(path);
 }
 
 async function printDoc() {
@@ -603,7 +749,22 @@ const ACCENTS = [
 function fillSettingsDialog() {
   const s = state.settings;
   $("#set-lang").value = s.lang;
-  $("#set-theme").value = s.theme;
+  invoke("themes_list").then((list) => { if (Array.isArray(list)) state.boot.themes = list; }).catch(() => {});
+  const themeSel = $("#set-theme");
+  themeSel.innerHTML = "";
+  for (const [val, label] of [["dark", t("dark", "ダークモード")], ["light", t("light", "ライトモード")], ["system", t("system_theme", "システム")]]) {
+    const o = document.createElement("option");
+    o.value = val; o.textContent = label; themeSel.appendChild(o);
+  }
+  for (const th of state.boot?.themes ?? []) {
+    const o = document.createElement("option");
+    o.value = th.name; o.textContent = th.name; themeSel.appendChild(o);
+  }
+  if (![...themeSel.options].some((o) => o.value === s.theme)) {
+    const o = document.createElement("option");
+    o.value = s.theme; o.textContent = s.theme; themeSel.appendChild(o);
+  }
+  themeSel.value = s.theme;
   $("#set-font").innerHTML = "";
   const fonts = [...new Set([...(state.boot?.default_fonts ?? []), ...(state.fonts ?? [])])];
   for (const f of fonts) {
@@ -741,10 +902,39 @@ function wire() {
     state.fonts = await invoke("font_add");
     fillSettingsDialog();
   });
-  $("#btn-pdf").addEventListener("click", printDoc);
+  $("#btn-font-remove").addEventListener("click", () => {
+    if (!state.fonts?.length) { toast(t("font_none", "追加したフォントはありません")); return; }
+    const dlg = document.createElement("dialog");
+    dlg.className = "modal";
+    dlg.innerHTML = `<form method="dialog" class="modal-body">
+      <h2>${escapeHtml(t("font_remove", "フォント削除"))}</h2>
+      <select id="font-del-select" style="width:100%;padding:6px;background:var(--btn);border:1px solid var(--border);border-radius:8px">
+        ${state.fonts.map((f) => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join("")}
+      </select>
+      <div class="modal-actions">
+        <button value="cancel" class="text-btn">${escapeHtml(t("cancel", "キャンセル"))}</button>
+        <button value="ok" class="primary">${escapeHtml(t("ok", "OK"))}</button>
+      </div></form>`;
+    document.body.appendChild(dlg);
+    dlg.addEventListener("close", async () => {
+      if (dlg.returnValue === "ok") {
+        const fam = dlg.querySelector("#font-del-select").value;
+        state.fonts = await invoke("font_remove", { family: fam });
+        fillSettingsDialog();
+      }
+      dlg.remove();
+    });
+    dlg.showModal();
+  });
+  $("#btn-pdf").addEventListener("click", exportPdf);
 
   $("#editor").addEventListener("input", onEditorInput);
-  $("#editor").addEventListener("scroll", () => { $("#gutter").scrollTop = $("#editor").scrollTop; });
+  $("#editor").addEventListener("scroll", () => {
+    $("#gutter").scrollTop = $("#editor").scrollTop;
+    syncPreviewToEditor();
+  });
+  $("#editor").addEventListener("click", updateActiveLine);
+  $("#editor").addEventListener("keyup", updateActiveLine);
   $("#editor").addEventListener("keydown", (e) => {
     if (e.key === "Tab") {
       e.preventDefault();
@@ -803,17 +993,29 @@ function wire() {
   const menuActions = {
     "find": () => openFind(),
     "new": () => newDocument(),
-    "new-window": () => newDocument(),
+    "new-window": () => invoke("new_window"),
     "open": () => openFile(),
     "save": () => saveFile(false),
     "save-as": () => saveFile(true),
     "export-html": () => exportHtml(),
-    "export-pdf": () => printDoc(),
+    "export-pdf": () => exportPdf(),
     "reveal": () => state.docPath && invoke("reveal_path", { path: state.docPath }),
     "close": () => wv && wv.close(),
     "toggle-toc": () => $("#btn-toc").click(),
     "toggle-clip": () => $("#btn-clip").click(),
     "settings": () => $("#btn-settings").click(),
+    "guide": () => guide(),
+    "gdrive": () => {
+      const name = state.docPath ? state.docPath.split("/").pop() : t("unsaved_file", "（未保存）");
+      toast(t("gdrive_msg", "ファイル: {fname}\n\nGoogle Drive を開きます。").replace("{fname}", name));
+      invoke("open_external", { url: "https://drive.google.com/drive/my-drive" });
+    },
+    "onedrive": () => {
+      const name = state.docPath ? state.docPath.split("/").pop() : t("unsaved_file", "（未保存）");
+      toast(t("onedrive_msg", "ファイル: {fname}\n\nOneDrive を開きます。").replace("{fname}", name));
+      invoke("open_external", { url: "https://onedrive.live.com" });
+    },
+    "print": () => printDoc(),
     "page-free": () => $$("#page-seg button").find((b) => b.dataset.page === "free")?.click(),
     "page-a4": () => $$("#page-seg button").find((b) => b.dataset.page === "a4")?.click(),
     "zoom-in": () => changeScale(1),
@@ -832,6 +1034,66 @@ async function changeScale(delta, reset = false) {
   const next = reset ? 2 : Math.min(4, Math.max(0, cur + delta));
   if (next === cur) return;
   await refreshBootstrap({ ...state.settings, scale_idx: next });
+}
+
+const GUIDE_JA = `# MD Viewer Pro の使い方
+
+## 閲覧
+- ツールバーの「閲覧 / 編集」でモードを切り替えます。
+- 左の目次から見出しへジャンプできます。
+- \`Cmd+F\` でページ内検索、\`Esc\` で閉じます。
+
+## 編集
+- 「編集」に切り替えると、左に Markdown ソース、右にプレビューが出ます。
+- 書式ツールバーの B / I / H1〜H3 / リストなどが使えます。
+- \`Cmd+S\` で保存、\`Cmd+Shift+S\` で名前を付けて保存します。
+
+## 表示
+- 「フリー / A4文書」でレイアウトを切り替えます。
+- 詳細設定でテーマ・アクセント色・フォント・文字サイズ・改行の扱いを変更できます。
+
+## 書き出し
+- ファイルメニューから HTML / PDF を書き出せます（PDF は印刷ダイアログ経由）。
+`;
+
+function showStartup() {
+  if (!TAURI || state.boot?.selftest_fixture || state.docPath) return;
+  setTimeout(() => {
+    if (state.docPath || state.source) return;
+    const dlg = $("#startup-dialog");
+    if (!dlg) return;
+    $("#startup-lang").value = state.settings.lang;
+    dlg.showModal();
+  }, 450);
+}
+
+function wireStartup() {
+  const dlg = $("#startup-dialog");
+  if (!dlg) return;
+  const close = () => { if (dlg.open) dlg.close(); };
+  $("#startup-lang").addEventListener("change", async (e) => {
+    await loadI18n(e.target.value);
+    applyI18n();
+  });
+  $("#startup-open").addEventListener("click", async () => { close(); await openFile(); });
+  $("#startup-new").addEventListener("click", () => { close(); newDocument(); });
+  $("#startup-guide").addEventListener("click", () => {
+    close();
+    state.source = GUIDE_JA;
+    state.docPath = null;
+    state.rendered = null;
+    renderNow().then(() => setMode("view"));
+    updateTitle();
+  });
+  dlg.addEventListener("cancel", (e) => { e.preventDefault(); close(); newDocument(); });
+}
+
+function guide() {
+  state.source = GUIDE_JA;
+  state.docPath = null;
+  state.rendered = null;
+  renderNow().then(() => setMode("view"));
+  updateTitle();
 }
 
 function newDocument() {
@@ -885,7 +1147,48 @@ async function boot() {
   }
 
   // 起動時は空でも案内を出す（旧アプリの起動体験に合わせる）
+  if (state.boot?.screenshot) {
+    const shot = state.boot.screenshot;
+    try {
+      const p = await invoke("palette_for_theme", {
+        theme: shot.theme,
+        accent: state.settings.accent_color || "",
+      });
+      applyPalette({ palette: p.palette, dark: p.dark });
+      state.settings.page_mode = shot.page;
+      document.body.dataset.page = shot.page;
+      if (shot.mode === "edit") setMode("edit");
+    } catch (e) { /* noop */ }
+  }
+
   try { await invoke("ui_ready"); } catch (e) { /* mock */ }
+
+  if (TAURI && state.boot?.pdf_export) {
+    const [input, output] = state.boot.pdf_export;
+    try {
+      await loadPath(input);
+      await new Promise((r) => setTimeout(r, 300));
+      const bytes = await runPdfExport(output);
+      await invoke("selftest_report", { payload: { ok: true, mode: "pdf-export", pdfBytes: bytes } });
+    } catch (err) {
+      await invoke("selftest_report", { payload: { ok: false, error: String(err) } });
+    }
+  }
+
+  wireStartup();
+
+  if (state.boot?.dialog) {
+    const d = state.boot.dialog;
+    setTimeout(() => {
+      if (d === "settings") { fillSettingsDialog(); $("#settings-dialog").showModal(); }
+      else if (d === "margin") { $("#margin-dialog").showModal(); }
+      else if (d === "pdf") { try { fillPdfDialog(); $("#pdf-dialog").showModal(); } catch (err) { toast("PDF dialog: " + err); } }
+      else if (d === "clip") { $("#btn-clip").click(); }
+      else if (d === "search") { openFind(); $("#find-input").value = "見出し 1"; runFind("見出し 1"); }
+    }, 300);
+  } else {
+    showStartup();
+  }
 
   if (!state.source) {
     $("#doc").innerHTML = `<div class="welcome"><h1>MD Viewer Pro</h1><p>${escapeHtml(t("startup_hint", "Markdown ファイルを開くか、ドラッグ＆ドロップしてください。"))}</p></div>`;
@@ -1052,6 +1355,8 @@ async function runSelfTest() {
       const back = await invoke("read_file_text", { path: out });
       res.savedBytes = back.length;
       res.savedHasAppend = back.includes("追記");
+      const pdf = fx.replace(/\.md$/, ".pdf");
+      res.pdfBytes = await invoke("export_pdf", { path: pdf, pageW: 794, pageH: 1123, pages: 1 });
     }
     res.i18nKeys = Object.keys(state.t).length;
     res.lang = state.lang;

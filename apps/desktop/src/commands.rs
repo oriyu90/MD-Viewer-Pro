@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use mdv_core::doc::{self, Document};
 use mdv_core::render::{render_markdown, RenderOptions, Rendered};
 use mdv_core::settings::{self, Settings};
-use mdv_core::theme::{self, effective_accent, effective_heading, palette_for, Palette, ThemeMode};
+use mdv_core::theme::{self, effective_accent, effective_heading, hex_is_dark, palette_for, Palette, ThemeMode};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 
@@ -34,6 +34,17 @@ pub struct Bootstrap {
     pub platform: String,
     pub default_fonts: Vec<String>,
     pub selftest_fixture: Option<String>,
+    pub screenshot: Option<ScreenshotArgs>,
+    pub pdf_export: Option<(String, String)>,
+    pub dialog: Option<String>,
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct ScreenshotArgs {
+    pub output: String,
+    pub mode: String,
+    pub theme: String,
+    pub page: String,
 }
 
 #[derive(Serialize, Clone)]
@@ -70,15 +81,55 @@ fn dark_now() -> bool {
     }
 }
 
+fn plugin_palettes() -> std::collections::BTreeMap<String, Palette> {
+    let mut out = std::collections::BTreeMap::new();
+    let Ok(entries) = std::fs::read_dir(state::themes_dir()) else {
+        return out;
+    };
+    for entry in entries.flatten() {
+        let p = entry.path();
+        if p.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&p) else { continue };
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else { continue };
+        let Some(obj) = v.as_object() else { continue };
+        let mut map = std::collections::BTreeMap::new();
+        for (k, val) in obj {
+            if let Some(s) = val.as_str() {
+                map.insert(k.clone(), s.to_string());
+            }
+        }
+        let name = obj
+            .get("name")
+            .and_then(|n| n.as_str())
+            .map(|s| s.to_string())
+            .or_else(|| p.file_stem().map(|s| s.to_string_lossy().to_string()))
+            .unwrap_or_default();
+        if let Some(pal) = theme::palette_from_map(&map) {
+            out.insert(name, pal);
+        }
+    }
+    out
+}
+
 fn build_palette(s: &Settings) -> (Palette, String, String, bool) {
-    let dark = match s.theme {
-        ThemeMode::Dark => true,
-        ThemeMode::Light => false,
-        ThemeMode::System => dark_now(),
+    let plugins = plugin_palettes();
+    let (base, dark) = match s.theme.as_str() {
+        "light" => (theme::light_palette(), false),
+        "system" => {
+            let d = dark_now();
+            (palette_for(ThemeMode::System, d), d)
+        }
+        "dark" => (theme::dark_palette(), true),
+        name => match plugins.get(name) {
+            Some(p) => (p.clone(), hex_is_dark(&p.bg)),
+            None => (theme::dark_palette(), true),
+        },
     };
     let accent = effective_accent(&s.accent_color, dark);
     let heading = effective_heading(&accent, dark, if dark { "#c0c0c0" } else { "#000000" });
-    let mut p = palette_for(s.theme, dark);
+    let mut p = base;
     p.accent = accent.clone();
     p.heading = heading.clone();
     p.select = theme::mix_hex(&accent, &p.bg, 0.72);
@@ -107,6 +158,9 @@ pub fn bootstrap(state: State<'_, AppState>) -> Bootstrap {
             clips: state::clips_path().to_string_lossy().to_string(),
         },
         selftest_fixture: selftest_fixture(),
+        screenshot: screenshot_args(),
+        pdf_export: pdf_export_args(),
+        dialog: dialog_arg(),
         platform: std::env::consts::OS.to_string(),
         default_fonts: vec![
             "Helvetica Neue".into(),
@@ -119,6 +173,37 @@ pub fn bootstrap(state: State<'_, AppState>) -> Bootstrap {
     }
 }
 
+fn dialog_arg() -> Option<String> {
+    let args: Vec<String> = std::env::args().collect();
+    let i = args.iter().position(|a| a == "--dialog")?;
+    args.get(i + 1).cloned()
+}
+
+fn pdf_export_args() -> Option<(String, String)> {
+    let args: Vec<String> = std::env::args().collect();
+    let i = args.iter().position(|a| a == "--export-pdf")?;
+    Some((args.get(i + 1)?.clone(), args.get(i + 2)?.clone()))
+}
+
+pub fn screenshot_args() -> Option<ScreenshotArgs> {
+    let args: Vec<String> = std::env::args().collect();
+    let i = args.iter().position(|a| a == "--screenshot")?;
+    let output = args.get(i + 1)?.clone();
+    let get = |flag: &str, default: &str| -> String {
+        args.iter()
+            .position(|a| a == flag)
+            .and_then(|j| args.get(j + 1))
+            .cloned()
+            .unwrap_or_else(|| default.to_string())
+    };
+    Some(ScreenshotArgs {
+        output,
+        mode: get("--mode", "view"),
+        theme: get("--theme", "dark"),
+        page: get("--page", "free"),
+    })
+}
+
 fn selftest_fixture() -> Option<String> {
     if !std::env::args().any(|a| a == "--selftest") {
         return None;
@@ -129,7 +214,7 @@ fn selftest_fixture() -> Option<String> {
     Some(path.to_string_lossy().to_string())
 }
 
-fn open_document(state: &AppState, path: &Path) -> Result<OpenedDoc, String> {
+fn open_document(state: &AppState, label: &str, path: &Path) -> Result<OpenedDoc, String> {
     let (mut d, warning) = Document::from_path(path).map_err(|e| e.to_string())?;
     d.bump();
     let s = state.settings.lock().unwrap().clone();
@@ -146,16 +231,15 @@ fn open_document(state: &AppState, path: &Path) -> Result<OpenedDoc, String> {
         warning,
         rendered,
     };
-    *state.doc.lock().unwrap() = Some(OpenDocument {
-        path: Some(path.to_path_buf()),
-        source: d.source.clone(),
-        dirty: false,
-    });
+    state.doc.lock().unwrap().insert(
+        label.to_string(),
+        OpenDocument { path: Some(path.to_path_buf()), source: d.source.clone(), dirty: false },
+    );
     Ok(out)
 }
 
 #[tauri::command]
-pub fn open_path(state: State<'_, AppState>, path: String) -> Result<OpenedDoc, String> {
+pub fn open_path(state: State<'_, AppState>, window: WebviewWindow, path: String) -> Result<OpenedDoc, String> {
     let mut s = state.settings.lock().unwrap().clone();
     let p = PathBuf::from(&path);
     if let Some(dir) = p.parent() {
@@ -166,7 +250,22 @@ pub fn open_path(state: State<'_, AppState>, path: String) -> Result<OpenedDoc, 
     s.recent.truncate(12);
     *state.settings.lock().unwrap() = s.clone();
     let _ = settings::save(&s);
-    open_document(&state, &p)
+    open_document(&state, window.label(), &p)
+}
+
+#[tauri::command]
+pub fn new_window(app: AppHandle) -> Result<(), String> {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static COUNTER: AtomicU32 = AtomicU32::new(1);
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let label = format!("win-{n}");
+    tauri::WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::App("index.html".into()))
+        .title("MD Viewer Pro")
+        .inner_size(1280.0, 900.0)
+        .min_inner_size(480.0, 360.0)
+        .build()
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -205,6 +304,7 @@ pub fn render(source: String, hard_breaks: bool) -> Rendered {
 #[tauri::command]
 pub fn save_document(
     state: State<'_, AppState>,
+    window: WebviewWindow,
     path: Option<String>,
     source: String,
 ) -> Result<String, String> {
@@ -218,7 +318,7 @@ pub fn save_document(
     doc::write_file(&target, &source).map_err(|e| e.to_string())?;
     {
         let mut d = state.doc.lock().unwrap();
-        if let Some(doc) = d.as_mut() {
+        if let Some(doc) = d.get_mut(window.label()) {
             doc.source = source.clone();
             doc.path = Some(target.clone());
             doc.dirty = false;
@@ -413,6 +513,115 @@ pub fn open_themes_dir() -> Result<(), String> {
     open::that(dir).map_err(|e| e.to_string())
 }
 
+fn merge_pdfs(parts: Vec<Vec<u8>>) -> Result<Vec<u8>, String> {
+    let mut out = lopdf::Document::with_version("1.5");
+    let mut page_ids: Vec<lopdf::ObjectId> = Vec::new();
+    let mut next: u32 = 1;
+    for bytes in parts {
+        let mut d = lopdf::Document::load_mem(&bytes).map_err(|e| e.to_string())?;
+        d.renumber_objects_with(next);
+        next = d.max_id + 1;
+        for (_, pid) in d.get_pages() {
+            page_ids.push(pid);
+        }
+        for (id, obj) in d.objects {
+            out.objects.insert(id, obj);
+        }
+    }
+    let pages_id = (next, 0u16);
+    let kids: Vec<lopdf::Object> = page_ids
+        .iter()
+        .map(|id| lopdf::Object::Reference(*id))
+        .collect();
+    let mut pages = lopdf::Dictionary::new();
+    pages.set("Type", lopdf::Object::Name(b"Pages".to_vec()));
+    pages.set("Kids", lopdf::Object::Array(kids));
+    pages.set("Count", page_ids.len() as i64);
+    out.objects.insert(pages_id, lopdf::Object::Dictionary(pages));
+    for pid in &page_ids {
+        if let Ok(dict) = out.get_dictionary_mut(*pid) {
+            dict.set("Parent", lopdf::Object::Reference(pages_id));
+        }
+    }
+    let catalog_id = (next + 1, 0u16);
+    let mut cat = lopdf::Dictionary::new();
+    cat.set("Type", lopdf::Object::Name(b"Catalog".to_vec()));
+    cat.set("Pages", lopdf::Object::Reference(pages_id));
+    out.objects.insert(catalog_id, lopdf::Object::Dictionary(cat));
+    out.trailer.set("Root", lopdf::Object::Reference(catalog_id));
+    out.max_id = next + 1;
+    let mut buf = Vec::new();
+    out.save_to(&mut buf).map_err(|e| e.to_string())?;
+    Ok(buf)
+}
+
+/// 表示中のページを A4 相当の矩形で分割キャプチャし、1 つの PDF に結合する。
+#[tauri::command]
+pub async fn export_pdf(
+    state: State<'_, AppState>,
+    window: WebviewWindow,
+    path: String,
+    page_w: f64,
+    page_h: f64,
+    pages: u32,
+) -> Result<u64, String> {
+    let target = PathBuf::from(&path);
+    let selftest = std::env::args().any(|a| a == "--selftest" || a == "--export-pdf");
+    if !selftest && !state.is_approved(&target) {
+        return Err("保存先が許可されていません".into());
+    }
+    if pages == 0 || pages > 2000 {
+        return Err("ページ数が不正です".into());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use block2::RcBlock;
+        use objc2_foundation::{NSData, NSError};
+        use objc2_web_kit::{WKPDFConfiguration, WKWebView};
+
+        let mut parts: Vec<Vec<u8>> = Vec::new();
+        for i in 0..pages {
+            let (tx, rx) = std::sync::mpsc::channel::<Result<Vec<u8>, String>>();
+            let y = page_h * i as f64;
+            window
+                .with_webview(move |wv| {
+                    let wk = wv.inner() as *mut WKWebView;
+                    if wk.is_null() {
+                        let _ = tx.send(Err("no webview".into()));
+                        return;
+                    }
+                    unsafe {
+                        let cfg = WKPDFConfiguration::new(objc2::MainThreadMarker::new_unchecked());
+                        cfg.setRect(objc2_foundation::NSRect {
+                            origin: objc2_foundation::NSPoint { x: 0.0, y },
+                            size: objc2_foundation::NSSize { width: page_w, height: page_h },
+                        });
+                        let tx2 = tx.clone();
+                        let handler = RcBlock::new(move |data: *mut NSData, _err: *mut NSError| {
+                            let bytes = if data.is_null() { None } else { Some((*data).to_vec()) };
+                            let _ = tx2.send(bytes.ok_or_else(|| "empty page".to_string()));
+                        });
+                        (*wk).createPDFWithConfiguration_completionHandler(Some(&cfg), &handler);
+                    }
+                })
+                .map_err(|e| e.to_string())?;
+            let bytes = rx
+                .recv_timeout(std::time::Duration::from_secs(30))
+                .map_err(|_| format!("ページ {} の生成がタイムアウトしました", i + 1))??;
+            parts.push(bytes);
+        }
+        let merged = merge_pdfs(parts)?;
+        std::fs::write(&target, &merged).map_err(|e| e.to_string())?;
+        return Ok(merged.len() as u64);
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (&state, &window, page_w, page_h);
+        Err("このプラットフォームでは未対応です".into())
+    }
+}
+
 #[tauri::command]
 pub fn print_page(window: WebviewWindow) -> Result<(), String> {
     #[cfg(target_os = "macos")]
@@ -422,6 +631,82 @@ pub fn print_page(window: WebviewWindow) -> Result<(), String> {
     #[cfg(not(target_os = "macos"))]
     {
         window.eval("window.print()").map_err(|e| e.to_string())
+    }
+}
+
+#[derive(Serialize)]
+pub struct PaletteReply {
+    pub palette: Palette,
+    pub accent: String,
+    pub heading: String,
+    pub dark: bool,
+}
+
+/// 設定を保存せずにテーマ配色だけを返す（スクリーンショット検証用）。
+#[tauri::command]
+pub fn palette_for_theme(theme: String, accent: String) -> PaletteReply {
+    let s = Settings { theme, accent_color: accent, ..Default::default() };
+    let (palette, accent, heading, dark) = build_palette(&s);
+    PaletteReply { palette, accent, heading, dark }
+}
+
+/// 実 WKWebView をオフスクリーンで描画し PNG に保存する（UI 検証用）。
+#[tauri::command]
+pub fn take_screenshot(app: AppHandle, output: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        use block2::RcBlock;
+        use objc2_app_kit::{NSBitmapImageFileType, NSBitmapImageRep, NSImage};
+        use objc2_foundation::{NSDictionary, NSError};
+        use objc2_web_kit::{WKSnapshotConfiguration, WKWebView};
+
+        let Some(window) = app.get_webview_window("main") else {
+            return Err("window not found".into());
+        };
+        let (tx, rx) = std::sync::mpsc::channel::<Result<Vec<u8>, String>>();
+        let out2 = output.clone();
+        window
+            .with_webview(move |wv| {
+                let wk = wv.inner() as *mut WKWebView;
+                if wk.is_null() {
+                    let _ = tx.send(Err("no webview".into()));
+                    return;
+                }
+                unsafe {
+                    let cfg = WKSnapshotConfiguration::new(objc2::MainThreadMarker::new_unchecked());
+                    let tx2 = tx.clone();
+                    let handler = RcBlock::new(move |image: *mut NSImage, _err: *mut NSError| {
+                        if image.is_null() {
+                            let _ = tx2.send(Err("snapshot returned nil".into()));
+                            return;
+                        }
+                        let bytes = (|| -> Option<Vec<u8>> {
+                            let tiff = (*image).TIFFRepresentation()?;
+                            let rep = NSBitmapImageRep::imageRepWithData(&tiff)?;
+                            let props = NSDictionary::new();
+                            let png = rep.representationUsingType_properties(
+                                NSBitmapImageFileType::PNG,
+                                &props,
+                            )?;
+                            Some(png.to_vec())
+                        })();
+                        let _ = tx2.send(bytes.ok_or_else(|| "png encode failed".to_string()));
+                    });
+                    (*wk).takeSnapshotWithConfiguration_completionHandler(Some(&cfg), &handler);
+                }
+                let _ = out2;
+            })
+            .map_err(|e| e.to_string())?;
+        let bytes = rx
+            .recv_timeout(std::time::Duration::from_secs(20))
+            .map_err(|_| "snapshot timeout".to_string())??;
+        std::fs::write(&output, bytes).map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (&app, &output);
+        Err("unsupported platform".into())
     }
 }
 

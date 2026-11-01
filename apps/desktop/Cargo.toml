@@ -18,6 +18,11 @@ rfd = "0.15"
 dirs = "6"
 open = "5"
 arboard = "3"
+lopdf = "0.46"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSData", "NSString", "NSURL", "NSDictionary"] }
+objc2-app-kit = { version = "0.3", features = ["NSImage", "NSBitmapImageRep", "NSGraphics"] }
+objc2-web-kit = { version = "0.3", features = ["WKSnapshotConfiguration", "WKWebView"] }
+block2 = "0.6"

@@ -46,6 +46,10 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .separator()
         .item(&MenuItemBuilder::with_id("export-pdf", "PDFとして書き出し…").build(app)?)
         .item(&MenuItemBuilder::with_id("export-html", "HTMLとして書き出し…").build(app)?)
+        .item(&MenuItemBuilder::with_id("print", "印刷…").accelerator("CmdOrCtrl+P").build(app)?)
+        .separator()
+        .item(&MenuItemBuilder::with_id("gdrive", "Google Drive へアップロード…").build(app)?)
+        .item(&MenuItemBuilder::with_id("onedrive", "OneDrive へアップロード…").build(app)?)
         .separator()
         .item(&MenuItemBuilder::with_id("reveal", "Finderに表示").build(app)?)
         .separator()
@@ -91,6 +95,7 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let window = SubmenuBuilder::new(app, "ウインドウ")
         .minimize()
         .separator()
+        .item(&MenuItemBuilder::with_id("guide", "使い方ガイド").accelerator("CmdOrCtrl+?").build(app)?)
         .item(&MenuItemBuilder::with_id("settings", "詳細設定…").accelerator("CmdOrCtrl+,").build(app)?)
         .build()?;
 
