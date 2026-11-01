@@ -23,7 +23,6 @@
         <button data-page="free" class="flat-btn" data-i18n="free">フリー</button>
         <button data-page="a4" class="flat-btn" data-i18n="a4">A4文書</button>
       </div>
-      <span class="tb-sep"></span>
       <button id="btn-margin" class="flat-btn" data-i18n="margin">余白設定</button>
       <span class="tb-sep"></span>
       <span class="scale-label" data-i18n="scale">スケール</span>
@@ -33,6 +32,7 @@
       <button id="btn-settings" class="flat-btn" data-i18n="settings">詳細設定</button>
       <span class="tb-sep"></span>
       <button id="btn-toc" class="flat-btn" data-i18n="toc_title">目次</button>
+      <span class="tb-sep"></span>
       <button id="btn-clip" class="flat-btn" data-i18n="clip_title">クリップ</button>
       <span class="tb-sep"></span>
       <button id="btn-pdf" class="flat-btn" data-i18n="pdf_export">PDF書き出し</button>
@@ -95,8 +95,8 @@
     </section>
 
     <aside id="clip-panel" class="side-panel clip-panel" hidden>
-      <div class="panel-head">
-        <span data-i18n="clip_title">クリップ</span>
+      <div class="panel-head"><span data-i18n="clip_title">クリップ</span></div>
+      <div class="clip-add-row">
         <button id="clip-add" class="mini-btn" data-i18n="clip_add">＋追加</button>
       </div>
       <div id="clip-list" class="clip-list"></div>
@@ -130,33 +130,36 @@
   <dialog id="pdf-dialog" class="modal">
     <form method="dialog" class="modal-body">
       <h2 data-i18n="pdf_settings_title">PDF書き出し設定</h2>
-      <div class="field">
-        <label data-i18n="pdf_orientation">方向</label>
+      <div class="qt-group">
+        <span class="group-title" data-i18n="pdf_orientation">方向</span>
         <select id="pdf-orientation">
           <option value="portrait" data-i18n="pdf_portrait">縦向き</option>
           <option value="landscape" data-i18n="pdf_landscape">横向き</option>
         </select>
       </div>
-      <div class="field column">
-        <label data-i18n="margin_title">余白 (mm)</label>
-        <div class="margin-grid">
-          <label>上 <input id="pdf-m-top" type="number" min="0" max="60" step="1"></label>
-          <label>右 <input id="pdf-m-right" type="number" min="0" max="60" step="1"></label>
-          <label>下 <input id="pdf-m-bottom" type="number" min="0" max="60" step="1"></label>
-          <label>左 <input id="pdf-m-left" type="number" min="0" max="60" step="1"></label>
+      <div class="qt-group">
+        <span class="group-title" data-i18n="margin_title">A4余白設定 (mm)</span>
+      <div class="margin-grid">
+          <label><span>上:</span><input id="pdf-m-top" type="number" min="0" max="60" step="1"></label>
+          <label><span>右:</span><input id="pdf-m-right" type="number" min="0" max="60" step="1"></label>
+          <label><span>下:</span><input id="pdf-m-bottom" type="number" min="0" max="60" step="1"></label>
+          <label><span>左</span><input id="pdf-m-left" type="number" min="0" max="60" step="1"></label>
         </div>
       </div>
-      <div class="field">
-        <label data-i18n="pdf_embed_images_label">画像を含める</label>
-        <input id="pdf-images" type="checkbox">
+      <div class="qt-group">
+        <span class="group-title" data-i18n="pdf_embed_images">画像を含める</span>
+        <label class="field inline">
+          <input id="pdf-images" type="checkbox">
+          <span data-i18n="pdf_embed_images_label">PDFに画像を埋め込む</span>
+        </label>
       </div>
-      <div class="field">
-        <label data-i18n="pdf_style_mode">スタイル</label>
+      <div class="qt-group">
+        <span class="group-title" data-i18n="pdf_style_mode">スタイルモード</span>
         <select id="pdf-style"></select>
       </div>
       <div class="modal-actions">
         <button value="cancel" class="text-btn" data-i18n="cancel">キャンセル</button>
-        <button value="ok" class="primary" data-i18n="ok">OK</button>
+        <button value="ok" data-i18n="ok">OK</button>
       </div>
     </form>
   </dialog>
@@ -164,8 +167,39 @@
   <dialog id="settings-dialog" class="modal">
     <form method="dialog" class="modal-body">
       <h2 data-i18n="settings_title">詳細設定</h2>
-      <div class="field">
-        <label for="set-lang" data-i18n="lang_label">言語</label>
+      <div class="qt-group">
+        <span class="group-title" data-i18n="font_label">フォント</span>
+        <select id="set-font"></select>
+        <div class="btn-row">
+          <button id="btn-font-add" type="button" class="text-btn">TTF / OTF を追加</button>
+          <button id="btn-font-remove" type="button" class="text-btn" data-i18n="font_remove">削除</button>
+        </div>
+        <div class="field">
+          <label for="set-fontsize">文字サイズ</label>
+          <div class="range-wrap">
+            <input id="set-fontsize" type="range" min="12" max="28" step="1">
+            <span id="set-fontsize-val"></span>
+          </div>
+        </div>
+      </div>
+      <div class="qt-group">
+        <span class="group-title" data-i18n="theme_label">テーマ</span>
+        <select id="set-theme">
+          <option value="dark" data-i18n="dark">ダークモード</option>
+          <option value="light" data-i18n="light">ライトモード</option>
+          <option value="system">システム</option>
+        </select>
+        <div class="field">
+          <label data-i18n="theme_color_label">テーマ色</label>
+          <div id="accent-swatches" class="swatches"></div>
+        </div>
+        <div class="field">
+          <label data-i18n="plugin_label">プラグインテーマ</label>
+          <button id="btn-theme-dir" type="button" class="text-btn" data-i18n="plugin_dir_btn">テーマフォルダを開く</button>
+        </div>
+      </div>
+      <div class="qt-group">
+        <span class="group-title" data-i18n="lang_label">言語</span>
         <select id="set-lang">
           <option value="ja">日本語</option>
           <option value="en">English</option>
@@ -174,52 +208,21 @@
           <option value="zh">简体中文</option>
         </select>
       </div>
-      <div class="field">
-        <label for="set-theme" data-i18n="theme_label">テーマ</label>
-        <select id="set-theme">
-          <option value="dark" data-i18n="dark">ダークモード</option>
-          <option value="light" data-i18n="light">ライトモード</option>
-          <option value="system">システム</option>
-        </select>
-      </div>
-      <div class="field">
-        <label data-i18n="theme_color_label">テーマ色</label>
-        <div id="accent-swatches" class="swatches"></div>
-      </div>
-      <div class="field">
-        <label for="set-font" data-i18n="font_label">フォント</label>
-        <select id="set-font"></select>
-      </div>
-      <div class="field">
-        <label for="set-fontsize">文字サイズ</label>
-        <div class="range-wrap">
-          <input id="set-fontsize" type="range" min="12" max="28" step="1">
-          <span id="set-fontsize-val"></span>
-        </div>
-      </div>
-      <div class="field inline">
-        <label for="set-bold" data-i18n="bold_label">テキスト太字強調</label>
-        <input id="set-bold" type="checkbox">
-      </div>
-      <div class="field column inline">
-        <label for="set-hardbreaks" data-i18n="hard_breaks_cb">改行をそのまま改行として表示する</label>
-        <input id="set-hardbreaks" type="checkbox">
+      <div class="qt-group">
+        <span class="group-title">テキスト</span>
+        <label class="field inline">
+          <input id="set-bold" type="checkbox">
+          <span data-i18n="bold_label">テキスト太字強調</span>
+        </label>
+        <label class="field inline">
+          <input id="set-hardbreaks" type="checkbox">
+          <span data-i18n="hard_breaks_cb">改行をそのまま改行として表示する</span>
+        </label>
         <p class="hint" data-i18n="hard_breaks_hint"></p>
-      </div>
-      <div class="field">
-        <label data-i18n="plugin_label">プラグインテーマ</label>
-        <button id="btn-theme-dir" type="button" class="text-btn" data-i18n="plugin_dir_btn">テーマフォルダを開く</button>
-      </div>
-      <div class="field">
-        <label data-i18n="font_add">フォント追加</label>
-        <div class="btn-row">
-          <button id="btn-font-add" type="button" class="text-btn">TTF / OTF を追加</button>
-          <button id="btn-font-remove" type="button" class="text-btn" data-i18n="font_remove">削除</button>
-        </div>
       </div>
       <div class="modal-actions">
         <button value="cancel" class="text-btn" data-i18n="cancel">キャンセル</button>
-        <button value="ok" class="primary" data-i18n="ok">OK</button>
+        <button value="ok" data-i18n="ok">OK</button>
       </div>
     </form>
   </dialog>
@@ -228,14 +231,14 @@
     <form method="dialog" class="modal-body">
       <h2 data-i18n="margin_title">A4余白設定 (mm)</h2>
       <div class="margin-grid">
-        <label>上 <input id="m-top" type="number" min="0" max="80" step="1"></label>
-        <label>右 <input id="m-right" type="number" min="0" max="80" step="1"></label>
-        <label>下 <input id="m-bottom" type="number" min="0" max="80" step="1"></label>
-        <label>左 <input id="m-left" type="number" min="0" max="80" step="1"></label>
+        <label><span>上:</span><input id="m-top" type="number" min="0" max="80" step="1"></label>
+        <label><span>右:</span><input id="m-right" type="number" min="0" max="80" step="1"></label>
+        <label><span>下:</span><input id="m-bottom" type="number" min="0" max="80" step="1"></label>
+        <label><span>左:</span><input id="m-left" type="number" min="0" max="80" step="1"></label>
       </div>
       <div class="modal-actions">
         <button value="cancel" class="text-btn" data-i18n="cancel">キャンセル</button>
-        <button value="ok" class="primary" data-i18n="ok">OK</button>
+        <button value="ok" data-i18n="ok">OK</button>
       </div>
     </form>
   </dialog>

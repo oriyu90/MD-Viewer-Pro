@@ -144,20 +144,37 @@ open_path(path)
 
 ```
 #app
- ├─ #main-toolbar      戻る / 閲覧・編集 / フリー・A4 / 余白 / スケール / 目次 / クリップ / 設定 / PDF
+ ├─ #main-toolbar      戻る / 閲覧・MD編集・TXT編集 / フリー・A4・余白 / スケール / 詳細設定 / 目次 / クリップ / PDF
  ├─ #fmt-toolbar       編集時のみ: B I ~~ code / H1 H2 H3 本文 / リスト 番号 チェック 引用 水平線 / リンク 画像 表
  ├─ #workspace
  │   ├─ #toc-panel     見出し一覧（クリックでスクロール、現在位置をハイライト）
- │   ├─ #editor-pane   行番号 + textarea（編集時のみ）
- │   ├─ #preview-pane  #doc（Markdown 表示）
+ │   ├─ #editor-pane   textarea（TXT編集時のみ。行番号なし）
+ │   ├─ #preview-pane  #doc（Markdown 表示・MD編集時は contenteditable）
  │   └─ #clip-panel    フレーズ集（右スライド）
- └─ dialogs            詳細設定 / 余白設定 / クリップ追加
+ └─ dialogs            詳細設定 / 余白設定 / PDF書き出し / 起動
 ```
 
 - 配色は Rust の `Palette` を CSS 変数へ流し込む（`--bg`, `--accent`, …）
 - テーマ色は `effective_accent` / `effective_heading` で背景に応じて補正
-- 文字サイズ = `font_size × SCALES[scale_idx]`
+- 文字サイズ = `font_size × SCALES[scale_idx]`（エディタは 18px × scale）
 - A4 時は 210mm 幅・`--m{ t,r,b,l }` の余白でページを表現し、`@page` で印刷
+
+### 6-1. 見た目は v1.5.3 の QSS をそのまま写す
+
+`reference/main_v1.5.3.py` の `_apply_theme`（QSS）と `_UI_SIZE_TABLE` を唯一の正とし、
+`ui/css/app.css` に同じ数値を置く。寸法は CSS 変数 1 組（`--tb-h` など）で持ち、
+メディアクエリで 4 段階（1100 / 780 / 620px 境界）に切り替える。
+
+| 要素 | 値 |
+|---|---|
+| メインツールバー | 高さ 72 / 背景 `#0c0c0c` / 下線 1px `#2a2a2a` |
+| ツールバーのボタン | 背景 `#1c1c1c`・角丸なし・左右 16px・最小 76px・17px 太字。余りは全ボタンで均等配分（Qt の QHBoxLayout と同じ） |
+| 区切り | 1px。背景は親と同じ色なので実画面ではほぼ不可視（v1.5.3 の QWidget#vSep も同様に描画されない） |
+| 書式ツールバー | 高さ 52 / 背景 `#111` / 15px 太字 / hover は `#4a9eff` + 白文字 |
+| スライダー | 溝 3px・つまみ 13px 円 |
+| ダイアログ | 角丸なし・1px `#2a2a2a`・背景 `#111`・QGroupBox 風の枠＋枠線上タイトル |
+| ボタン / 入力 | 角丸 4px・1px 枠・太字 15px・hover でアクセント色 |
+| 本文 | 16px / 行間 1.8 / `.wrap` は左右 32px 48px ＋ 縦横比に応じた側方余白 |
 
 ---
 

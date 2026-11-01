@@ -436,10 +436,10 @@ function askText(title, initial) {
     dlg.className = "modal";
     dlg.innerHTML = `<form method="dialog" class="modal-body">
       <h2>${escapeHtml(title)}</h2>
-      <input id="ask-input" type="text" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text)">
+      <input id="ask-input" type="text">
       <div class="modal-actions">
         <button value="cancel" class="text-btn">${escapeHtml(t("cancel", "キャンセル"))}</button>
-        <button value="ok" class="primary">${escapeHtml(t("ok", "OK"))}</button>
+        <button value="ok">${escapeHtml(t("ok", "OK"))}</button>
       </div></form>`;
     document.body.appendChild(dlg);
     const input = dlg.querySelector("#ask-input");
@@ -1007,11 +1007,11 @@ function openClipDialog() {
   dlg.innerHTML = `
     <form method="dialog" class="modal-body">
       <h2>${escapeHtml(t("clip_add_title", "フレーズを追加"))}</h2>
-      <textarea id="clip-text" rows="6" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text)"></textarea>
+      <textarea id="clip-text" rows="6"></textarea>
       <p class="hint">${escapeHtml(t("clip_add_hint", "貼り付けたテキストをそのまま保存します。"))}</p>
       <div class="modal-actions">
         <button value="cancel" class="text-btn">${escapeHtml(t("cancel", "キャンセル"))}</button>
-        <button value="ok" class="primary">${escapeHtml(t("ok", "OK"))}</button>
+        <button value="ok">${escapeHtml(t("ok", "OK"))}</button>
       </div>
     </form>`;
   document.body.appendChild(dlg);
@@ -1040,6 +1040,12 @@ const ACCENTS = [
   ["#a78bfa", "purple"],
   ["#2dd4bf", "teal"],
 ];
+
+function openMarginDialog() {
+  const [mt, mr, mb, ml] = state.settings.margins;
+  $("#m-top").value = mt; $("#m-right").value = mr; $("#m-bottom").value = mb; $("#m-left").value = ml;
+  $("#margin-dialog").showModal();
+}
 
 function fillSettingsDialog() {
   const s = state.settings;
@@ -1183,11 +1189,7 @@ function wire() {
   $("#settings-dialog").addEventListener("close", async (e) => {
     if (e.target.returnValue === "ok") await commitSettings();
   });
-  $("#btn-margin").addEventListener("click", () => {
-    const [mt, mr, mb, ml] = state.settings.margins;
-    $("#m-top").value = mt; $("#m-right").value = mr; $("#m-bottom").value = mb; $("#m-left").value = ml;
-    $("#margin-dialog").showModal();
-  });
+  $("#btn-margin").addEventListener("click", openMarginDialog);
   $("#margin-dialog").addEventListener("close", async (e) => {
     if (e.target.returnValue !== "ok") return;
     const margins = [
@@ -1209,12 +1211,12 @@ function wire() {
     dlg.className = "modal";
     dlg.innerHTML = `<form method="dialog" class="modal-body">
       <h2>${escapeHtml(t("font_remove", "フォント削除"))}</h2>
-      <select id="font-del-select" style="width:100%;padding:6px;background:var(--btn);border:1px solid var(--border);border-radius:8px">
+      <select id="font-del-select">
         ${state.fonts.map((f) => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join("")}
       </select>
       <div class="modal-actions">
         <button value="cancel" class="text-btn">${escapeHtml(t("cancel", "キャンセル"))}</button>
-        <button value="ok" class="primary">${escapeHtml(t("ok", "OK"))}</button>
+        <button value="ok">${escapeHtml(t("ok", "OK"))}</button>
       </div></form>`;
     document.body.appendChild(dlg);
     dlg.addEventListener("close", async () => {
@@ -1493,7 +1495,7 @@ async function boot() {
     const d = state.boot.dialog;
     setTimeout(() => {
       if (d === "settings") { fillSettingsDialog(); $("#settings-dialog").showModal(); }
-      else if (d === "margin") { $("#margin-dialog").showModal(); }
+      else if (d === "margin") { openMarginDialog(); }
       else if (d === "pdf") { try { fillPdfDialog(); $("#pdf-dialog").showModal(); } catch (err) { toast("PDF dialog: " + err); } }
       else if (d === "clip") { $("#btn-clip").click(); }
       else if (d === "search") { openFind(); $("#find-input").value = "見出し 1"; runFind("見出し 1"); }
@@ -1502,9 +1504,16 @@ async function boot() {
     showStartup();
   }
 
-  if (!state.source) {
-    $("#doc").innerHTML = `<div class="welcome"><h1>MD Viewer Pro</h1><p>${escapeHtml(t("startup_hint", "Markdown ファイルを開くか、ドラッグ＆ドロップしてください。"))}</p></div>`;
-  }
+  syncWrapWidth();
+  addEventListener("resize", syncWrapWidth);
+}
+
+/* フリー表示の左右余白。ウィンドウ縦横比 1→3 で 0→20% へ線形に広げる
+   (Python 版 _side_blank_fraction と同じ式)。 */
+function syncWrapWidth() {
+  const ratio = innerWidth / Math.max(1, innerHeight);
+  const blank = ratio <= 1 ? 0 : Math.min(0.2, 0.2 * (ratio - 1) / 2);
+  document.documentElement.style.setProperty("--wrap-w", `${((1 - 2 * blank) * 100).toFixed(1)}%`);
 }
 
 window.addEventListener("DOMContentLoaded", () => {
