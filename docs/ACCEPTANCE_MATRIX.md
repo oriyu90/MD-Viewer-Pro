@@ -29,7 +29,7 @@
 | AC-21 | Google Drive / OneDrive | コード | PASS | 各サービスの URL を開く（旧版同様） |
 | AC-22 | レスポンシブ UI | 画像 | PARTIAL | 720/900/1080px の CSS を実装。狭幅の実画面撮影は未実施 |
 | AC-23 | Windows / Linux ビルド | CI 定義 | PARTIAL | GitHub Actions を追加。実ランナーでの結果は未取得 |
-| AC-24 | WYSIWYG 編集 | — | NOT_IMPLEMENTED | 原文を壊さない設計判断により非対応（ADR-0005） |
+| AC-24 | MD編集（WYSIWYG） | selftest | PASS | `mdBlocks=5` / 段落変更が原文へ反映され、見出しは保持（ADR-0007） |
 
 ## 未確認の理由
 

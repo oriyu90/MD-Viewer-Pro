@@ -2507,7 +2507,7 @@ dependencies = [
 
 [[package]]
 name = "md-viewer-pro"
-version = "26.1.1"
+version = "26.2.0"
 dependencies = [
  "arboard",
  "block2",
@@ -2528,7 +2528,7 @@ dependencies = [
 
 [[package]]
 name = "mdv-core"
-version = "26.1.1"
+version = "26.2.0"
 dependencies = [
  "ammonia",
  "chardetng",

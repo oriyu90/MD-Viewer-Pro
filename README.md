@@ -2,7 +2,7 @@
 
 A fast, native-feeling Markdown viewer and editor for macOS, rebuilt in Rust with Tauri 2.
 
-**Version 26.1.1** — Rust rewrite (previous line: v1.5.3, Python + PySide6).
+**Version 26.2.0** — Rust rewrite (previous line: v1.5.3, Python + PySide6).
 
 [日本語](#日本語) | [English](#english)
 
@@ -25,7 +25,7 @@ v26.0.1 で Python/PySide6 から **Rust + Tauri 2** へ作り直し、次の点
 | 機能 | 説明 |
 | --- | --- |
 | 閲覧 | GFM（表・タスクリスト・打ち消し・脚注・自動リンク）、シンタックスハイライト、コードのコピーボタン |
-| 編集 | ソース編集 + リアルタイムプレビュー（120ms デバウンス）、行番号、書式ツールバー |
+| 編集 | **MD編集**（WYSIWYG・プレビューを直接編集）と **TXT編集**（ソース + リアルタイムプレビュー）の2モード + 書式ツールバー |
 | 目次 / 検索 | 見出し一覧、クリックでジャンプ、現在位置のハイライト。Cmd+F のページ内検索（ハイライト・前後移動） |
 | 数式 | `$…$` / `$$…$$` / `\(…\)` をオフラインで組版（KaTeX 同梱） |
 | 図 | ` ```mermaid ` をフローチャート等として描画（オフライン同梱） |
@@ -64,7 +64,7 @@ cargo test --workspace
 
 ### 既知の制限（v26.0.1）
 
-- MD 編集の WYSIWYG（見た目どおりの直接編集）は非対応です。ソース + プレビューに統一しました（原文を壊さないための設計判断）
+- MD編集の反映は変更ブロック単位です。複雑な入れ子構造は Turndown の変換結果に依存します
 - Windows / Linux 版は未配布です（CI でビルド検証、Linux は WebKitGTK 4.1 が必要）
 - Google Drive / OneDrive は各サービスのアップロード画面を開くのみ（自動アップロードはしません）
 - 外部画像（`https://…`）は表示のために取得されます（ローカルファイルは取得しません）

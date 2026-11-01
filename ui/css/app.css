@@ -700,3 +700,15 @@ body[data-theme="light"] #doc {
   background: var(--btn-active-bg) !important;
   color: var(--btn-active-fg) !important;
 }
+
+/* MD編集（contenteditable） */
+#doc.md-edit { outline: none; caret-color: var(--accent); }
+#doc.md-edit:focus { outline: none; }
+#doc.md-edit [contenteditable="false"] { user-select: none; }
+
+/* 3モード + クリップで 1280px でも収まるよう微調整 */
+@media (max-width: 1400px) {
+  .flat-btn { padding: 0 12px; font-size: 14px; }
+  .tb-sep { margin: 0 5px; }
+  .scale-label { font-size: 14px; margin: 0 8px 0 2px; }
+}

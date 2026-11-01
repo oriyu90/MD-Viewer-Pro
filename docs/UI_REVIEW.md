@@ -60,3 +60,11 @@ cargo build -p md-viewer-pro
 | 主要ボタン | 青い塗りボタンなし | 廃止 |
 
 画像: `docs/ui/view-v1.5.3-style.png`、`edit-v1.5.3-style.png`、`light-v1.5.3-style.png`
+
+
+## MD編集 / TXT編集の分離（v26.2.0）
+
+- MD編集: プレビューを contenteditable にし、書式ツールバーは DOM に適用。
+  保存・切替時に変更ブロックのみを Turndown で Markdown へ戻す。
+- TXT編集: これまでどおり左ソース + 右プレビュー。行番号は v1.5.3 に合わせて非表示。
+- 画像: `docs/ui/md-edit.png`、`docs/ui/txt-edit.png`

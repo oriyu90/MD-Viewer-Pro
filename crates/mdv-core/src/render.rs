@@ -34,6 +34,13 @@ pub struct Heading {
     pub id: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct BlockRange {
+    /// 1-based, 元ファイル全体での行番号
+    pub start: u32,
+    pub end: u32,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Rendered {
     pub html: String,
@@ -43,6 +50,8 @@ pub struct Rendered {
     pub has_math: bool,
     pub has_mermaid: bool,
     pub plain: String,
+    /// トップレベルブロックの元ソース行範囲（MD編集の逆変換用）
+    pub blocks: Vec<BlockRange>,
 }
 
 /// 先頭の `---` フェンスを分離する。閉じフェンスが無ければ本文扱い。
@@ -276,11 +285,30 @@ pub fn render_markdown(source: &str, opts: RenderOptions) -> Rendered {
         .map(|(_, v)| v.clone())
         .or_else(|| headings.iter().find(|h| h.level == 1).map(|h| h.text.clone()));
 
+    // トップレベルブロックの行範囲（フロントマター除去分をオフセット）
+    let removed = &source[..source.len() - body.len()];
+    let offset = removed.matches('\n').count() as u32;
+    let mut blocks: Vec<BlockRange> = Vec::new();
+    for child in root.children() {
+        let data = child.data.borrow();
+        if matches!(data.value, NodeValue::FrontMatter(_)) {
+            continue;
+        }
+        let sp = data.sourcepos;
+        if sp.start.line == 0 || sp.end.line == 0 {
+            continue;
+        }
+        blocks.push(BlockRange {
+            start: sp.start.line as u32 + offset,
+            end: sp.end.line as u32 + offset,
+        });
+    }
+
     let has_mermaid = source.contains("```mermaid") || source.contains("~~~mermaid");
     let has_math = detect_math(body);
     let plain = strip_tags(&html);
 
-    Rendered { html, headings, title, front_matter, has_math, has_mermaid, plain }
+    Rendered { html, headings, title, front_matter, has_math, has_mermaid, plain, blocks }
 }
 
 

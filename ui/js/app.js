@@ -77,6 +77,7 @@ const state = {
   dirty: false,
   mode: "view",
   tocPinned: false,
+  dirtyBlocks: new Set(),
   page: "free",
   accent: "",
   renderToken: 0,
@@ -295,7 +296,7 @@ function scheduleRender() {
 
 let lastSync = 0;
 function syncPreviewToEditor() {
-  if (state.mode !== "edit" || !state.settings?.follow_scroll) return;
+  if (state.mode !== "txt" || !state.settings?.follow_scroll) return;
   const now = performance.now();
   if (now - lastSync < 60) return;
   lastSync = now;
@@ -331,21 +332,46 @@ function updateGutter() {
 }
 
 function updateTocVisibility() {
-  const show = !!state.settings?.show_toc && (state.mode === "edit" || state.tocPinned);
+  const show = !!state.settings?.show_toc && (state.mode !== "view" || state.tocPinned);
   $("#toc-panel").hidden = !show;
   $("#btn-toc").classList.toggle("toggled", show);
 }
 
-function setMode(mode) {
+function isEditing() {
+  return state.mode === "md" || state.mode === "txt";
+}
+
+async function setMode(mode) {
+  const prev = state.mode;
+  if (prev === "md" && mode !== "md") {
+    await commitMdEdits();
+  }
   state.mode = mode;
   document.body.dataset.mode = mode;
-  const editing = mode === "edit";
-  $("#editor-pane").hidden = !editing;
+  const editing = mode !== "view";
+  const md = mode === "md";
+  const txt = mode === "txt";
+  const doc = $("#doc");
+  if (md) {
+    doc.contentEditable = "true";
+    doc.classList.add("md-edit");
+  } else if (prev === "md") {
+    doc.contentEditable = "false";
+    doc.classList.remove("md-edit");
+  }
+  $("#editor-pane").hidden = !txt;
   $("#fmt-toolbar").hidden = !editing;
   $("#btn-back").disabled = !editing;
   for (const b of $$("#mode-seg button")) b.classList.toggle("active", b.dataset.mode === mode);
   updateTocVisibility();
-  if (editing) {
+  if (md) {
+    await ensureTurndown().catch(() => {});
+    clearTimeout(state.renderTimer);
+    await renderNow();
+    state.dirtyBlocks.clear();
+    doc.focus({ preventScroll: true });
+  }
+  if (txt) {
     const ed = $("#editor");
     ed.value = state.source;
     ed.scrollTop = 0;
@@ -354,6 +380,245 @@ function setMode(mode) {
     updateActiveLine();
     setTimeout(() => ed.focus({ preventScroll: true }), 30);
   }
+}
+
+function blockIndex(el) {
+  const children = Array.from($("#doc").children).filter((x) => !x.classList.contains("front-matter"));
+  return children.indexOf(el);
+}
+
+function markBlockDirty(el) {
+  const idx = blockIndex(el);
+  if (idx >= 0) state.dirtyBlocks.add(idx);
+  markDirty(true);
+}
+
+function currentBlock() {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return null;
+  let n = sel.anchorNode;
+  const el = n && n.nodeType === 3 ? n.parentElement : n;
+  return el && el.closest ? el.closest("#doc > *") : null;
+}
+
+function replaceBlock(el, next) {
+  const idx = blockIndex(el);
+  el.replaceWith(next);
+  if (idx >= 0) state.dirtyBlocks.add(idx);
+  markDirty(true);
+  placeCaretEnd(next);
+}
+
+function placeCaretEnd(el) {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function wrapSelectionHtml(tag) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount || sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+  const el = document.createElement(tag);
+  el.textContent = range.toString();
+  range.deleteContents();
+  range.insertNode(el);
+  const block = el.closest("#doc > *");
+  if (block) markBlockDirty(block);
+}
+
+function askText(title, initial) {
+  return new Promise((resolve) => {
+    const dlg = document.createElement("dialog");
+    dlg.className = "modal";
+    dlg.innerHTML = `<form method="dialog" class="modal-body">
+      <h2>${escapeHtml(title)}</h2>
+      <input id="ask-input" type="text" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text)">
+      <div class="modal-actions">
+        <button value="cancel" class="text-btn">${escapeHtml(t("cancel", "キャンセル"))}</button>
+        <button value="ok" class="primary">${escapeHtml(t("ok", "OK"))}</button>
+      </div></form>`;
+    document.body.appendChild(dlg);
+    const input = dlg.querySelector("#ask-input");
+    input.value = initial || "";
+    dlg.addEventListener("close", () => {
+      const v = dlg.returnValue === "ok" ? input.value.trim() : "";
+      dlg.remove();
+      resolve(v);
+    });
+    dlg.showModal();
+    input.focus();
+  });
+}
+
+async function applyFormatMd(kind) {
+  const doc = $("#doc");
+  doc.focus();
+  if (kind === "bold" || kind === "italic") {
+    document.execCommand(kind);
+    const b = currentBlock();
+    if (b) markBlockDirty(b);
+    return;
+  }
+  if (kind === "strike") return wrapSelectionHtml("s");
+  if (kind === "code") return wrapSelectionHtml("code");
+  if (kind === "link") {
+    const url = await askText(t("fmt_link", "リンク"), "https://");
+    if (!url) return;
+    document.execCommand("createLink", false, url);
+    const b = currentBlock();
+    if (b) markBlockDirty(b);
+    return;
+  }
+  if (kind === "image") {
+    const url = await askText(t("fmt_img", "画像"), "https://");
+    if (!url) return;
+    const p = document.createElement("p");
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "";
+    p.appendChild(img);
+    doc.appendChild(p);
+    markDirty(true);
+    return;
+  }
+
+  const block = currentBlock();
+  switch (kind) {
+    case "h1":
+    case "h2":
+    case "h3": {
+      const h = document.createElement(kind);
+      h.innerHTML = block ? block.innerHTML : "";
+      if (block) replaceBlock(block, h);
+      else doc.appendChild(h);
+      return;
+    }
+    case "body": {
+      const p = document.createElement("p");
+      p.innerHTML = block ? block.innerHTML : "";
+      if (block) replaceBlock(block, p);
+      return;
+    }
+    case "quote": {
+      if (!block) return;
+      const bq = document.createElement("blockquote");
+      bq.innerHTML = block.outerHTML;
+      replaceBlock(block, bq);
+      return;
+    }
+    case "list":
+    case "num":
+    case "check": {
+      if (!block) return;
+      const list = document.createElement(kind === "num" ? "ol" : "ul");
+      const li = document.createElement("li");
+      li.innerHTML = block.innerHTML;
+      list.appendChild(li);
+      replaceBlock(block, list);
+      return;
+    }
+    case "hr": {
+      const hr = document.createElement("hr");
+      if (block) replaceBlock(block, hr);
+      else doc.appendChild(hr);
+      return;
+    }
+    case "table": {
+      const table = document.createElement("table");
+      table.innerHTML = "<thead><tr><th>見出し</th><th>見出し</th></tr></thead><tbody><tr><td>内容</td><td>内容</td></tr></tbody>";
+      if (block) block.after(table);
+      else doc.appendChild(table);
+      markDirty(true);
+      return;
+    }
+  }
+}
+
+let turndownPromise = null;
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+function ensureTurndown() {
+  if (window.TurndownService) return Promise.resolve();
+  if (!turndownPromise) {
+    turndownPromise = loadScript("assets/turndown/turndown.js").then(() =>
+      loadScript("assets/turndown/turndown-plugin-gfm.js").catch(() => {}),
+    );
+  }
+  return turndownPromise;
+}
+
+function htmlToMarkdown(el) {
+  const clone = el.cloneNode(true);
+  for (const n of clone.querySelectorAll(".copy-btn")) n.remove();
+  for (const n of clone.querySelectorAll(".katex")) {
+    const ann = n.querySelector('annotation[encoding="application/x-tex"]');
+    const tex = ann ? ann.textContent : n.textContent;
+    n.replaceWith(document.createTextNode(`$${tex}$`));
+  }
+  for (const n of clone.querySelectorAll(".mermaid")) {
+    const pre = document.createElement("pre");
+    pre.textContent = "```mermaid\n" + (n.textContent || "").trim() + "\n```";
+    n.replaceWith(pre);
+  }
+  const T = window.TurndownService;
+  if (!T) return clone.textContent || "";
+  const td = new T({
+    headingStyle: "atx",
+    codeBlockStyle: "fenced",
+    bulletListMarker: "-",
+    emDelimiter: "*",
+    strongDelimiter: "**",
+  });
+  if (window.turndownPluginGfm) td.use(window.turndownPluginGfm.gfm);
+  return (td.turndown(clone.innerHTML) || "").trim();
+}
+
+async function commitMdEdits() {
+  if (!state.dirtyBlocks.size || !state.rendered?.blocks) return false;
+  const doc = $("#doc");
+  const children = Array.from(doc.children).filter((el) => !el.classList.contains("front-matter"));
+  if (children.length !== state.rendered.blocks.length) {
+    toast(t("md_edit_mismatch", "この文書はMD編集で安全に反映できません。TXT編集を使ってください。"));
+    return false;
+  }
+  const lines = state.source.split("\n");
+  const idxs = [...state.dirtyBlocks].sort((a, b) => b - a);
+  for (const i of idxs) {
+    const b = state.rendered.blocks[i];
+    if (!b) continue;
+    const md = htmlToMarkdown(children[i]);
+    lines.splice(b.start - 1, b.end - b.start + 1, ...md.split("\n"));
+  }
+  state.source = lines.join("\n");
+  state.dirtyBlocks.clear();
+  markDirty(true);
+  const keep = state.mode;
+  state.mode = "view";
+  await renderNow();
+  state.mode = keep;
+  if (keep === "md") {
+    doc.focus({ preventScroll: true });
+  }
+  return true;
+}
+
+function onMdInput(e) {
+  if (state.mode !== "md") return;
+  const t2 = e.target.nodeType === 3 ? e.target.parentElement : e.target;
+  const block = t2 && t2.closest ? t2.closest("#doc > *") : null;
+  if (!block) return;
+  markBlockDirty(block);
 }
 
 function onEditorInput() {
@@ -395,7 +660,7 @@ async function loadPath(path) {
     enhance();
     $("#doc-scroll").scrollTop = 0;
     updateTitle();
-    setMode(state.boot?.screenshot?.mode === "edit" ? "edit" : "view");
+    setMode(state.boot?.screenshot?.mode === "md" ? "md" : state.boot?.screenshot?.mode === "txt" ? "txt" : "view");
     if (d.warning) toast(d.warning);
   } catch (e) {
     toast(String(e));
@@ -413,6 +678,7 @@ async function openFile() {
 }
 
 async function saveFile(forceAs = false) {
+  if (state.mode === "md") await commitMdEdits();
   let path = state.docPath;
   if (!path || forceAs) {
     const suggested = path ? path.split("/").pop() : "untitled.md";
@@ -557,6 +823,7 @@ async function runPdfExport(path) {
 }
 
 async function exportPdf() {
+  if (state.mode === "md") await commitMdEdits();
   fillPdfDialog();
   const dlg = $("#pdf-dialog");
   const ok = await new Promise((resolve) => {
@@ -658,7 +925,7 @@ function insertBlock(text) {
   onEditorInput();
 }
 
-function applyFormat(kind) {
+function applyFormatText(kind) {
   switch (kind) {
     case "bold": return wrapSelection("**");
     case "italic": return wrapSelection("*");
@@ -681,6 +948,11 @@ function applyFormat(kind) {
     case "image": return insertBlock("![alt](path/to/image.png)");
     case "table": return insertBlock("| 見出し | 見出し |\n| --- | --- |\n| 内容 | 内容 |");
   }
+}
+
+function applyFormat(kind) {
+  if (state.mode === "md") return applyFormatMd(kind);
+  return applyFormatText(kind);
 }
 
 // ── クリップボードパネル ────────────────────────────────────────
@@ -870,7 +1142,7 @@ function wire() {
     b.addEventListener("click", async () => {
       const page = b.dataset.page;
       await refreshBootstrap({ ...state.settings, page_mode: page });
-      if (state.mode === "edit") setMode("edit");
+      if (state.mode === "txt") setMode("txt");
     });
   }
   $("#scale-range").addEventListener("input", (e) => {
@@ -961,6 +1233,7 @@ function wire() {
     }
   });
   $("#doc-scroll").addEventListener("scroll", updateActiveToc);
+  $("#doc").addEventListener("input", onMdInput);
 
   for (const b of $$("#fmt-toolbar button")) {
     b.addEventListener("mousedown", (e) => e.preventDefault());
@@ -976,8 +1249,8 @@ function wire() {
     if (k === "s") { e.preventDefault(); await saveFile(e.shiftKey); }
     else if (k === "o") { e.preventDefault(); await openFile(); }
     else if (k === "n") { e.preventDefault(); newDocument(); }
-    else if (k === "b" && state.mode === "edit") { e.preventDefault(); applyFormat("bold"); }
-    else if (k === "i" && state.mode === "edit") { e.preventDefault(); applyFormat("italic"); }
+    else if (k === "b" && isEditing()) { e.preventDefault(); applyFormat("bold"); }
+    else if (k === "i" && isEditing()) { e.preventDefault(); applyFormat("italic"); }
     else if (k === "f") { e.preventDefault(); openFind(); }
   });
 
@@ -1125,7 +1398,7 @@ function newDocument() {
   $("#editor").value = "";
   updateGutter();
   updateTitle();
-  setMode("edit");
+  setMode("txt");
 }
 
 // ── 起動 ────────────────────────────────────────────────────────
@@ -1158,7 +1431,7 @@ async function boot() {
       document.body.dataset.page = "a4";
     }
     await renderNow();
-    if (q.get("mode") === "edit") setMode("edit");
+    if (q.get("mode") === "md") setMode("md"); else if (q.get("mode") === "txt" || q.get("mode") === "edit") setMode("txt");
     if (q.get("find")) { openFind(); $("#find-input").value = q.get("find"); runFind(q.get("find")); }
     setTimeout(() => {
       const target = q.get("scroll");
@@ -1177,7 +1450,7 @@ async function boot() {
       applyPalette({ palette: p.palette, dark: p.dark });
       state.settings.page_mode = shot.page;
       document.body.dataset.page = shot.page;
-      if (shot.mode === "edit") setMode("edit");
+      if (shot.mode === "md") setMode("md");
     } catch (e) { /* noop */ }
   }
 
@@ -1381,6 +1654,20 @@ async function runSelfTest() {
       res.savedHasAppend = back.includes("追記");
       const pdf = fx.replace(/\.md$/, ".pdf");
       res.pdfBytes = await invoke("export_pdf", { path: pdf, pageW: 794, pageH: 1123, pages: 1 });
+
+      // MD編集モードの逆変換（ブロック単位）
+      const beforeSrc = state.source;
+      await setMode("md");
+      const p1 = document.querySelector("#doc > p");
+      if (p1) {
+        p1.textContent = "MD編集テストの段落";
+        p1.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      res.mdBlocks = state.rendered.blocks.length;
+      await commitMdEdits();
+      res.mdEditChanged = state.source !== beforeSrc && state.source.includes("MD編集テストの段落");
+      res.mdEditKeptHeading = state.source.includes("自動作成ドキュメント");
+      await setMode("view");
     }
     res.i18nKeys = Object.keys(state.t).length;
     res.lang = state.lang;
