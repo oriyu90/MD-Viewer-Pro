@@ -1,6 +1,19 @@
 # Release Notes
 
-## v26.0.1 — Rust / Tauri 2 版（pre-release）
+## v26.1.0 — 機能完成版
+
+v26.0.1 の未実装機能を補完し、実機 UI スナップショットで表示を検査した版。
+
+- PDF 直接書き出し（A4 縦/横・余白 mm・テーマ・画像有無。ページ分割して 1 つの PDF に結合）
+- プラグインテーマ（`~/.mdviewer/themes/*.json` を全面適用）
+- 起動ダイアログ、複数ウィンドウ、Google Drive / OneDrive メニュー
+- 編集の追従スクロール、フォント削除 UI
+- UI 検査に基づく修正（行番号・目次コントラスト・設定レイアウト・PDF 改ページ・ライトテーマ）
+- Windows / Linux CI
+
+実測: DMG 5.9MB / 常駐 111MB / 起動 1.0 秒（Apple M3 Ultra, macOS 26.4）
+
+v26.0.1 — Rust / Tauri 2 版（pre-release）
 
 Python/PySide6 実装を Rust + Tauri 2 で全面的に書き直した最初のリリース。
 文書の解析・整形・保存・設定は Rust、表示は macOS の WKWebView。

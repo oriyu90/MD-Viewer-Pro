@@ -2,16 +2,17 @@
 
 A simple and fast Markdown viewer built with Python and PySide6 (Qt for Python).
 
-**Current version / 現在のバージョン: v26.0.1（Rust版）/ v1.5.3（Python版）**
+**Current version / 現在のバージョン: v26.1.0（Rust版）/ v1.5.3（Python版）**
 
-### v26.0.1 — Rust + Tauri 2 版（pre-release）
+### v26.1.0 — Rust + Tauri 2 版（機能完成）
 
 v1.5.3 の Python/PySide6 実装を、Rust + Tauri 2 で全面的に書き直した版です。
 
-- ダウンロード: [Releases](https://github.com/oriyu90/MD-Viewer-Pro/releases) の `MDViewerPro-26.0.1-macOS.dmg`
+- ダウンロード: [Releases](https://github.com/oriyu90/MD-Viewer-Pro/releases) の `MDViewerPro-26.1.0-macOS.dmg`
 - ソース: [`v26-rust` ブランチ](https://github.com/oriyu90/MD-Viewer-Pro/tree/v26-rust)
-- 実測（Apple M3 Ultra / macOS 26.4）: DMG 175MB → **5.3MB** / 常駐 300MB → **112MB** / 起動 8.5秒 → **約1.0秒**
-- 主な違い: 編集は「ソース + プレビュー」、PDF は macOS 印刷ダイアログ経由、Windows / Linux は未配布
+- 実測（Apple M3 Ultra / macOS 26.4）: DMG 175MB → **5.9MB** / 常駐 300MB → **111MB** / 起動 8.5秒 → **約1.0秒**
+- 主な機能: PDF 直接書き出し（A4・余白・テーマ指定）、プラグインテーマ、起動ダイアログ、複数ウィンドウ、数式/Mermaid、5言語
+- 主な違い: 編集は「ソース + プレビュー」、Windows / Linux は CI 検証のみ
 - ad-hoc 署名・未公証（v1.5.3 と同じ運用）
 
 v1.5.x（Python版）は引き続き利用できます。詳細は [RELEASE_NOTES.md](RELEASE_NOTES.md) と
