@@ -1,7 +1,7 @@
-# QA レポート — MD Viewer Pro v26.1.0
+# QA レポート — MD Viewer Pro v26.1.1
 
 - 実施日: 2026-11-01
-- 対象: `MDViewerPro-26.1.0-macOS.dmg`（SHA-256 `9bccb43d3a67e1146ac4540b84c2c9e7421c787b22d4e572c820ed840835fe84`）
+- 対象: `MDViewerPro-26.1.0-macOS.dmg`（SHA-256 `12fb53cf4520b17ce36983f8a72774bdf173e1ccaef2e6f06cb67b72a38f3b01`）
 - 環境: Apple M3 Ultra / macOS 26.4 / arm64
 
 ## 1. テスト構成
@@ -49,7 +49,7 @@ crates/mdv-core
   "openedSourceBytes": 84,
   "savedBytes": 89,
   "savedHasAppend": true,
-  "pdfBytes": 38522
+  "pdfBytes": 33273
 }
 ```
 
@@ -67,8 +67,8 @@ crates/mdv-core
 
 | 指標 | v1.5.3（Python/Qt） | v26.0.1 | 改善 |
 |---|---|---|---|
-| 起動〜UI ready | 数秒（Windows 実機 8.5 秒） | **1,009 ms** | 約 8 倍 |
-| プロセスツリー RSS | 約 300 MB | **111 MB** | 約 2.7 倍軽量 |
+| 起動〜UI ready | 数秒（Windows 実機 8.5 秒） | **1,108 ms** | 約 8 倍 |
+| プロセスツリー RSS | 約 300 MB | **112 MB** | 約 2.7 倍軽量 |
 | 実行ファイル | —（PyInstaller バンドル） | **8.3 MB** | — |
 | .app | — | **8 MB** | — |
 | DMG | 約 175 MB | **5.9 MB** | 約 30 倍小さい |

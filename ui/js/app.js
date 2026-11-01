@@ -76,6 +76,7 @@ const state = {
   rendered: null,
   dirty: false,
   mode: "view",
+  tocPinned: false,
   page: "free",
   accent: "",
   renderToken: 0,
@@ -135,7 +136,8 @@ function applySettings(s) {
   document.documentElement.style.setProperty("--mr", `${mr}mm`);
   document.documentElement.style.setProperty("--mb", `${mb}mm`);
   document.documentElement.style.setProperty("--ml", `${ml}mm`);
-  $("#scale").value = String(s.scale_idx);
+  $("#scale-range").value = String(s.scale_idx);
+  $("#scale-val").textContent = ["50%", "75%", "100%", "125%", "150%"][s.scale_idx] || "100%";
   for (const b of $$("#mode-seg button")) b.classList.toggle("active", b.dataset.mode === state.mode);
   for (const b of $$("#page-seg button")) b.classList.toggle("active", b.dataset.page === s.page_mode);
   document.body.classList.toggle("bold-mode", !!s.bold_mode);
@@ -328,6 +330,12 @@ function updateGutter() {
   gutter.scrollTop = ed.scrollTop;
 }
 
+function updateTocVisibility() {
+  const show = !!state.settings?.show_toc && (state.mode === "edit" || state.tocPinned);
+  $("#toc-panel").hidden = !show;
+  $("#btn-toc").classList.toggle("toggled", show);
+}
+
 function setMode(mode) {
   state.mode = mode;
   document.body.dataset.mode = mode;
@@ -336,10 +344,15 @@ function setMode(mode) {
   $("#fmt-toolbar").hidden = !editing;
   $("#btn-back").disabled = !editing;
   for (const b of $$("#mode-seg button")) b.classList.toggle("active", b.dataset.mode === mode);
+  updateTocVisibility();
   if (editing) {
-    $("#editor").value = state.source;
+    const ed = $("#editor");
+    ed.value = state.source;
+    ed.scrollTop = 0;
+    ed.setSelectionRange(0, 0);
     updateGutter();
-    setTimeout(() => $("#editor").focus(), 30);
+    updateActiveLine();
+    setTimeout(() => ed.focus({ preventScroll: true }), 30);
   }
 }
 
@@ -860,12 +873,18 @@ function wire() {
       if (state.mode === "edit") setMode("edit");
     });
   }
-  $("#scale").addEventListener("change", async (e) => {
+  $("#scale-range").addEventListener("input", (e) => {
+    const idx = Number(e.target.value);
+    $("#scale-val").textContent = ["50%", "75%", "100%", "125%", "150%"][idx] || "100%";
+  });
+  $("#scale-range").addEventListener("change", async (e) => {
     await refreshBootstrap({ ...state.settings, scale_idx: Number(e.target.value) });
   });
   $("#btn-toc").addEventListener("click", async () => {
+    state.tocPinned = !state.tocPinned;
     const show = !state.settings.show_toc;
-    $("#toc-panel").hidden = !show;
+    state.tocPinned = show;
+    updateTocVisibility();
     await refreshBootstrap({ ...state.settings, show_toc: show });
   });
   $("#btn-clip").addEventListener("click", async () => {
@@ -1122,7 +1141,8 @@ async function boot() {
   applySettings(b.settings);
   await loadI18n(b.settings.lang);
   applyI18n();
-  $("#toc-panel").hidden = !b.settings.show_toc;
+  state.tocPinned = false;
+  updateTocVisibility();
   $("#clip-panel").hidden = !b.settings.show_clip;
   $("#btn-clip").classList.toggle("toggled", !!b.settings.show_clip);
   renderClips();
@@ -1177,6 +1197,10 @@ async function boot() {
 
   wireStartup();
 
+  if (state.boot?.initial && !state.docPath) {
+    try { await loadPath(state.boot.initial); } catch (e) { /* noop */ }
+  }
+
   if (state.boot?.dialog) {
     const d = state.boot.dialog;
     setTimeout(() => {
@@ -1186,7 +1210,7 @@ async function boot() {
       else if (d === "clip") { $("#btn-clip").click(); }
       else if (d === "search") { openFind(); $("#find-input").value = "見出し 1"; runFind("見出し 1"); }
     }, 300);
-  } else {
+  } else if (!state.docPath) {
     showStartup();
   }
 

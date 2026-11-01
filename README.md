@@ -2,7 +2,7 @@
 
 A fast, native-feeling Markdown viewer and editor for macOS, rebuilt in Rust with Tauri 2.
 
-**Version 26.1.0** — Rust rewrite (previous line: v1.5.3, Python + PySide6).
+**Version 26.1.1** — Rust rewrite (previous line: v1.5.3, Python + PySide6).
 
 [日本語](#日本語) | [English](#english)
 
@@ -31,6 +31,7 @@ v26.0.1 で Python/PySide6 から **Rust + Tauri 2** へ作り直し、次の点
 | 図 | ` ```mermaid ` をフローチャート等として描画（オフライン同梱） |
 | フロントマター | YAML のメタ情報を表として表示。`.yml` / `.yaml` も閲覧可 |
 | 表示 | ダーク / ライト / システム、アクセント色（プリセット + カスタム）、フォント、文字サイズ、5 段階ズーム |
+| デザイン | v1.5.3 準拠のフラットなテキストツールバー（72px・区切り線・灰色の選択ブロック・スケールスライダー） |
 | レイアウト | フリー / A4 文書（余白設定、印刷 CSS） |
 | クリップ | 定型文を右パネルに保存し、ワンクリックでコピー（上限 200 件 / 5000 字） |
 | 書き出し | HTML、PDF 直接書き出し（A4・縦/横・余白・テーマ・画像有無を指定して保存） |

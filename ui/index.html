@@ -11,31 +11,30 @@
 <div id="app">
   <header id="main-toolbar" class="toolbar">
     <div class="tb-left">
-      <button id="btn-back" class="icon-btn" title="戻る" data-i18n-title="back">‹</button>
-      <div class="seg" id="mode-seg" role="tablist">
-        <button data-mode="view" data-i18n="view" role="tab">閲覧</button>
-        <button data-mode="edit" data-i18n="edit" role="tab">編集</button>
+      <button id="btn-back" class="flat-btn" title="戻る" data-i18n="back">戻る</button>
+      <span class="tb-sep"></span>
+      <div id="mode-seg" class="flat-group" role="tablist">
+        <button data-mode="view" class="flat-btn" data-i18n="view" role="tab">閲覧</button>
+        <button data-mode="edit" class="flat-btn" data-i18n="edit" role="tab">編集</button>
       </div>
-      <div class="seg" id="page-seg">
-        <button data-page="free" data-i18n="free">フリー</button>
-        <button data-page="a4" data-i18n="a4">A4文書</button>
+      <span class="tb-sep"></span>
+      <div id="page-seg" class="flat-group">
+        <button data-page="free" class="flat-btn" data-i18n="free">フリー</button>
+        <button data-page="a4" class="flat-btn" data-i18n="a4">A4文書</button>
       </div>
-      <button id="btn-margin" class="text-btn" data-i18n="margin">余白設定</button>
-      <label class="scale-wrap" title="スケール">
-        <select id="scale" data-i18n-title="scale">
-          <option value="0">50%</option>
-          <option value="1">75%</option>
-          <option value="2">100%</option>
-          <option value="3">125%</option>
-          <option value="4">150%</option>
-        </select>
-      </label>
-      <button id="btn-toc" class="text-btn toggled" data-i18n="toc_title">目次</button>
-      <button id="btn-clip" class="text-btn" data-i18n="clip_title">クリップ</button>
-    </div>
-    <div class="tb-right">
-      <button id="btn-settings" class="text-btn" data-i18n="settings">詳細設定</button>
-      <button id="btn-pdf" class="primary" data-i18n="pdf_export">PDF書き出し</button>
+      <span class="tb-sep"></span>
+      <button id="btn-margin" class="flat-btn" data-i18n="margin">余白設定</button>
+      <span class="tb-sep"></span>
+      <span class="scale-label" data-i18n="scale">スケール</span>
+      <input id="scale-range" class="scale-range" type="range" min="0" max="4" step="1" value="2">
+      <span id="scale-val" class="scale-val">100%</span>
+      <span class="tb-sep"></span>
+      <button id="btn-settings" class="flat-btn" data-i18n="settings">詳細設定</button>
+      <span class="tb-sep"></span>
+      <button id="btn-toc" class="flat-btn" data-i18n="toc_title">目次</button>
+      <button id="btn-clip" class="flat-btn" data-i18n="clip_title">クリップ</button>
+      <span class="tb-sep"></span>
+      <button id="btn-pdf" class="flat-btn" data-i18n="pdf_export">PDF書き出し</button>
     </div>
   </header>
 

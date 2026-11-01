@@ -597,3 +597,106 @@ body.pdf-export.no-images img { display: none !important; }
 
 .btn-row { display: flex; gap: 8px; }
 .btn-row .text-btn { flex: 1; }
+
+/* ══ v1.5.3 design alignment ══════════════════════════════ */
+.toolbar {
+  height: 72px;
+  padding: 0 24px;
+  gap: 0;
+  background: var(--toolbar);
+  border-bottom: 1px solid var(--border);
+}
+.tb-left { gap: 0; width: 100%; }
+.flat-group { display: flex; }
+.flat-btn {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--text);
+  font-size: 15px;
+  padding: 0 16px;
+  height: 44px;
+  line-height: 44px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.flat-btn:hover:not(:disabled) { background: var(--btn-hover); }
+.flat-btn.active { background: var(--btn-active-bg); color: var(--btn-active-fg); }
+.flat-btn.toggled { background: var(--select); }
+.flat-btn:disabled { opacity: .35; cursor: default; }
+.tb-sep {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 24px;
+  background: var(--sep);
+  margin: 0 8px;
+}
+.scale-label { color: var(--text); font-size: 15px; margin: 0 10px 0 4px; white-space: nowrap; }
+.scale-range { width: 88px; accent-color: var(--text-dim); margin: 0 8px; }
+.scale-val { color: var(--text); font-size: 14px; min-width: 44px; }
+
+#fmt-toolbar {
+  height: 52px;
+  padding: 0 12px;
+  gap: 0;
+  background: var(--toolbar);
+  border-bottom: 1px solid var(--border);
+}
+#fmt-toolbar .fmt-group { gap: 0; }
+#fmt-toolbar .fmt-group button {
+  height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
+  color: var(--text);
+  font-size: 14px;
+  min-width: 0;
+}
+#fmt-toolbar .fmt-group button:hover { background: var(--btn-hover); }
+.fmt-sep { height: 22px; background: var(--sep); margin: 0 6px; }
+
+/* editor: v1.5.3 は行番号なし・フラット */
+#gutter { display: none; }
+#editor { padding: 28px 32px; font-size: 14px; line-height: 1.7; }
+
+/* 目次・クリップは角丸なし */
+.side-panel { flex-basis: 200px; }
+.toc-item { border-radius: 0; padding: 6px 12px; font-size: 13px; }
+.toc-item.active { background: var(--btn-active-bg); color: var(--btn-active-fg); }
+.clip-card { border-radius: 0; }
+
+/* ライトテーマも紙面カードにしない */
+body[data-theme="light"] #doc {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+@media (max-width: 1100px) {
+  .toolbar { height: 58px; }
+  .flat-btn { height: 38px; line-height: 38px; font-size: 14px; padding: 0 10px; }
+  #fmt-toolbar { height: 44px; }
+  #fmt-toolbar .fmt-group button { height: 44px; padding: 0 10px; font-size: 12px; }
+  .scale-range { width: 64px; }
+}
+@media (max-width: 820px) {
+  .toolbar { height: 46px; padding: 0 8px; }
+  .flat-btn { height: 32px; line-height: 32px; font-size: 12px; padding: 0 8px; }
+  #fmt-toolbar { height: 36px; }
+  #fmt-toolbar .fmt-group button { height: 36px; font-size: 11px; }
+  .scale-label, .scale-range, .scale-val { display: none; }
+}
+
+/* 選択状態は v1.5.3 と同じニュートラルグレー */
+#mode-seg .flat-btn.active,
+#page-seg .flat-btn.active,
+.flat-btn.active {
+  background: var(--btn-active-bg) !important;
+  color: var(--btn-active-fg) !important;
+}
+#btn-toc.toggled,
+#btn-clip.toggled {
+  background: var(--btn-active-bg) !important;
+  color: var(--btn-active-fg) !important;
+}

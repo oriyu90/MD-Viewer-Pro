@@ -37,6 +37,7 @@ pub struct Bootstrap {
     pub screenshot: Option<ScreenshotArgs>,
     pub pdf_export: Option<(String, String)>,
     pub dialog: Option<String>,
+    pub initial: Option<String>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -161,6 +162,10 @@ pub fn bootstrap(state: State<'_, AppState>) -> Bootstrap {
         screenshot: screenshot_args(),
         pdf_export: pdf_export_args(),
         dialog: dialog_arg(),
+        initial: std::env::args()
+            .skip(1)
+            .find(|a| !a.starts_with('-') && std::path::Path::new(a).is_file())
+            ,
         platform: std::env::consts::OS.to_string(),
         default_fonts: vec![
             "Helvetica Neue".into(),
@@ -250,6 +255,9 @@ pub fn open_path(state: State<'_, AppState>, window: WebviewWindow, path: String
     s.recent.truncate(12);
     *state.settings.lock().unwrap() = s.clone();
     let _ = settings::save(&s);
+    if let Some(name) = p.file_name().and_then(|s| s.to_str()) {
+        let _ = window.set_title(&format!("{name} — MD Viewer Pro"));
+    }
     open_document(&state, window.label(), &p)
 }
 
@@ -323,6 +331,9 @@ pub fn save_document(
             doc.path = Some(target.clone());
             doc.dirty = false;
         }
+    }
+    if let Some(name) = target.file_name().and_then(|s| s.to_str()) {
+        let _ = window.set_title(&format!("{name} — MD Viewer Pro"));
     }
     let mut s = state.settings.lock().unwrap().clone();
     let p = target.to_string_lossy().to_string();
