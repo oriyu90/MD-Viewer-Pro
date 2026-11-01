@@ -1,4 +1,4 @@
-# MD Viewer Pro v26.2.0 — MD編集 / TXT編集の分離
+# MD Viewer Pro β2.0 — MD編集 / TXT編集の分離（26.2.0-beta.2.0）
 
 v1.5.3 と同じ 3 モード構成（閲覧 / MD編集 / TXT編集）に戻した版です。
 

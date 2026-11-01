@@ -1,7 +1,7 @@
-# QA レポート — MD Viewer Pro v26.2.0
+# QA レポート — MD Viewer Pro β2.0（26.2.0-beta.2.0）
 
 - 実施日: 2026-11-01
-- 対象: `MDViewerPro-26.1.0-macOS.dmg`（SHA-256 `22d69413daea312705c1e559834ebd70dc9be4fb213d35962b18a3bb692be842`）
+- 対象: `MDViewerPro-26.1.0-macOS.dmg`（SHA-256 `932238ab79b4f1bcc2f1ff45029c3ac6b348c6d41babb6370db04869969f9a2b`）
 - 環境: Apple M3 Ultra / macOS 26.4 / arm64
 
 ## 1. テスト構成

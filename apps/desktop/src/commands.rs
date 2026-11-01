@@ -11,6 +11,16 @@ use tauri::{AppHandle, Manager, State, WebviewWindow};
 
 use crate::state::{self, AppState, OpenDocument, MAX_CLIPS, MAX_CLIP_LEN};
 
+fn version_label(v: &str) -> String {
+    if let Some(pos) = v.find("-alpha.") {
+        return format!("α{}", &v[pos + 7..]);
+    }
+    if let Some(pos) = v.find("-beta.") {
+        return format!("β{}", &v[pos + 6..]);
+    }
+    v.to_string()
+}
+
 #[derive(Serialize)]
 pub struct Paths {
     pub config: String,
@@ -22,6 +32,7 @@ pub struct Paths {
 #[derive(Serialize)]
 pub struct Bootstrap {
     pub version: String,
+    pub version_label: String,
     pub settings: Settings,
     pub palette: Palette,
     pub accent: String,
@@ -144,6 +155,7 @@ pub fn bootstrap(state: State<'_, AppState>) -> Bootstrap {
     let themes = read_themes();
     Bootstrap {
         version: env!("CARGO_PKG_VERSION").to_string(),
+        version_label: version_label(env!("CARGO_PKG_VERSION")),
         settings: s,
         palette,
         accent,
@@ -256,7 +268,7 @@ pub fn open_path(state: State<'_, AppState>, window: WebviewWindow, path: String
     *state.settings.lock().unwrap() = s.clone();
     let _ = settings::save(&s);
     if let Some(name) = p.file_name().and_then(|s| s.to_str()) {
-        let _ = window.set_title(&format!("{name} — MD Viewer Pro"));
+        let _ = window.set_title(&format!("{name} — MD Viewer Pro {}", version_label(env!("CARGO_PKG_VERSION"))));
     }
     open_document(&state, window.label(), &p)
 }
@@ -333,7 +345,7 @@ pub fn save_document(
         }
     }
     if let Some(name) = target.file_name().and_then(|s| s.to_str()) {
-        let _ = window.set_title(&format!("{name} — MD Viewer Pro"));
+        let _ = window.set_title(&format!("{name} — MD Viewer Pro {}", version_label(env!("CARGO_PKG_VERSION"))));
     }
     let mut s = state.settings.lock().unwrap().clone();
     let p = target.to_string_lossy().to_string();

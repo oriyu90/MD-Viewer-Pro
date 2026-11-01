@@ -634,9 +634,19 @@ function markDirty(v) {
   updateTitle();
 }
 
+function versionLabel(v) {
+  if (!v) return "";
+  const b = String(v).match(/-beta\.(.+)$/);
+  if (b) return `β${b[1]}`;
+  const a = String(v).match(/-alpha\.(.+)$/);
+  if (a) return `α${a[1]}`;
+  return "";
+}
+
 function updateTitle() {
   const name = state.docPath ? state.docPath.split("/").pop() : t("untitled", "無題");
-  document.title = `${state.dirty ? "● " : ""}${name} — MD Viewer Pro`;
+  const label = versionLabel(state.boot?.version) ? ` ${versionLabel(state.boot.version)}` : "";
+  document.title = `${state.dirty ? "● " : ""}${name} — MD Viewer Pro${label}`;
   try {
     if (!TAURI) return;
     const w = TAURI.webviewWindow.getCurrentWebviewWindow();
@@ -1469,6 +1479,11 @@ async function boot() {
   }
 
   wireStartup();
+  const vl = versionLabel(state.boot?.version);
+  if (vl) {
+    const h = $("#startup-dialog h2");
+    if (h) h.textContent = `MD Viewer Pro ${vl}`;
+  }
 
   if (state.boot?.initial && !state.docPath) {
     try { await loadPath(state.boot.initial); } catch (e) { /* noop */ }
@@ -1629,6 +1644,9 @@ async function runSelfTest() {
     enhance();
     await sleep(900);
     res.ok = true;
+    res.bootVersion = state.boot?.version;
+    res.bootLabel = state.boot?.version_label;
+    res.parsedLabel = versionLabel(state.boot?.version);
     res.title = r.title;
     res.headings = r.headings.length;
     res.frontMatter = r.front_matter.length;
@@ -1644,6 +1662,7 @@ async function runSelfTest() {
     const fx = state.boot?.selftest_fixture;
     if (fx) {
       await loadPath(fx);
+      res.docTitle = document.title;
       res.openedHeadings = state.rendered.headings.length;
       res.openedToc = $$("#toc-list .toc-item").length;
       res.openedSourceBytes = state.source.length;
