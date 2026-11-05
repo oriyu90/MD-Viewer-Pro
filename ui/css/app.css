@@ -5,7 +5,7 @@
 
 :root {
   --bg: #000;              --bg2: #111;           --bg3: #1c1c1c;
-  --border: #2a2a2a;       --text: #c0c0c0;       --text-dim: #484848;
+  --border: #2a2a2a;       --text: #f5f5f5;       --text-dim: #b3b3b3;
   --accent: #4a9eff;       --heading: #7ab8f5;    --toolbar: #0c0c0c;
   --btn: #1c1c1c;          --btn-hover: #2e2e2e;  --btn-active-bg: #4a4a4a;
   --btn-active-fg: #fff;   --select: #1a3a5c;     --code-fg: #e06c75;
@@ -60,6 +60,7 @@ html, body {
   margin: 0; height: 100%; overflow: hidden;
   background: var(--bg); color: var(--text);
   font-family: var(--ui-font); font-size: 13px;
+  font-weight: 600; /* UI 全体を太く（1.5.3 の QSS は chrome を bold 固定） */
   -webkit-font-smoothing: antialiased;
 }
 
@@ -186,6 +187,7 @@ body[data-mode="txt"] #editor-pane { flex: 0 0 40%; }
   font-family: var(--doc-font);
   font-size: var(--doc-size);
   line-height: 1.8;
+  font-weight: 600; /* 1.5.3 の bold_mode=ON 相当（_css fw=600） */
   color: var(--text);
   word-wrap: break-word;
 }
@@ -267,6 +269,19 @@ body[data-page="a4"] #doc {
 }
 .markdown-body th { background: var(--bg3); color: var(--heading); font-weight: 700; }
 .markdown-body tr:nth-child(even) { background: var(--row-even); }
+
+/* MD編集: 表の列/行追加ボタン（v1.5.3 _mdvSetupTableBtns） */
+.mdv-table-ctrl { display: flex; gap: 4px; margin: 2px 0 10px; user-select: none; }
+.mdv-table-ctrl button {
+  padding: 2px 10px;
+  border: 1px solid rgba(74, 158, 255, .5);
+  border-radius: 3px;
+  background: rgba(74, 158, 255, .12);
+  color: #4a9eff;
+  font-size: 11px; font-weight: 700;
+  cursor: pointer;
+}
+.mdv-table-ctrl button:hover { background: rgba(74, 158, 255, .3); }
 .markdown-body img { max-width: 100%; height: auto; border-radius: 4px; }
 .markdown-body svg { max-width: 100%; height: auto; }
 
@@ -412,6 +427,7 @@ body[data-page="a4"] #doc {
   color: var(--text);
   font-family: var(--mono);
   font-size: calc(var(--doc-size) * 1.125); /* 18px × scale */
+  font-weight: 600;
   line-height: 1.4;
   tab-size: 4;
   white-space: pre-wrap;
@@ -622,8 +638,6 @@ mark.find-hit.active { background: var(--accent); color: #fff; }
 #doc.md-edit { outline: none; caret-color: var(--accent); }
 #doc.md-edit:focus { outline: none; }
 #doc.md-edit [contenteditable="false"] { user-select: none; }
-
-.bold-mode .markdown-body { font-weight: 600; }
 
 /* ── 印刷 / PDF ────────────────────────────────────────────────── */
 

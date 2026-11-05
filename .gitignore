@@ -5,3 +5,5 @@
 *.dmg
 selftest.json
 .agent-state
+
+shots/

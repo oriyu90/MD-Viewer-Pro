@@ -118,3 +118,27 @@ cargo build -p md-viewer-pro
   （信号機）は持たない。枠・角・本文の体裁は v1.5.3 に合わせている
 - ツールバーの B5文書 は本実装では未提供（A4 のみ）
 - PDF 設定に「用紙サイズ」グループは無い（用紙は A4 固定、本文側で指定）
+
+---
+
+# β3.0 パス — 配色・フォント・アイコン・説明MD・表ボタン・目次
+
+- 実施日: 2026-11-05
+- 計画: `docs/PLAN_BETA3.md`
+
+## 対応内容
+
+| # | 項目 | 内容 |
+|---|---|---|
+| 1 | 配色 | ダーク `text` `#c0c0c0`→`#f5f5f5` / `text_dim` `#484848`→`#b3b3b3`。ライト `text_dim` `#909090`→`#636363`（`crates/mdv-core/src/theme.rs` のパレット＋CSS 既定値） |
+| 2 | フォント | 本文 `#doc` とエディタを `font-weight:600` に固定（1.5.3 の `fw=600` 相当）。UI 全体 `html,body` に 600 を入れ、ボタンは従来の 700。`body.bold-mode` の条件分岐は廃止 |
+| 3 | アイコン | 1024x1024 squircle（スーパー楕円 n=4.5）マスク＋図柄 848px セーフゾーン。`iconutil` で iconset→icns。旧 512 四角を置換 |
+| 4 | 説明MD | `GUIDE_JA` を 1.5.3 `_set_sample` ja 文面そのものに置換。起動ダイアログの cancel（Esc/×）は `newDocument()`（空の TXT 編集）→ `guide()`（説明を表示）に変更 |
+| 5 | 表ボタン | `_mdvSetupTableBtns` を `setupTableBtns()` として移植（MD編集のみ）。列追加は thead→`th` / それ以外→`td`、行追加は同列数。`blockIndex` / `commitMdEdits` の子要素計算から `.mdv-table-ctrl` を除外し、`htmlToMarkdown` で除去 |
+| 6 | 目次 | `updateTocVisibility` の `tocPinned` 条件を撤廃（`state.tocPinned` も削除）。`show_toc` のみで全モード表示。`applySettings` からも同期。1 回のクリックで出入 |
+
+## 検証
+
+- セルフテスト: `ok:true` / `version=26.3.0-beta.3.0` / `bootLabel=β3.0` / `mdEditChanged=true` / PDF 27,186 bytes / `openedToc=2`
+- 画素実測: 閲覧で最大輝度 245（`#f5f5f5`）/ 目次パネル `#111` が 172,987 px（220px×全高）/ 表ボタン青が 213 px（x 110–678, y 162–436）/ ライト背景 `#f0f0f0`
+- アイコン: 1024x1024、4 隅 alpha=0、`iconutil` で icns 化（16→1024 の 10 サイズを確認）

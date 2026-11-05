@@ -76,7 +76,6 @@ const state = {
   rendered: null,
   dirty: false,
   mode: "view",
-  tocPinned: false,
   dirtyBlocks: new Set(),
   page: "free",
   accent: "",
@@ -141,8 +140,8 @@ function applySettings(s) {
   $("#scale-val").textContent = ["50%", "75%", "100%", "125%", "150%"][s.scale_idx] || "100%";
   for (const b of $$("#mode-seg button")) b.classList.toggle("active", b.dataset.mode === state.mode);
   for (const b of $$("#page-seg button")) b.classList.toggle("active", b.dataset.page === s.page_mode);
-  document.body.classList.toggle("bold-mode", !!s.bold_mode);
   $("#btn-toc").classList.toggle("toggled", !!s.show_toc);
+  updateTocVisibility();
 }
 
 async function refreshBootstrap(settings) {
@@ -225,7 +224,53 @@ function enhance() {
     pre.appendChild(btn);
   }
 
+  setupTableBtns();
   buildToc();
+}
+
+// MD編集: 表の直後に列・行の追加ボタンを出す（v1.5.3 の _mdvSetupTableBtns）。
+function setupTableBtns() {
+  const root = $("#doc");
+  for (const b of $$(".mdv-table-ctrl", root)) b.remove();
+  if (state.mode !== "md") return;
+  for (const tbl of $$("table", root)) {
+    const ctrl = document.createElement("div");
+    ctrl.className = "mdv-table-ctrl";
+    ctrl.contentEditable = "false";
+    const mk = (label, title, fn) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.title = title;
+      b.onclick = (e) => { e.stopPropagation(); e.preventDefault(); fn(); };
+      return b;
+    };
+    ctrl.appendChild(mk(t("table_add_col", "+ 列"), t("table_add_col_title", "列を追加"), () => {
+      for (const row of tbl.querySelectorAll("tr")) {
+        const isHead = tbl.querySelector("thead") && row.closest("thead") !== null;
+        const cell = document.createElement(isHead ? "th" : "td");
+        cell.textContent = isHead ? t("table_col", "列") : t("table_cell", "セル");
+        row.appendChild(cell);
+      }
+      markBlockDirty(tbl);
+      setupTableBtns();
+    }));
+    ctrl.appendChild(mk(t("table_add_row", "+ 行"), t("table_add_row_title", "行を追加"), () => {
+      const tbody = tbl.querySelector("tbody") || tbl;
+      const lastRow = tbody.querySelector("tr:last-child");
+      if (!lastRow) return;
+      const tr = document.createElement("tr");
+      for (let j = 0; j < lastRow.cells.length; j++) {
+        const td = document.createElement("td");
+        td.textContent = t("table_cell", "セル");
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+      markBlockDirty(tbl);
+      setupTableBtns();
+    }));
+    tbl.insertAdjacentElement("afterend", ctrl);
+  }
 }
 
 function buildToc() {
@@ -332,7 +377,9 @@ function updateGutter() {
 }
 
 function updateTocVisibility() {
-  const show = !!state.settings?.show_toc && (state.mode !== "view" || state.tocPinned);
+  // 1.5.3 と同じく、設定の show_toc だけで全モード共通に表示する。
+  // （旧実装は閲覧モードで tocPinned が無いと隠れてしまっていた）
+  const show = !!state.settings?.show_toc;
   $("#toc-panel").hidden = !show;
   $("#btn-toc").classList.toggle("toggled", show);
 }
@@ -383,7 +430,8 @@ async function setMode(mode) {
 }
 
 function blockIndex(el) {
-  const children = Array.from($("#doc").children).filter((x) => !x.classList.contains("front-matter"));
+  const children = Array.from($("#doc").children)
+    .filter((x) => !x.classList.contains("front-matter") && !x.classList.contains("mdv-table-ctrl"));
   return children.indexOf(el);
 }
 
@@ -533,6 +581,7 @@ async function applyFormatMd(kind) {
       if (block) block.after(table);
       else doc.appendChild(table);
       markDirty(true);
+      setupTableBtns();
       return;
     }
   }
@@ -561,6 +610,7 @@ function ensureTurndown() {
 function htmlToMarkdown(el) {
   const clone = el.cloneNode(true);
   for (const n of clone.querySelectorAll(".copy-btn")) n.remove();
+  for (const n of clone.querySelectorAll(".mdv-table-ctrl")) n.remove();
   for (const n of clone.querySelectorAll(".katex")) {
     const ann = n.querySelector('annotation[encoding="application/x-tex"]');
     const tex = ann ? ann.textContent : n.textContent;
@@ -587,7 +637,8 @@ function htmlToMarkdown(el) {
 async function commitMdEdits() {
   if (!state.dirtyBlocks.size || !state.rendered?.blocks) return false;
   const doc = $("#doc");
-  const children = Array.from(doc.children).filter((el) => !el.classList.contains("front-matter"));
+  const children = Array.from(doc.children)
+    .filter((el) => !el.classList.contains("front-matter") && !el.classList.contains("mdv-table-ctrl"));
   if (children.length !== state.rendered.blocks.length) {
     toast(t("md_edit_mismatch", "この文書はMD編集で安全に反映できません。TXT編集を使ってください。"));
     return false;
@@ -608,6 +659,7 @@ async function commitMdEdits() {
   await renderNow();
   state.mode = keep;
   if (keep === "md") {
+    setupTableBtns();
     doc.focus({ preventScroll: true });
   }
   return true;
@@ -1169,11 +1221,9 @@ function wire() {
     await refreshBootstrap({ ...state.settings, scale_idx: Number(e.target.value) });
   });
   $("#btn-toc").addEventListener("click", async () => {
-    state.tocPinned = !state.tocPinned;
     const show = !state.settings.show_toc;
-    state.tocPinned = show;
-    updateTocVisibility();
     await refreshBootstrap({ ...state.settings, show_toc: show });
+    updateTocVisibility();
   });
   $("#btn-clip").addEventListener("click", async () => {
     const show = $("#clip-panel").hidden;
@@ -1340,25 +1390,44 @@ async function changeScale(delta, reset = false) {
   await refreshBootstrap({ ...state.settings, scale_idx: next });
 }
 
-const GUIDE_JA = `# MD Viewer Pro の使い方
-
-## 閲覧
-- ツールバーの「閲覧 / 編集」でモードを切り替えます。
-- 左の目次から見出しへジャンプできます。
-- \`Cmd+F\` でページ内検索、\`Esc\` で閉じます。
-
-## 編集
-- 「編集」に切り替えると、左に Markdown ソース、右にプレビューが出ます。
-- 書式ツールバーの B / I / H1〜H3 / リストなどが使えます。
-- \`Cmd+S\` で保存、\`Cmd+Shift+S\` で名前を付けて保存します。
-
-## 表示
-- 「フリー / A4文書」でレイアウトを切り替えます。
-- 詳細設定でテーマ・アクセント色・フォント・文字サイズ・改行の扱いを変更できます。
-
-## 書き出し
-- ファイルメニューから HTML / PDF を書き出せます（PDF は印刷ダイアログ経由）。
-`;
+// 説明文面は v1.5.3 の _set_sample()（main_v1.5.3.py:7681）の ja 版そのもの。
+// （同版は 資料箱/sample_*.md を読むが、本リポジトリに同ファイルは無いため埋め込み文面で代替）
+const GUIDE_JA = [
+  "# MD Viewer Pro へようこそ",
+  "",
+  "上部バーでモード・レイアウト・スケールを切り替えられます。",
+  "",
+  "## 機能一覧",
+  "",
+  "| 機能 | 説明 |",
+  "| :--- | :--- |",
+  "| 閲覧モード | Markdown をきれいにレンダリング |",
+  "| MD編集 | レンダリングフォーマットのままテキストを直接編集 |",
+  "| TXT編集 | 左エディタ + 右リアルタイムプレビュー |",
+  "| A4文書 | 印刷向けA4レイアウト・余白設定 |",
+  "| 詳細設定 | フォント・言語・テーマ・テーマ色・太字変更 |",
+  "| テーマ色 | 詳細設定で強調色を変更（プリセット＋カスタム） |",
+  "| クリップボード | 右側パネルに定型文を保存（押すとコピー・左下の削除で整理） |",
+  "| プラグインテーマ | ~/.mdviewer/themes/ にJSONを置いて配色追加 |",
+  "",
+  "## チェックリスト",
+  "",
+  "- [x] Markdown 表示",
+  "- [x] リアルタイムプレビュー",
+  "- [x] コードブロックのコピーボタン",
+  "- [x] PDF/HTML書き出し",
+  "- [x] プラグインテーマ",
+  "- [ ] クラウド同期（予定）",
+  "",
+  "## コードブロック",
+  "",
+  "```python",
+  "def hello():",
+  "    print('Hello, MD Viewer Pro!')",
+  "```",
+  "",
+  "> TXT編集またはMD編集モードに切り替えると書式ツールバーが表示されます。",
+].join("\n");
 
 function showStartup() {
   if (!TAURI || state.boot?.selftest_fixture || state.docPath) return;
@@ -1389,7 +1458,8 @@ function wireStartup() {
     renderNow().then(() => setMode("view"));
     updateTitle();
   });
-  dlg.addEventListener("cancel", (e) => { e.preventDefault(); close(); newDocument(); });
+  // ダイアログを閉じて何も選ばなかったら説明を開く（1.5.3 のガイド導線）。
+  dlg.addEventListener("cancel", (e) => { e.preventDefault(); close(); guide(); });
 }
 
 function guide() {
@@ -1426,7 +1496,6 @@ async function boot() {
   applySettings(b.settings);
   await loadI18n(b.settings.lang);
   applyI18n();
-  state.tocPinned = false;
   updateTocVisibility();
   $("#clip-panel").hidden = !b.settings.show_clip;
   $("#btn-clip").classList.toggle("toggled", !!b.settings.show_clip);
