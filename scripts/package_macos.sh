@@ -7,6 +7,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 VERSION="$(python3 -c 'import json;print(json.load(open("apps/desktop/tauri.conf.json"))["version"])')"
+# 配布名は表示版数（例 26.3.0-beta.3.0 -> beta.3.0）。機械版数は Info.plist に残す。
+DISP="$(python3 -c "
+import re
+v='$VERSION'
+m=re.search(r'-(alpha|beta)\\.(.+)$', v)
+print(f'{m.group(1)}.{m.group(2)}' if m else v)
+")"
 APP_NAME="MD Viewer Pro"
 BIN="md-viewer-pro"
 DIST="$ROOT/dist"
@@ -66,7 +73,7 @@ codesign --force --deep --sign - "$APP" >/dev/null
 codesign --verify --deep --strict "$APP"
 
 echo "==> DMG"
-DMG="$DIST/MDViewerPro-$VERSION-macOS.dmg"
+DMG="$DIST/MDViewerPro-$DISP-macOS.dmg"
 STAGE="$DIST/dmg-stage"
 rm -rf "$STAGE" "$DMG"
 mkdir -p "$STAGE"

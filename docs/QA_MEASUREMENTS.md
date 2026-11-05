@@ -1,4 +1,4 @@
-# QA measurements — MD Viewer Pro v26.2.0-beta.2.0
+# QA measurements — MD Viewer Pro beta.2.0
 
 - 計測日: 2026-11-01 17:33 JST
 - 計測機: Apple M3 Ultra / macOS 26.4

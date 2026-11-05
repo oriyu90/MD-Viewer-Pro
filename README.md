@@ -2,7 +2,7 @@
 
 A fast, native-feeling Markdown viewer and editor for macOS, rebuilt in Rust with Tauri 2.
 
-**Version β2.0** (`26.2.0-beta.2.0`) — Rust rewrite (previous line: v1.5.3, Python + PySide6).
+**Version β2.0** (`beta.2.0`) — Rust rewrite (previous line: v1.5.3, Python + PySide6).
 
 [日本語](#日本語) | [English](#english)
 
