@@ -2,7 +2,7 @@
 
 A fast, native-feeling Markdown viewer and editor for macOS, rebuilt in Rust with Tauri 2.
 
-**Version β2.0** (`beta.2.0`) — Rust rewrite (previous line: v1.5.3, Python + PySide6).
+**Version β4.0** (`26.4.0-beta.4.0`) — Rust rewrite (previous line: v1.5.3, Python + PySide6).
 
 [日本語](#日本語) | [English](#english)
 
@@ -13,7 +13,7 @@ A fast, native-feeling Markdown viewer and editor for macOS, rebuilt in Rust wit
 ### 概要
 
 MD Viewer Pro は、Markdown の閲覧・編集・書き出しを行うデスクトップアプリです。
-v26.0.1 で Python/PySide6 から **Rust + Tauri 2** へ作り直し、次の点を改善しました。
+v26 系で Python/PySide6 から **Rust + Tauri 2** へ作り直し、次の点を改善しました。
 
 - 配布物: 約 175MB（DMG）→ **約 8MB**（アプリ本体）
 - 常駐メモリ: 約 300MB → **約 150MB**（WebView プロセス込み）
@@ -31,18 +31,19 @@ v26.0.1 で Python/PySide6 から **Rust + Tauri 2** へ作り直し、次の点
 | 図 | ` ```mermaid ` をフローチャート等として描画（オフライン同梱） |
 | フロントマター | YAML のメタ情報を表として表示。`.yml` / `.yaml` も閲覧可 |
 | 表示 | ダーク / ライト / システム、アクセント色（プリセット + カスタム）、フォント、文字サイズ、5 段階ズーム |
-| デザイン | v1.5.3 準拠のフラットなテキストツールバー（72px・区切り線・灰色の選択ブロック・スケールスライダー） |
+| デザイン | v1.5.3 準拠のフラットなテキストツールバー（区切り線・灰色の選択ブロック・スケールスライダー）。高さは従来の 0.9 倍を基準に、ウィンドウ縦幅で 1.0〜0.8 倍、幅の段階変化はなめらかに追従 |
 | レイアウト | フリー / A4 文書（余白設定、印刷 CSS） |
 | クリップ | 定型文を右パネルに保存し、ワンクリックでコピー（上限 200 件 / 5000 字） |
 | 書き出し | HTML、PDF 直接書き出し（A4・縦/横・余白・テーマ・画像有無を指定して保存） |
 | テーマ | ダーク / ライト / システム + `~/.mdviewer/themes/*.json` のプラグインテーマ（パレット全面適用） |
 | 多言語 | 日本語 / English / Deutsch / Français / 简体中文 |
-| macOS 連携 | ネイティブメニュー、ファイル関連付け、Finder から開く、単一インスタンス、複数ウィンドウ、ウィンドウ状態の復元 |
+| macOS 連携 | ネイティブメニュー、**標準アプリ（既定のアプリ）対応**、Finder から開く、単一インスタンス、複数ウィンドウ、ウィンドウ状態の復元 |
+| 書類の扱い | `.md` / `.txt` / `.yml` / `.yaml` を種別ごとに登録。`.txt` は書式ツールバーを使わなければ `.txt` のまま保存 |
 | 起動 | 起動ダイアログ（ファイルを開く / 新規作成 / 説明）、言語選択 |
 
 ### インストール（macOS）
 
-1. `MDViewerPro-26.0.1-macOS.dmg` をダウンロード
+1. `MDViewerPro-26.4.0-beta.4.0-macOS.dmg` をダウンロード
 2. 開いて **MD Viewer Pro.app** を Applications へドラッグ
 3. 初回起動時に警告が出る場合: システム設定 → プライバシーとセキュリティ → 「このまま開く」
 
@@ -62,9 +63,17 @@ cargo test --workspace
 
 フロントエンドの Node/npm は不要です（`ui/` の静的ファイルをそのまま埋め込みます）。
 
-### 既知の制限（v26.0.1）
+### 標準アプリとして使う
+
+1. `.md` または `.txt` を Finder で選択 →「情報を見る」→「このアプリケーションで開く」で **MD Viewer Pro** を選ぶ
+2. 「すべてを変更…」を押すと、その拡張子の既定アプリになります
+
+`.md` は本アプリが Owner として宣言しているため、候補の先頭に出ます。
+
+### 既知の制限（β4.0）
 
 - MD編集の反映は変更ブロック単位です。複雑な入れ子構造は Turndown の変換結果に依存します
+- `.txt` に Markdown 記法を入れて保存すると、その `.txt` の中身は Markdown になります（保存時に `.md` への変換を案内します）
 - Windows / Linux 版は未配布です（CI でビルド検証、Linux は WebKitGTK 4.1 が必要）
 - Google Drive / OneDrive は各サービスのアップロード画面を開くのみ（自動アップロードはしません）
 - 外部画像（`https://…`）は表示のために取得されます（ローカルファイルは取得しません）
@@ -81,7 +90,7 @@ MIT License — Copyright (c) 2026 Yuki_Orita
 
 ### Overview
 
-MD Viewer Pro is a desktop Markdown viewer/editor. v26.0.1 is a full rewrite from
+MD Viewer Pro is a desktop Markdown viewer/editor. The v26 line is a full rewrite from
 Python/PySide6 to **Rust + Tauri 2**, reducing the app bundle from ~175MB to ~8MB,
 resident memory from ~300MB to ~150MB (including the WebView process), and cold start
 from 8.5s to about 1s.
@@ -101,6 +110,12 @@ Open the DMG, drag **MD Viewer Pro.app** to Applications, then launch it. The ap
 **ad-hoc signed and not notarized**; if macOS refuses to open it, run
 `xattr -cr "/Applications/MD Viewer Pro.app"` and try again.
 
+### Use it as the default app
+
+Select a `.md` or `.txt` file in Finder → Get Info → "Open with" → **MD Viewer Pro** →
+"Change All…". Markdown files are declared with `LSHandlerRank: Owner`, so the app
+appears first among the candidates.
+
 ### Build
 
 ```bash
@@ -111,7 +126,7 @@ cargo test --workspace
 ### Known limitations
 
 PDF export goes through the macOS print dialog ("Save as PDF"). WYSIWYG Markdown editing
-is not included; editing is source + preview. Windows/Linux builds and cloud upload are not available in v26.0.1.
+is not included; editing is source + preview. Windows/Linux builds and cloud upload are not available in β4.0.
 
 ### License
 

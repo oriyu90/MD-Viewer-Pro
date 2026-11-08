@@ -41,10 +41,10 @@
 
   <div id="fmt-toolbar" class="fmt-toolbar" hidden>
     <div class="fmt-group">
-      <button data-fmt="bold" title="太字 (Cmd+B)"><b>B</b></button>
-      <button data-fmt="italic" title="斜体 (Cmd+I)"><i>I</i></button>
-      <button data-fmt="strike" title="打ち消し">~~</button>
-      <button data-fmt="code" title="コード" data-i18n="fmt_code">コード</button>
+      <button data-fmt="bold" data-i18n-title="fmt_bold_title" title="太字 (Cmd+B)"><b>B</b></button>
+      <button data-fmt="italic" data-i18n-title="fmt_italic_title" title="斜体 (Cmd+I)"><i>I</i></button>
+      <button data-fmt="strike" data-i18n-title="fmt_strike_title" title="打ち消し">~~</button>
+      <button data-fmt="code" data-i18n-title="fmt_code_title" title="コード" data-i18n="fmt_code">コード</button>
     </div>
     <span class="fmt-sep"></span>
     <div class="fmt-group">
@@ -84,10 +84,10 @@
 
     <section id="preview-pane" class="pane">
       <div id="find-bar" class="find-bar" hidden>
-        <input id="find-input" type="search" placeholder="検索" autocomplete="off">
+        <input id="find-input" type="search" data-i18n-placeholder="search_placeholder" placeholder="検索" autocomplete="off">
         <span id="find-count" class="find-count"></span>
-        <button id="find-next" class="mini-btn" title="次へ">↓</button>
-        <button id="find-close" class="mini-btn" title="閉じる">×</button>
+        <button id="find-next" class="mini-btn" data-i18n-title="find_next" title="次へ">↓</button>
+        <button id="find-close" class="mini-btn" data-i18n-title="find_close" title="閉じる">×</button>
       </div>
       <div id="doc-scroll" class="doc-scroll">
         <article id="doc" class="markdown-body"></article>
@@ -103,8 +103,10 @@
     </aside>
   </main>
 
+  <div id="doc-kind-hint" class="doc-kind-hint" role="status" hidden></div>
+
   <div id="drop-overlay" class="drop-overlay" hidden>
-    <div class="drop-box">ここにファイルをドロップ</div>
+    <div class="drop-box" data-i18n="drop_hint">ここにファイルをドロップ</div>
   </div>
 
   <dialog id="startup-dialog" class="modal startup">
@@ -140,10 +142,10 @@
       <div class="qt-group">
         <span class="group-title" data-i18n="margin_title">A4余白設定 (mm)</span>
       <div class="margin-grid">
-          <label><span>上:</span><input id="pdf-m-top" type="number" min="0" max="60" step="1"></label>
-          <label><span>右:</span><input id="pdf-m-right" type="number" min="0" max="60" step="1"></label>
-          <label><span>下:</span><input id="pdf-m-bottom" type="number" min="0" max="60" step="1"></label>
-          <label><span>左</span><input id="pdf-m-left" type="number" min="0" max="60" step="1"></label>
+          <label><span data-i18n="margin_top_short">上:</span><input id="pdf-m-top" type="number" min="0" max="60" step="1"></label>
+          <label><span data-i18n="margin_right_short">右:</span><input id="pdf-m-right" type="number" min="0" max="60" step="1"></label>
+          <label><span data-i18n="margin_bottom_short">下:</span><input id="pdf-m-bottom" type="number" min="0" max="60" step="1"></label>
+          <label><span data-i18n="margin_left_short">左:</span><input id="pdf-m-left" type="number" min="0" max="60" step="1"></label>
         </div>
       </div>
       <div class="qt-group">
@@ -171,11 +173,11 @@
         <span class="group-title" data-i18n="font_label">フォント</span>
         <select id="set-font"></select>
         <div class="btn-row">
-          <button id="btn-font-add" type="button" class="text-btn">TTF / OTF を追加</button>
+          <button id="btn-font-add" type="button" class="text-btn" data-i18n="font_add_btn">TTF / OTF を追加</button>
           <button id="btn-font-remove" type="button" class="text-btn" data-i18n="font_remove">削除</button>
         </div>
         <div class="field">
-          <label for="set-fontsize">文字サイズ</label>
+          <label for="set-fontsize" data-i18n="font_size_label">文字サイズ</label>
           <div class="range-wrap">
             <input id="set-fontsize" type="range" min="12" max="28" step="1">
             <span id="set-fontsize-val"></span>
@@ -187,7 +189,7 @@
         <select id="set-theme">
           <option value="dark" data-i18n="dark">ダークモード</option>
           <option value="light" data-i18n="light">ライトモード</option>
-          <option value="system">システム</option>
+          <option value="system" data-i18n="system_theme">システム</option>
         </select>
         <div class="field">
           <label data-i18n="theme_color_label">テーマ色</label>
@@ -209,7 +211,7 @@
         </select>
       </div>
       <div class="qt-group">
-        <span class="group-title">テキスト</span>
+        <span class="group-title" data-i18n="text_group">テキスト</span>
         <label class="field inline">
           <input id="set-bold" type="checkbox">
           <span data-i18n="bold_label">テキスト太字強調</span>
@@ -231,10 +233,10 @@
     <form method="dialog" class="modal-body">
       <h2 data-i18n="margin_title">A4余白設定 (mm)</h2>
       <div class="margin-grid">
-        <label><span>上:</span><input id="m-top" type="number" min="0" max="80" step="1"></label>
-        <label><span>右:</span><input id="m-right" type="number" min="0" max="80" step="1"></label>
-        <label><span>下:</span><input id="m-bottom" type="number" min="0" max="80" step="1"></label>
-        <label><span>左:</span><input id="m-left" type="number" min="0" max="80" step="1"></label>
+        <label><span data-i18n="margin_top_short">上:</span><input id="m-top" type="number" min="0" max="80" step="1"></label>
+        <label><span data-i18n="margin_right_short">右:</span><input id="m-right" type="number" min="0" max="80" step="1"></label>
+        <label><span data-i18n="margin_bottom_short">下:</span><input id="m-bottom" type="number" min="0" max="80" step="1"></label>
+        <label><span data-i18n="margin_left_short">左:</span><input id="m-left" type="number" min="0" max="80" step="1"></label>
       </div>
       <div class="modal-actions">
         <button value="cancel" class="text-btn" data-i18n="cancel">キャンセル</button>

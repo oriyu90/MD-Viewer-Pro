@@ -174,10 +174,10 @@ pub fn bootstrap(state: State<'_, AppState>) -> Bootstrap {
         screenshot: screenshot_args(),
         pdf_export: pdf_export_args(),
         dialog: dialog_arg(),
-        initial: std::env::args()
-            .skip(1)
-            .find(|a| !a.starts_with('-') && std::path::Path::new(a).is_file())
-            ,
+        initial: startup_paths()
+            .into_iter()
+            .next()
+            .map(|p| p.to_string_lossy().to_string()),
         platform: std::env::consts::OS.to_string(),
         default_fonts: vec![
             "Helvetica Neue".into(),
@@ -191,27 +191,66 @@ pub fn bootstrap(state: State<'_, AppState>) -> Bootstrap {
 }
 
 fn dialog_arg() -> Option<String> {
-    let args: Vec<String> = std::env::args().collect();
-    let i = args.iter().position(|a| a == "--dialog")?;
-    args.get(i + 1).cloned()
+    arg_value("--dialog")
 }
 
 fn pdf_export_args() -> Option<(String, String)> {
-    let args: Vec<String> = std::env::args().collect();
-    let i = args.iter().position(|a| a == "--export-pdf")?;
+    let i = flag_index("--export-pdf")?;
+    let args = std::env::args().collect::<Vec<_>>();
     Some((args.get(i + 1)?.clone(), args.get(i + 2)?.clone()))
 }
 
+/// 値を取るフラグ。直後の値を「ファイルパス」と誤認しないために使う。
+const VALUE_FLAGS: &[&str] = &[
+    "--screenshot",
+    "--mode",
+    "--theme",
+    "--page",
+    "--dialog",
+    "--export-pdf",
+];
+
+fn flag_index(flag: &str) -> Option<usize> {
+    std::env::args().position(|a| a == flag)
+}
+
+fn arg_value(flag: &str) -> Option<String> {
+    let i = flag_index(flag)?;
+    std::env::args().nth(i + 1)
+}
+
+/// 起動引数から開くべきファイルを列挙する。
+///
+/// - `-psn_0_1234`（LaunchServices が付ける）や `--flag` 自体は除外
+/// - 値を取るフラグの直後の値も除外
+/// - 存在するファイルだけを、指定順で返す（重複は除去）
+pub fn startup_paths() -> Vec<PathBuf> {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut out: Vec<PathBuf> = Vec::new();
+    let mut skip_next = false;
+    for a in args {
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        if a.starts_with('-') {
+            // `--flag=value` 形式は値が同じ要素に入っているので読み飛ばし不要。
+            skip_next = !a.contains('=') && VALUE_FLAGS.contains(&a.as_str());
+            continue;
+        }
+        let p = PathBuf::from(&a);
+        if p.is_file() && !out.contains(&p) {
+            out.push(p);
+        }
+    }
+    out
+}
+
 pub fn screenshot_args() -> Option<ScreenshotArgs> {
-    let args: Vec<String> = std::env::args().collect();
-    let i = args.iter().position(|a| a == "--screenshot")?;
-    let output = args.get(i + 1)?.clone();
+    flag_index("--screenshot")?;
+    let output = arg_value("--screenshot")?;
     let get = |flag: &str, default: &str| -> String {
-        args.iter()
-            .position(|a| a == flag)
-            .and_then(|j| args.get(j + 1))
-            .cloned()
-            .unwrap_or_else(|| default.to_string())
+        arg_value(flag).unwrap_or_else(|| default.to_string())
     };
     Some(ScreenshotArgs {
         output,
@@ -225,9 +264,13 @@ fn selftest_fixture() -> Option<String> {
     if !std::env::args().any(|a| a == "--selftest") {
         return None;
     }
-    let path = std::env::temp_dir().join("mdvp-selftest.md");
+    let dir = std::env::temp_dir();
+    let path = dir.join("mdvp-selftest.md");
     let body = "# 自動作成ドキュメント\n\nこれはセルフテスト用の本文です。\n\n## 節\n\n- 箇条書き\n- 二つ目\n\n| 列A | 列B |\n|---|---|\n| 1 | 2 |\n";
     std::fs::write(&path, body).ok()?;
+    // β4.0: .txt の保存経路を検証するためのプレーンテキスト見本。
+    let txt = dir.join("mdvp-selftest.txt");
+    std::fs::write(&txt, "プレーンテキストの行1\n行2\n").ok()?;
     Some(path.to_string_lossy().to_string())
 }
 
@@ -243,7 +286,8 @@ fn open_document(state: &AppState, label: &str, path: &Path) -> Result<OpenedDoc
     let out = OpenedDoc {
         path: Some(path.to_string_lossy().to_string()),
         source: d.source.clone(),
-        kind: if d.kind.is_yaml() { "yaml".into() } else { "md".into() },
+        // 拡張子から確定した種別をそのまま返す（.txt を Markdown 扱いしない）。
+        kind: d.kind.id().to_string(),
         readonly: d.readonly,
         warning,
         rendered,
@@ -299,13 +343,21 @@ pub fn pick_file(state: State<'_, AppState>) -> Option<String> {
 }
 
 #[tauri::command]
-pub fn pick_save(state: State<'_, AppState>, suggested: String) -> Option<String> {
-    let p = rfd::FileDialog::new()
-        .set_file_name(&suggested)
-        .add_filter("Markdown", &["md"])
-        .add_filter("Text", &["txt"])
-        .add_filter("HTML", &["html"])
-        .save_file()?;
+pub fn pick_save(state: State<'_, AppState>, suggested: String, kind: Option<String>) -> Option<String> {
+    // 開いている書類の種別に合わせて、保存ダイアログの先頭フィルタを決める。
+    // （.txt 文書なら Text を先頭にし、既定の拡張子が .md に化けないようにする）
+    let is_text = matches!(kind.as_deref(), Some("txt"));
+    let mut dlg = rfd::FileDialog::new();
+    dlg = if is_text {
+        dlg.add_filter("Text", &["txt"])
+            .add_filter("Markdown", &["md", "markdown"])
+            .add_filter("HTML", &["html"])
+    } else {
+        dlg.add_filter("Markdown", &["md", "markdown"])
+            .add_filter("Text", &["txt"])
+            .add_filter("HTML", &["html"])
+    };
+    let p = dlg.set_file_name(&suggested).save_file()?;
     state.approve(&p);
     Some(p.to_string_lossy().to_string())
 }
@@ -636,6 +688,8 @@ pub async fn export_pdf(
         }
         let merged = merge_pdfs(parts)?;
         std::fs::write(&target, &merged).map_err(|e| e.to_string())?;
+        // 直後に cfg(not(macos)) のブロックが続くため return で抜ける。
+        #[allow(clippy::needless_return)]
         return Ok(merged.len() as u64);
     }
     #[cfg(not(target_os = "macos"))]
@@ -724,6 +778,8 @@ pub fn take_screenshot(app: AppHandle, output: String) -> Result<(), String> {
             .recv_timeout(std::time::Duration::from_secs(20))
             .map_err(|_| "snapshot timeout".to_string())??;
         std::fs::write(&output, bytes).map_err(|e| e.to_string())?;
+        // 直後に cfg(not(macos)) のブロックが続くため return で抜ける。
+        #[allow(clippy::needless_return)]
         return Ok(());
     }
     #[cfg(not(target_os = "macos"))]
@@ -755,13 +811,44 @@ pub fn mark_start() {
 }
 
 #[tauri::command]
-pub fn ui_ready() -> u128 {
+/// セルフテスト専用: メインウィンドウの大きさを論理ピクセルで変える。
+/// ACL を広げずに、ツールバー高さの実測（要求 3）を行うための内部コマンド。
+pub fn selftest_resize(window: WebviewWindow, width: f64, height: f64) -> Result<(), String> {
+    if !std::env::args().any(|a| a == "--selftest") {
+        return Err("selftest only".into());
+    }
+    // 異常値・巨大サイズでウィンドウを壊さないよう範囲を絞る。
+    let w = width.clamp(320.0, 4000.0);
+    let h = height.clamp(240.0, 3000.0);
+    window
+        .set_size(tauri::LogicalSize::new(w, h))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn ui_ready(app: AppHandle, state: State<'_, AppState>) -> u128 {
     let ms = START.get().map(|t| t.elapsed().as_millis()).unwrap_or(0);
     let path = state::app_dir().join("startup.json");
     if let Some(dir) = path.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
     let _ = std::fs::write(&path, format!("{{\"version\":\"{}\",\"ready_ms\":{}}}", env!("CARGO_PKG_VERSION"), ms));
+
+    // フロントエンドの購読が終わったので、起動直後に届いて取りこぼしたパスを流す。
+    // （macOS の openURLs は WebView 準備前に来るため、ここで合流させる）
+    state.ui_ready.store(true, std::sync::atomic::Ordering::SeqCst);
+    let pending = state.take_pending_paths();
+    if !pending.is_empty() {
+        use tauri::Emitter;
+        let handle = app.clone();
+        // 購読直後の JS がイベントを処理できるよう、1 フレーム待ってから発行する。
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            for p in pending {
+                let _ = handle.emit("open-path", p);
+            }
+        });
+    }
     ms
 }
 

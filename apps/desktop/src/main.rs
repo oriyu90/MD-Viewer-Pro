@@ -4,8 +4,6 @@ mod commands;
 mod menu;
 mod state;
 
-use std::path::PathBuf;
-
 use tauri::{Emitter, Manager};
 
 use state::AppState;
@@ -14,17 +12,10 @@ fn selftest_mode() -> bool {
     std::env::args().any(|a| a == "--selftest")
 }
 
-fn initial_path() -> Option<PathBuf> {
-    std::env::args()
-        .skip(1)
-        .find(|a| !a.starts_with('-'))
-        .map(PathBuf::from)
-        .filter(|p| p.exists())
-}
-
 fn main() {
     commands::mark_start();
-    let initial = initial_path();
+    let initial_paths = commands::startup_paths();
+    let initial = initial_paths.first().cloned();
 
     let app = tauri::Builder::default()
         .manage(AppState::new())
@@ -75,13 +66,14 @@ fn main() {
                 });
             }
 
-            if let Some(path) = initial.clone() {
-                let handle = app.handle().clone();
-                // フロントエンドの準備を待ってから開く。
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_millis(350));
-                    let _ = handle.emit("open-path", path.to_string_lossy().to_string());
-                });
+            // 起動引数のファイル。1 つ目は `bootstrap.initial` でフロントエンドが開く。
+            // 2 つ目以降は UI の準備完了（ui_ready）後に流す（複数ファイル指定に対応）。
+            // ここで直接 emit せず pending に積むことで、購読前の取りこぼしを防ぐ。
+            if initial_paths.len() > 1 {
+                let st = app.state::<AppState>();
+                for path in initial_paths.iter().skip(1) {
+                    st.offer_path(path.to_string_lossy().to_string());
+                }
             }
             Ok(())
         })
@@ -121,6 +113,7 @@ fn main() {
             commands::app_paths,
             commands::selftest_report,
             commands::ui_ready,
+            commands::selftest_resize,
             commands::palette_for_theme,
             commands::take_screenshot,
         ])
@@ -129,12 +122,28 @@ fn main() {
 
     app.run(|app_handle, event| {
         #[cfg(target_os = "macos")]
-        if let tauri::RunEvent::Opened { urls } = event {
-            for url in urls {
-                if let Ok(path) = url.to_file_path() {
-                    let _ = app_handle.emit("open-path", path.to_string_lossy().to_string());
+        match event {
+            // Finder / `open` / 標準アプリ起動（ダブルクリック）から渡されたファイル。
+            tauri::RunEvent::Opened { urls } => {
+                let st = app_handle.state::<AppState>();
+                for url in urls {
+                    if let Ok(path) = url.to_file_path() {
+                        let p = path.to_string_lossy().to_string();
+                        // フロントエンドの購読前なら溜めておく（ui_ready で流れる）。
+                        if st.offer_path(p.clone()) {
+                            let _ = app_handle.emit("open-path", p);
+                        }
+                    }
                 }
+                // 既存ウィンドウが最小化・背面でも、開いた文書が見えるようにする。
+                state::activate_main_window(app_handle);
             }
+            // Dock アイコンの再クリック / Finder でアプリを選択したとき。
+            tauri::RunEvent::Reopen { has_visible_windows, .. } => {
+                let _ = has_visible_windows;
+                state::activate_main_window(app_handle);
+            }
+            _ => {}
         }
         #[cfg(not(target_os = "macos"))]
         let _ = (app_handle, event);

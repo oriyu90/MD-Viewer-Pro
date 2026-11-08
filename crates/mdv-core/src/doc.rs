@@ -35,8 +35,34 @@ impl DocKind {
         }
     }
 
+    /// UI へ渡す識別子（`"md"` / `"txt"` / `"yaml"`）。
+    ///
+    /// `.txt` を開いたときに UI が Markdown 文書として扱わないよう、
+    /// 拡張子から確定した種別をそのまま返す。
+    pub fn id(self) -> &'static str {
+        match self {
+            DocKind::Markdown => "md",
+            DocKind::Text => "txt",
+            DocKind::Yaml => "yaml",
+        }
+    }
+
+    /// `.txt` など、書式ツールバーで Markdown 記法を入れたくない書類か。
+    pub fn prefers_plain_text(self) -> bool {
+        matches!(self, DocKind::Text)
+    }
+
     pub fn is_yaml(self) -> bool {
         matches!(self, DocKind::Yaml)
+    }
+}
+
+/// 保存先パスから書類種別を決める。拡張子が無ければ `fallback`。
+pub fn kind_for_save(path: &Path, fallback: DocKind) -> DocKind {
+    if path.extension().and_then(|e| e.to_str()).is_some() {
+        DocKind::from_path(path)
+    } else {
+        fallback
     }
 }
 
@@ -213,5 +239,33 @@ mod tests {
         assert_eq!(DocKind::from_path(Path::new("a.MD")), DocKind::Markdown);
         assert_eq!(DocKind::from_path(Path::new("a.yml")), DocKind::Yaml);
         assert_eq!(DocKind::from_path(Path::new("a.rs")), DocKind::Text);
+    }
+
+    #[test]
+    fn kind_identifiers_are_stable() {
+        assert_eq!(DocKind::Markdown.id(), "md");
+        assert_eq!(DocKind::Text.id(), "txt");
+        assert_eq!(DocKind::Yaml.id(), "yaml");
+        assert!(DocKind::Text.prefers_plain_text());
+        assert!(!DocKind::Markdown.prefers_plain_text());
+        assert!(!DocKind::Yaml.prefers_plain_text());
+    }
+
+    #[test]
+    fn txt_extension_is_plain_text() {
+        assert_eq!(DocKind::from_path(Path::new("notes.txt")), DocKind::Text);
+        assert_eq!(DocKind::from_path(Path::new("notes.TXT")), DocKind::Text);
+        assert_eq!(DocKind::from_path(Path::new("README")), DocKind::Text);
+    }
+
+    #[test]
+    fn kind_for_save_keeps_extension_and_uses_fallback_without_one() {
+        // 既存の .txt へ保存しても Markdown へ化けない（要求 2 の核心）。
+        assert_eq!(kind_for_save(Path::new("/tmp/a.txt"), DocKind::Markdown), DocKind::Text);
+        assert_eq!(kind_for_save(Path::new("/tmp/a.md"), DocKind::Text), DocKind::Markdown);
+        assert_eq!(kind_for_save(Path::new("/tmp/a.yaml"), DocKind::Markdown), DocKind::Yaml);
+        // 拡張子が無い保存先は、開いていた書類種別を引き継ぐ。
+        assert_eq!(kind_for_save(Path::new("/tmp/notes"), DocKind::Text), DocKind::Text);
+        assert_eq!(kind_for_save(Path::new("/tmp/notes"), DocKind::Markdown), DocKind::Markdown);
     }
 }

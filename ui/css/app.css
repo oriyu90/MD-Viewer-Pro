@@ -16,18 +16,28 @@
   --doc-size: 16px;
   --hr: #393939;
 
-  /* large tier (window >= 1100px): TB_H=72 FMT_H=52, tb_fs 17 / pad 16 / min 44 */
-  --tb-h: 72px;   --fmt-h: 52px;
+  /* large tier (window >= 1100px): TB_H=72 FMT_H=52, tb_fs 17 / pad 16 / min 44
+     β4.0: 実効高さは基準値 × 0.9（--tb-base / --fmt-base）。
+     --tb-scale はウィンドウ縦幅に応じた係数（1.00〜0.80、JS が更新）。 */
+  --tb-base: 64.8px; --fmt-base: 46.8px;
+  --tb-scale: 1;
+  --tb-h: calc(var(--tb-base) * var(--tb-scale));
+  --fmt-h: calc(var(--fmt-base) * var(--tb-scale));
   --tb-fs: 17px;  --btn-pad: 16px;  --btn-min: 76px;
   --fmt-fs: 15px; --fmt-pad: 13px;  --fmt-min: 56px;
   --lbl-fs: 15px; --slider-w: 120px; --val-w: 48px;
   --panel-w: 220px;
 }
 
+/* 幅の段階で変わるのは「基準値」だけ。高さの補間は JS（rAF）が行う。
+   CSS の height transition は、プログラム的なウィンドウリサイズで
+   遷移が止まることがあるため使わない（--tb-scale を毎フレーム更新する）。 */
+.toolbar, #fmt-toolbar { will-change: height; }
+
 /* medium >= 780 : 58/44, tb_fs 14 pad 11 min 28, fmt 13/9 */
 @media (max-width: 1099px) {
   :root {
-    --tb-h: 58px;  --fmt-h: 44px;
+    --tb-base: 52.2px;  --fmt-base: 39.6px;
     --tb-fs: 14px; --btn-pad: 11px; --btn-min: 50px;
     --fmt-fs: 13px; --fmt-pad: 9px; --fmt-min: 32px;
     --lbl-fs: 13px; --slider-w: 92px; --val-w: 40px;
@@ -36,7 +46,7 @@
 /* small >= 620 : 46/36, tb_fs 12 pad 6 min 26, fmt 11/5 */
 @media (max-width: 779px) {
   :root {
-    --tb-h: 46px;  --fmt-h: 36px;
+    --tb-base: 41.4px;  --fmt-base: 32.4px;
     --tb-fs: 12px; --btn-pad: 6px;  --btn-min: 38px;
     --fmt-fs: 11px; --fmt-pad: 5px; --fmt-min: 22px;
     --lbl-fs: 11px; --slider-w: 64px; --val-w: 36px;
@@ -46,7 +56,7 @@
 /* xsmall < 620 : 40/32, tb_fs 10 pad 3 min 20, スケール見出しは畳む */
 @media (max-width: 619px) {
   :root {
-    --tb-h: 40px;  --fmt-h: 32px;
+    --tb-base: 36px;  --fmt-base: 28.8px;
     --tb-fs: 10px; --btn-pad: 3px;  --btn-min: 26px;
     --fmt-fs: 10px; --fmt-pad: 3px; --fmt-min: 12px;
     --lbl-fs: 10px; --slider-w: 44px; --val-w: 30px;
@@ -83,6 +93,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
   background: var(--toolbar);
   border-bottom: 1px solid var(--sep);
   user-select: none;
+  /* height の transition 中も中身をクリップし、下の本文へはみ出さない */
+  overflow: hidden;
 }
 
 .tb-left { display: flex; align-items: stretch; width: 100%; min-width: 0; }
@@ -170,6 +182,19 @@ input[type="range"]::-webkit-slider-thumb {
 #fmt-toolbar button:hover { background: var(--accent); color: #fff; }
 
 .fmt-sep { flex: 0 0 1px; background: var(--bg2); }
+
+/* .txt 文書を開いているときの保存形式の案内（β4.0） */
+.doc-kind-hint {
+  flex: 0 0 auto;
+  padding: 5px 14px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--sep);
+  color: var(--text-dim);
+  font-size: 12px; font-weight: 600;
+  line-height: 1.5;
+  user-select: none;
+}
+.doc-kind-hint[hidden] { display: none; }
 
 /* ── ワークスペース ─────────────────────────────────────────────── */
 
@@ -564,9 +589,15 @@ body[data-page="a4"] #doc {
 .swatch[aria-pressed="true"] { border-color: var(--text); box-shadow: inset 0 0 0 1px var(--bg2); }
 .swatch.default { background: linear-gradient(135deg, var(--accent), var(--bg3)); }
 
+/* 確認ダイアログ（.txt → .md の保存形式の確認など） */
+.modal.confirm-modal { width: 440px; }
+.modal.confirm-modal .confirm-msg { margin: 0; font-size: 14px; line-height: 1.7; }
+.modal.confirm-modal .hint { margin: 0; color: var(--text-dim); font-size: 12px; line-height: 1.6; }
+.modal.confirm-modal .modal-actions { flex-wrap: wrap; }
+.modal.confirm-modal .modal-actions button { min-width: 96px; padding: 0 12px; }
+
 /* 起動ダイアログ (StartupDialog) */
-.modal.startup { width: 400px; }
-.startup .modal-body { gap: 12px; padding: 24px 28px 20px; }
+.modal.startup { width: 400px; }.startup .modal-body { gap: 12px; padding: 24px 28px 20px; }
 .startup h2 { font-size: 20px; text-align: center; }
 .startup-hint { margin: 0 0 4px; text-align: center; color: var(--text-dim); font-size: 13px; }
 .startup-btn {
@@ -645,7 +676,7 @@ mark.find-hit.active { background: var(--accent); color: #fff; }
 
 @media print {
   html, body { background: #fff !important; color: #111 !important; height: auto; overflow: visible; }
-  #main-toolbar, #fmt-toolbar, #toc-panel, #clip-panel, #editor-pane,
+  #main-toolbar, #fmt-toolbar, #toc-panel, #clip-panel, #editor-pane, #doc-kind-hint,
   .drop-overlay, .toast, .copy-btn { display: none !important; }
   #app, #workspace, #preview-pane, .doc-scroll {
     display: block !important; height: auto !important; overflow: visible !important;
@@ -677,6 +708,7 @@ body.pdf-export #fmt-toolbar,
 body.pdf-export #toc-panel,
 body.pdf-export #clip-panel,
 body.pdf-export #editor-pane,
+body.pdf-export #doc-kind-hint,
 body.pdf-export .toast,
 body.pdf-export .drop-overlay,
 body.pdf-export .find-bar { display: none !important; }

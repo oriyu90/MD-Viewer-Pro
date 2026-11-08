@@ -84,6 +84,11 @@ const state = {
   clips: [],
   fonts: [],
   searchIndex: -1,
+  // β4.0: 書類種別（"md" / "txt" / "yaml"）と書式ツールバーの使用履歴。
+  // .txt を開いて書式ツールバーを使っていない場合は、保存も .txt のまま行う。
+  docKind: "md",
+  formatUsed: false,
+  tbScale: 1,
 };
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -514,7 +519,7 @@ async function applyFormatMd(kind) {
   if (kind === "strike") return wrapSelectionHtml("s");
   if (kind === "code") return wrapSelectionHtml("code");
   if (kind === "link") {
-    const url = await askText(t("fmt_link", "リンク"), "https://");
+    const url = await askText(t("link_dialog_title", t("fmt_link", "リンク")), "https://");
     if (!url) return;
     document.execCommand("createLink", false, url);
     const b = currentBlock();
@@ -577,7 +582,9 @@ async function applyFormatMd(kind) {
     }
     case "table": {
       const table = document.createElement("table");
-      table.innerHTML = "<thead><tr><th>見出し</th><th>見出し</th></tr></thead><tbody><tr><td>内容</td><td>内容</td></tr></tbody>";
+      const head = escapeHtml(t("fmt_table_head", "見出し"));
+      const cell = escapeHtml(t("fmt_table_cell", "内容"));
+      table.innerHTML = `<thead><tr><th>${head}</th><th>${head}</th></tr></thead><tbody><tr><td>${cell}</td><td>${cell}</td></tr></tbody>`;
       if (block) block.after(table);
       else doc.appendChild(table);
       markDirty(true);
@@ -715,6 +722,8 @@ async function loadPath(path) {
     state.source = d.source;
     state.rendered = d.rendered;
     state.dirty = false;
+    state.docKind = normalizeDocKind(d.kind, d.path);
+    state.formatUsed = false;
     $("#doc").innerHTML = d.rendered.html;
     $("#editor").value = d.source;
     updateGutter();
@@ -722,12 +731,18 @@ async function loadPath(path) {
     enhance();
     $("#doc-scroll").scrollTop = 0;
     updateTitle();
+    updateDocKindHint();
     setMode(state.boot?.screenshot?.mode === "md" ? "md" : state.boot?.screenshot?.mode === "txt" ? "txt" : "view");
     if (d.warning) toast(d.warning);
   } catch (e) {
     toast(String(e));
   }
 }
+
+/* Rust 側の kind（"md" / "txt" / "yaml"）を正とし、欠けていれば拡張子から補う。
+   旧バージョンの open_path は .txt も "md" と返していたため、パスで上書きする。 */
+const MD_EXTS = ["md", "markdown", "mdown", "mkd"];
+const YAML_EXTS = ["yml", "yaml"];
 
 function ensureMermaidDeferred() {
   mermaidReady = false;
@@ -739,17 +754,113 @@ async function openFile() {
   if (p) await loadPath(p);
 }
 
+function kindFromPath(path) {
+  if (!path) return null;
+  const m = String(path).toLowerCase().match(/\.([^./\\]+)$/);
+  if (!m) return null;
+  if (YAML_EXTS.includes(m[1])) return "yaml";
+  if (MD_EXTS.includes(m[1])) return "md";
+  return "txt";
+}
+
+function normalizeDocKind(kind, path) {
+  const fromPath = kindFromPath(path);
+  if (fromPath) return fromPath;
+  return kind === "txt" || kind === "yaml" ? kind : "md";
+}
+
+function isPlainTextDoc() {
+  return state.docKind === "txt";
+}
+
+/* 保存ダイアログの推奨ファイル名。既存パスがあればその名前、無ければ種別に合わせる。 */
+function suggestedSaveName() {
+  if (state.docPath) return state.docPath.split("/").pop();
+  return isPlainTextDoc() ? "untitled.txt" : "untitled.md";
+}
+
+/* 保存先の拡張子が変わったら書類種別を追従させる（.txt → .md など）。 */
+function applySavedKind(savedPath) {
+  const next = normalizeDocKind(null, savedPath);
+  const prev = state.docKind;
+  state.docKind = next;
+  state.formatUsed = false;
+  if (prev !== next) {
+    // .txt になったら MD編集は使えないので TXT編集へ寄せる。
+    if (next === "txt" && state.mode === "md") setMode("txt");
+    if (next !== "txt" && state.mode === "txt") setMode("view");
+  }
+  updateTitle();
+  updateDocKindHint();
+}
+
+/* .txt 文書を開いているときだけ、保存形式の案内を出す（要求 2 の可視化）。 */
+function updateDocKindHint() {
+  const el = $("#doc-kind-hint");
+  if (!el) return;
+  const show = isPlainTextDoc() && !!state.docPath;
+  el.hidden = !show;
+  if (show) el.textContent = t("txt_doc_notice", "このファイルはテキスト（.txt）です。");
+}
+
+/* .txt 文書で書式ツールバーを使ったときだけ、.md への変換を確認する。
+   戻り値: "save"（.md として保存） / "keep"（.txt のまま保存） / "cancel"（中止）。
+   ボタン名まで i18n で切り替えられるよう、アプリ内ダイアログで尋ねる。 */
+function confirmTxtToMarkdown() {
+  const msg = t("txt_to_md_msg",
+    "書式ツールバーで Markdown 記法を追加しました。.md ファイルとして保存しますか？");
+  const hint = t("txt_to_md_hint",
+    "「.txt のまま保存」を選ぶと、拡張子は .txt のまま保存されます。");
+  const saveAsMd = t("txt_to_md_save", ".md で保存");
+  const keepTxt = t("txt_to_md_keep", ".txt のまま保存");
+  const cancel = t("cancel", "キャンセル");
+  return new Promise((resolve) => {
+    const dlg = document.createElement("dialog");
+    dlg.className = "modal confirm-modal";
+    dlg.innerHTML = `<form method="dialog" class="modal-body">
+      <h2>${escapeHtml(t("txt_to_md_title", "保存形式の確認"))}</h2>
+      <p class="confirm-msg">${escapeHtml(msg)}</p>
+      <p class="hint">${escapeHtml(hint)}</p>
+      <div class="modal-actions">
+        <button value="cancel" class="text-btn">${escapeHtml(cancel)}</button>
+        <button value="keep" class="text-btn">${escapeHtml(keepTxt)}</button>
+        <button value="save">${escapeHtml(saveAsMd)}</button>
+      </div></form>`;
+    document.body.appendChild(dlg);
+    dlg.addEventListener("close", () => {
+      const v = dlg.returnValue;
+      dlg.remove();
+      resolve(v === "save" || v === "keep" ? v : "cancel");
+    });
+    dlg.showModal();
+  });
+}
+
 async function saveFile(forceAs = false) {
   if (state.mode === "md") await commitMdEdits();
   let path = state.docPath;
+
+  // .txt 文書で書式ツールバーを使った場合のみ、.md への変換を提案する。
+  // （書式ツールバーを使っていなければ、拡張子も保存先も一切変えない）
+  if (!forceAs && path && isPlainTextDoc() && state.formatUsed) {
+    const choice = await confirmTxtToMarkdown();
+    if (choice === "cancel") return false;
+    if (choice === "save") {
+      const base = path.replace(/\.[^.]+$/, "");
+      const target = await invoke("pick_save", { suggested: `${base}.md`, kind: "md" });
+      if (!target) return false;
+      path = target;
+    }
+  }
+
   if (!path || forceAs) {
-    const suggested = path ? path.split("/").pop() : "untitled.md";
-    path = await invoke("pick_save", { suggested });
+    path = await invoke("pick_save", { suggested: suggestedSaveName(), kind: state.docKind });
     if (!path) return false;
   }
   try {
     const saved = await invoke("save_document", { path, source: state.source });
     state.docPath = saved;
+    applySavedKind(saved);
     markDirty(false);
     toast(t("saved", "保存しました"));
     return true;
@@ -761,7 +872,7 @@ async function saveFile(forceAs = false) {
 
 async function exportHtml() {
   const base = state.docPath ? state.docPath.replace(/\.[^.]+$/, "") : "untitled";
-  const path = await invoke("pick_save", { suggested: `${base}.html` });
+  const path = await invoke("pick_save", { suggested: `${base}.html`, kind: "html" });
   if (!path) return;
   const content = buildStandaloneHtml();
   try {
@@ -908,7 +1019,7 @@ async function exportPdf() {
   const boot = await refreshBootstrap(next);
   applyPalette(boot);
   const base = state.docPath ? state.docPath.replace(/\.[^.]+$/, "") : "untitled";
-  const path = await invoke("pick_save", { suggested: `${base}.pdf` });
+  const path = await invoke("pick_save", { suggested: `${base}.pdf`, kind: "pdf" });
   if (!path) return;
   await runPdfExport(path);
 }
@@ -1004,15 +1115,22 @@ function applyFormatText(kind) {
     case "hr": return insertBlock("\n---\n");
     case "link": {
       const ed = $("#editor");
-      const sel = ed.value.slice(ed.selectionStart, ed.selectionEnd) || "リンク";
+      const sel = ed.value.slice(ed.selectionStart, ed.selectionEnd) || t("fmt_link_default", "リンク");
       return replaceSelection(`[${sel}](https://)`, sel.length + 3, 8);
     }
-    case "image": return insertBlock("![alt](path/to/image.png)");
-    case "table": return insertBlock("| 見出し | 見出し |\n| --- | --- |\n| 内容 | 内容 |");
+    case "image": return insertBlock(`![${t("img_alt_default", "alt")}](${t("fmt_img_placeholder", "path/to/image.png")})`);
+    case "table": {
+      const head = t("fmt_table_head", "見出し");
+      const cell = t("fmt_table_cell", "内容");
+      return insertBlock(`| ${head} | ${head} |\n| --- | --- |\n| ${cell} | ${cell} |`);
+    }
   }
 }
 
 function applyFormat(kind) {
+  // 書式ツールバー（Markdown 記法）を使ったことを記録する。
+  // .txt 文書でこれが立つと、保存時に .md への変換を案内する。
+  state.formatUsed = true;
   if (state.mode === "md") return applyFormatMd(kind);
   return applyFormatText(kind);
 }
@@ -1476,10 +1594,14 @@ function newDocument() {
   state.source = "";
   state.rendered = null;
   state.dirty = false;
+  // 新規文書は Markdown として扱う（保存時に .txt を選べば .txt 文書になる）。
+  state.docKind = "md";
+  state.formatUsed = false;
   $("#doc").innerHTML = "";
   $("#editor").value = "";
   updateGutter();
   updateTitle();
+  updateDocKindHint();
   setMode("txt");
 }
 
@@ -1568,13 +1690,33 @@ async function boot() {
       else if (d === "pdf") { try { fillPdfDialog(); $("#pdf-dialog").showModal(); } catch (err) { toast("PDF dialog: " + err); } }
       else if (d === "clip") { $("#btn-clip").click(); }
       else if (d === "search") { openFind(); $("#find-input").value = "見出し 1"; runFind("見出し 1"); }
+      else if (d === "txt2md") { confirmTxtToMarkdown(); }
     }, 300);
   } else if (!state.docPath) {
     showStartup();
   }
 
   syncWrapWidth();
-  addEventListener("resize", syncWrapWidth);
+  syncToolbarScale();
+  addEventListener("resize", onViewportResize);
+  // `resize` はプログラム的リサイズ（ウィンドウマネージャや set_size）で
+  // 発火しないことがあるため、レイアウト変化も監視して取りこぼさない。
+  if (typeof ResizeObserver !== "undefined") {
+    try {
+      const ro = new ResizeObserver(() => onViewportResize());
+      ro.observe(document.documentElement);
+      ro.observe(document.body);
+      ro.observe($("#app"));
+    } catch (e) { /* 監視できなくても resize で動作する */ }
+  }
+  // 最後の保険: ウィンドウ寸法の変化を 500ms 間隔で見張る（変化時だけ処理）。
+  let lastW = innerWidth, lastH = innerHeight;
+  setInterval(() => {
+    if (innerWidth !== lastW || innerHeight !== lastH) {
+      lastW = innerWidth; lastH = innerHeight;
+      onViewportResize();
+    }
+  }, 250);
 }
 
 /* フリー表示の左右余白。ウィンドウ縦横比 1→3 で 0→20% へ線形に広げる
@@ -1583,6 +1725,81 @@ function syncWrapWidth() {
   const ratio = innerWidth / Math.max(1, innerHeight);
   const blank = ratio <= 1 ? 0 : Math.min(0.2, 0.2 * (ratio - 1) / 2);
   document.documentElement.style.setProperty("--wrap-w", `${((1 - 2 * blank) * 100).toFixed(1)}%`);
+}
+
+/* ツールバーの縦幅係数（β4.0）。
+   ウィンドウ縦幅 h に対して（単調増加・連続）:
+     h <= 360px        -> 0.80
+     360 < h < 900px   -> 0.80 + 0.20 * (h - 360) / 540
+     h >= 900px        -> 1.00
+   常に [0.80, 1.00] にクランプする（数値の異常値でもレイアウトを壊さない）。
+   幅による段階の切り替えは CSS 側（--tb-base / --fmt-base）が担当し、
+   その高さ変化は CSS transition で滑らかに補間される。 */
+const TB_SCALE_MIN = 0.8;
+const TB_SCALE_MAX = 1.0;
+const TB_SCALE_FULL_HEIGHT = 900;
+const TB_SCALE_MIN_HEIGHT = 360;
+
+function toolbarScaleForHeight(h) {
+  const height = Number.isFinite(h) ? h : TB_SCALE_FULL_HEIGHT;
+  const span = TB_SCALE_FULL_HEIGHT - TB_SCALE_MIN_HEIGHT;
+  const s = TB_SCALE_MIN + (TB_SCALE_MAX - TB_SCALE_MIN) * (height - TB_SCALE_MIN_HEIGHT) / span;
+  return Math.min(TB_SCALE_MAX, Math.max(TB_SCALE_MIN, s));
+}
+
+/* ツールバーの縦幅係数を滑らかに補間する。
+   `--tb-h` は CSS 側の `calc(var(--tb-base) * var(--tb-scale))` のまま残し、
+   JS は `--tb-scale` だけを動かす。こうすることで、幅の段階（--tb-base）が
+   メディアクエリで変わっても常に反映される（インライン上書きを残さない）。
+   CSS の height transition はプログラム的リサイズで止まることがあるため使わない。 */
+let tbAnim = 0;
+let tbScaleShown = 1;
+
+function syncToolbarScale() {
+  const target = toolbarScaleForHeight(innerHeight);
+  state.tbScale = target;
+  const root = document.documentElement;
+  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  const apply = (v) => {
+    tbScaleShown = v;
+    root.style.setProperty("--tb-scale", v.toFixed(4));
+  };
+  if (tbAnim) { clearTimeout(tbAnim); tbAnim = 0; }
+  if (reduce || Math.abs(tbScaleShown - target) < 0.0005) {
+    apply(target);
+    return;
+  }
+  // 180ms かけて ease-out で近づける（CSS transition はプログラム的リサイズで
+  // 止まるため使わない）。rAF が発火しない環境でも動くよう setTimeout で回す。
+  const from = tbScaleShown;
+  const start = performance.now();
+  const DURATION = 180;
+  const step = () => {
+    const p = Math.min(1, (performance.now() - start) / DURATION);
+    const e = 1 - Math.pow(1 - p, 3);
+    apply(from + (target - from) * e);
+    if (p < 1) tbAnim = setTimeout(step, 16);
+    else { tbAnim = 0; apply(target); }
+  };
+  step();
+}
+
+/* resize は 1 フレーム 1 回にまとめる（リサイズ中の再計算を抑える）。
+   注意: この WebView では requestAnimationFrame が発火しない状況があるため、
+   rAF に頼らず setTimeout で間引く（16ms 程度で実用上は十分滑らか）。 */
+let resizeTimer = 0;
+function onViewportResize() {
+  if (resizeTimer) return;
+  resizeTimer = setTimeout(() => {
+    resizeTimer = 0;
+    try {
+      syncWrapWidth();
+      syncToolbarScale();
+    } catch (e) {
+      // レイアウト計算の失敗で UI を止めない（原因はセルフテストで記録する）
+      state.resizeError = String(e && e.stack || e);
+    }
+  }, 16);
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -1769,8 +1986,189 @@ async function runSelfTest() {
     res.i18nKeys = Object.keys(state.t).length;
     res.lang = state.lang;
     res.htmlBytes = r.html.length;
+
+    // ── β4.0 回帰: 要求 2（TXT 保存の維持）と要求 3（ツールバー縦幅） ──
+    Object.assign(res, await selftestBeta4());
   } catch (e) {
     res.error = String(e);
   }
   await invoke("selftest_report", { payload: res });
+}
+
+/* ウィンドウを複数の大きさにして、ツールバーの実測高さを記録する。
+   期待値 = 基準値（幅の段階） × 係数（縦幅）。transition が終わるのを待ってから測る。 */
+/* ウィンドウの実サイズが目標に近づくまで待つ（最大 1.5 秒）。
+   set_size はイベントループ経由で反映されるため、直後に測ると古い値になる。
+   innerWidth/innerHeight はウィンドウ外枠より少し小さい（タイトルバー等）ので、
+   許容差は 48px とする。 */
+async function waitViewport(w, h, maxMs = 1500) {
+  const start = performance.now();
+  while (performance.now() - start < maxMs) {
+    if (Math.abs(innerWidth - w) <= 48 && Math.abs(innerHeight - h) <= 48) return true;
+    await sleep(30);
+  }
+  return false;
+}
+
+/* ツールバーの高さが安定するまで待つ（最大 1 秒）。
+   180ms の transition 中に測ると、遷移途中の値で誤判定するため。 */
+/* 高さが目標値に到達するまで待つ（補間の完了を確実に待つ）。 */
+async function waitHeightNear(el, target, maxMs = 2000) {
+  const start = performance.now();
+  let h = el.getBoundingClientRect().height;
+  while (performance.now() - start < maxMs) {
+    h = el.getBoundingClientRect().height;
+    if (Math.abs(h - target) <= 1.0) return h;
+    await sleep(40);
+  }
+  return h;
+}
+
+async function measureToolbarMatrix() {
+  const rows = [];
+  const errors = [];
+  const tb = $("#main-toolbar");
+  // 幅の段階（1100 / 780 / 620）と縦幅係数の両方を踏む組み合わせ。
+  const sizes = [
+    [1280, 900], [1280, 700], [1280, 500],
+    [1000, 900], [800, 900], [600, 900],
+  ];
+  for (const [w, h] of sizes) {
+    try {
+      // ACL を広げないよう、リサイズは Rust 側のセルフテスト専用コマンドで行う。
+      await invoke("selftest_resize", { width: w, height: h });
+    } catch (e) {
+      errors.push(`${w}x${h}: resize failed: ${e}`);
+      continue;
+    }
+    // リサイズの反映（最大 1.5 秒）を待つ。
+    await waitViewport(w, h);
+    // 幅の段階（--tb-base）と縦幅係数（--tb-scale）が新しい値になるまで待つ。
+    // ここで待たないと、補間前の古い高さを「安定」と誤判定する。
+    const cs = getComputedStyle(document.documentElement);
+    let base = parseFloat(cs.getPropertyValue("--tb-base"));
+    let scale = parseFloat(cs.getPropertyValue("--tb-scale"));
+    const expectedScale = toolbarScaleForHeight(innerHeight);
+    const deadline = performance.now() + 2000;
+    while (performance.now() < deadline) {
+      base = parseFloat(cs.getPropertyValue("--tb-base"));
+      scale = parseFloat(cs.getPropertyValue("--tb-scale"));
+      if (Math.abs(scale - expectedScale) < 0.002) break;
+      await sleep(40);
+    }
+    // 補間（180ms）が終わるまで高さを追う。
+    const expected = base * scale;
+    const measured = await waitHeightNear(tb, expected, 2000);
+    const ok = Math.abs(measured - expected) <= 1.0;
+    if (!ok) errors.push(`${w}x${h}: measured ${measured} != expected ${expected.toFixed(1)}`);
+    rows.push({
+      requested: `${w}x${h}`,
+      w: innerWidth, h: innerHeight,
+      base: Math.round(base * 10) / 10,
+      scale: Math.round(scale * 1000) / 1000,
+      expected: Math.round(expected * 10) / 10,
+      measured: Math.round(measured * 10) / 10,
+      ok,
+    });
+  }
+  try { await invoke("selftest_resize", { width: 1280, height: 900 }); } catch (e) { /* noop */ }
+  await sleep(340);
+  return { rows, errors, allOk: errors.length === 0 && rows.every((r) => r.ok) };
+}
+
+/* 要求 2: .txt を開いて書式ツールバーを使わずに保存しても .txt のまま。
+   要求 3: ツールバー高さ = 基準値(幅の段階) × 係数(ウィンドウ縦幅)。
+   i18n: ja/en のキー集合が一致し、en に日本語が残らない。 */
+async function selftestBeta4() {
+  const out = {};
+  const tmp = (name) => {
+    const fx = state.boot?.selftest_fixture || "";
+    const dir = fx.slice(0, fx.lastIndexOf("/"));
+    return dir ? `${dir}/${name}` : name;
+  };
+
+  // 要求 2-a: .txt を開いて保存 → 拡張子は .txt のまま、内容一致
+  // （保存できるのは open_path で許可済みのパスだけなので、見本を open_path で開く）
+  const txtPath = tmp("mdvp-selftest.txt");
+  try {
+    await loadPath(txtPath);
+    out.txtKind = state.docKind;
+    out.txtKindFromRust = state.rendered ? "ok" : "missing";
+    out.txtFormatUsed = state.formatUsed;
+    out.txtHintVisible = !$("#doc-kind-hint").hidden;
+    state.source += "追記した行\n";
+    state.dirty = true;
+    const ok = await saveFile(false);
+    out.txtSaved = !!ok;
+    out.savedPath = state.docPath;
+    out.savedExt = (state.docPath || "").split(".").pop();
+    out.savedKind = state.docKind;
+    out.savedHasAppend = (await invoke("read_file_text", { path: txtPath })).includes("追記した行");
+  } catch (e) {
+    out.txtError = String(e);
+  }
+
+  // 要求 2-b: 書式ツールバーを使うと formatUsed が立ち、.txt 文書のままである
+  try {
+    state.formatUsed = false;
+    applyFormat("bold");
+    out.formatUsedAfterToolbar = state.formatUsed;
+    out.txtStillPlainAfterToolbar = state.docKind === "txt";
+    state.formatUsed = false;
+  } catch (e) {
+    out.formatError = String(e);
+  }
+
+  // 要求 3: ツールバー高さの基準値（幅の段階）と係数（ウィンドウ縦幅）
+  try {
+    const tb = $("#main-toolbar");
+    const fmt = $("#fmt-toolbar");
+    const cssVar = (n) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(n));
+    out.tbWidth = innerWidth;
+    out.tbHeight = Math.round(tb.getBoundingClientRect().height * 10) / 10;
+    out.tbBase = cssVar("--tb-base");
+    out.fmtBase = cssVar("--fmt-base");
+    out.tbScale = Math.round(cssVar("--tb-scale") * 1000) / 1000;
+    out.tbExpected = Math.round(out.tbBase * out.tbScale * 10) / 10;
+    out.tbRatioToLegacy = Math.round((out.tbHeight / (out.tbBase / 0.9)) * 1000) / 1000;
+    // 書式ツールバーは編集モードでだけ表示されるので、高さ計算は CSS 変数で検査する
+    out.fmtComputed = cssVar("--fmt-base") * cssVar("--tb-scale");
+    void fmt;
+    // 係数の境界（純関数）
+    out.scaleAt900 = toolbarScaleForHeight(900);
+    out.scaleAt720 = toolbarScaleForHeight(720);
+    out.scaleAt360 = toolbarScaleForHeight(360);
+    out.scaleClampLow = toolbarScaleForHeight(0);
+    out.scaleClampHigh = toolbarScaleForHeight(5000);
+    out.scaleNaN = toolbarScaleForHeight(NaN);
+
+    // 実際にウィンドウをリサイズして、幅の段階と縦幅係数の両方を実測する。
+    out.tbMatrix = await measureToolbarMatrix();
+  } catch (e) {
+    out.tbError = String(e);
+  }
+
+  // i18n: 5 言語のキー集合一致・en に日本語が残らない
+  try {
+    const all = state.allI18n || {};
+    const base = Object.keys(all.ja || {}).sort().join(",");
+    out.i18nSameKeys = Object.keys(all).every((l) => Object.keys(all[l]).sort().join(",") === base);
+    const jp = /[\u3040-\u30ff\u4e00-\u9fff]/;
+    const enBad = Object.entries(all.en || {}).filter(([, v]) => typeof v === "string" && jp.test(v)).map(([k]) => k);
+    out.i18nEnJapaneseKeys = enBad;
+    out.i18nLangCount = Object.keys(all).length;
+    // 画面に残る未翻訳の日本語（en 時）。data-i18n 由来ではない直書きを検査する。
+    const prevLang = state.lang;
+    await loadI18n("en");
+    applyI18n();
+    const uiText = Array.from(document.querySelectorAll(
+      "#main-toolbar [data-i18n], #fmt-toolbar [data-i18n], .modal [data-i18n]",
+    )).map((el) => el.textContent).join(" ");
+    out.i18nUiJapaneseInEn = jp.test(uiText);
+    await loadI18n(prevLang);
+    applyI18n();
+  } catch (e) {
+    out.i18nError = String(e);
+  }
+  return out;
 }

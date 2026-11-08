@@ -3,7 +3,7 @@ members = ["crates/mdv-core", "apps/desktop"]
 resolver = "2"
 
 [workspace.package]
-version = "26.3.0-beta.3.0"
+version = "26.4.0-beta.4.0"
 edition = "2021"
 authors = ["Yuki_Orita"]
 license = "MIT"
